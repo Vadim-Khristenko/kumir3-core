@@ -1,0 +1,312 @@
+| Тест HTTP сервера
+| Запускает простой веб-сервер с красивой HTML страницей
+
+использовать Сеть
+
+алг
+нач
+    вывод "=== Kumir 3 HTTP Server ==="
+    вывод ""
+    
+    | Красивая HTML страница в AMOLED стиле с неоном и флагом
+    html := """<!DOCTYPE html>
+<html lang='ru'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Kumir 3 Professional Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --neon-cyan: #00f2ff;
+            --neon-purple: #bc13fe;
+            --neon-pink: #ff00ea;
+            --flag-white: #ffffff;
+            --flag-blue: #0039a6;
+            --flag-red: #d52b1e;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Анимированный фон (сетка) */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(500px) rotateX(60deg) translateY(-20%);
+            animation: grid-move 20s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes grid-move {
+            from { background-position: 0 0; }
+            to { background-position: 0 100%; }
+        }
+
+        .flag-line {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            display: flex;
+            z-index: 100;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+        .flag-white { flex: 1; background: var(--flag-white); }
+        .flag-blue { flex: 1; background: var(--flag-blue); }
+        .flag-red { flex: 1; background: var(--flag-red); }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            padding: 3rem;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 40px rgba(0, 242, 255, 0.1);
+            max-width: 800px;
+            text-align: center;
+        }
+
+        .logo-box {
+            margin-bottom: 2rem;
+            display: inline-block;
+            padding: 1rem;
+            border: 2px solid var(--neon-cyan);
+            border-radius: 12px;
+            box-shadow: 0 0 20px var(--neon-cyan), inset 0 0 10px var(--neon-cyan);
+            animation: neon-blink 2s infinite alternate;
+        }
+
+        @keyframes neon-blink {
+            0% { opacity: 0.8; box-shadow: 0 0 10px var(--neon-cyan); }
+            100% { opacity: 1; box-shadow: 0 0 25px var(--neon-cyan); }
+        }
+
+        .logo-text {
+            font-size: 3rem;
+            font-weight: 900;
+            letter-spacing: -2px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 0 5px #fff, 0 0 10px var(--neon-cyan);
+        }
+
+        h1 {
+            font-size: 4.5rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #fff, var(--neon-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #4ade80;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .description {
+            font-size: 1.25rem;
+            line-height: 1.6;
+            color: #a0a0a0;
+            margin-bottom: 3rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+
+        .card:hover {
+            background: rgba(0, 242, 255, 0.05);
+            border-color: var(--neon-cyan);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 242, 255, 0.1);
+        }
+
+        .card-icon {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .card-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        .card-text {
+            font-size: 0.85rem;
+            color: #808080;
+        }
+
+        footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #505050;
+            font-size: 0.8rem;
+        }
+
+        .tech-stack {
+            display: flex;
+            gap: 1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .tech-rust { color: #f46623; }
+        .tech-tokio { color: #00f2ff; }
+
+        .neon-button {
+            display: inline-block;
+            padding: 12px 32px;
+            background: transparent;
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+        }
+
+        .neon-button:hover {
+            background: var(--neon-cyan);
+            color: #000;
+            box-shadow: 0 0 30px var(--neon-cyan);
+        }
+    </style>
+</head>
+<body>
+    <div class="flag-line">
+        <div class="flag-white"></div>
+        <div class="flag-blue"></div>
+        <div class="flag-red"></div>
+    </div>
+
+    <div class="container">
+        <div class="logo-box">
+            <div class="logo-text">KUMIR III</div>
+        </div>
+
+        <div class="status-container">
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                СИСТЕМА В СЕТИ: СТАБИЛЬНОСТЬ ПО ПОЗЖЕ
+            </div>
+        </div>
+
+        <h1>Modern SDK</h1>
+        <p class="description">
+            Новое поколение легендарного языка. Теперь с нативной мощью Rust, 
+            полноценной асинхронностью и современным сетевым стеком. 
+            Создано для будущего российского IT.
+        </p>
+
+        <div class="grid">
+            <div class="card">
+                <span class="card-icon">⚡</span>
+                <div class="card-title">Производительность</div>
+                <div class="card-text">Runtime на базе Rust обеспечивает беспрецедентную скорость и безопасность памяти.</div>
+            </div>
+            <div class="card">
+                <span class="card-icon">🔗</span>
+                <div class="card-title">Асинхронсть главное</div>
+                <div class="card-text">Встроенная поддержка задач, каналов и неблокирующего ввода-вывода.</div>
+            </div>
+            <div class="card">
+                <span class="card-icon">🛡️</span>
+                <div class="card-title">Безопасный (относительно) сетевой стек</div>
+                <div class="card-text">HTTP, TCP, UDP и TLS прямо из коробки с простым синтаксисом.</div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 3rem;">
+            <a href="#" class="neon-button">Открыть документацию</a>
+        </div>
+
+        <footer>
+            <div>© 2026 Kumir 3 Project | pwd by Vadim Khristenko</div>
+            <div class="tech-stack">
+                MADE WITH <span class="tech-rust">RUST</span> & <span class="tech-tokio">TOKIO</span>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>"""
+
+    вывод "HTML страница готова!"
+    вывод ""
+    вывод "Запуск сервера на порту 8080..."
+    вывод "Откройте в браузере: http://localhost:8080"
+    вывод ""
+    
+    | Запускаем сервер (блокирующий режим)
+    Сеть.http_сервер_запустить(8080, html)
+    
+    вывод "Сервер остановлен."
+кон

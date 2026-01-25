@@ -1,0 +1,15 @@
+# Build & Testing
+/target
+*.env
+*.log
+*.debug
+
+# IDE
+/.idea
+/.vscode
+/.vs
+/.idx
+
+# Remove doc files
+# You can actually generate your own documentation using `cargo doc`.
+/doc
