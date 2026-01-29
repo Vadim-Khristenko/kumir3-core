@@ -35,27 +35,28 @@
 //! let result = interpreter.run(source);
 //! ```
 
-mod error;
+mod builtins;
+pub mod cli;
 mod environment;
+mod error;
 mod evaluator;
 mod executor;
-mod builtins;
-mod library_bridge;
 mod file_importer;
+mod library_bridge;
 
-pub use error::{RuntimeError, RuntimeResult, RuntimeErrorKind, ControlFlow};
-pub use environment::{Environment, Scope, CallFrame};
+pub use builtins::Builtins;
+pub use environment::{CallFrame, Environment, Scope};
+pub use error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
 pub use evaluator::ExprEvaluator;
 pub use executor::Executor;
-pub use builtins::Builtins;
-pub use library_bridge::LibraryManager;
 pub use file_importer::{FileImporter, ImportedModule};
-
+pub use library_bridge::LibraryManager;
 // Реэкспорт из shared::runtime для async
-pub use crate::shared::runtime::{TaskExecutor, TaskId, TaskState, Task, TaskHandle, KumirRuntime};
+pub use crate::shared::runtime::{KumirRuntime, Task, TaskExecutor, TaskHandle, TaskId, TaskState};
+pub use cli::*;
 
 use crate::shared::parser::parse;
-use crate::shared::types::{Program, Value, Stmt};
+use crate::shared::types::{Program, Stmt, Value};
 
 // =============================================================================
 //                           ИНТЕРПРЕТАТОР
@@ -64,9 +65,9 @@ use crate::shared::types::{Program, Value, Stmt};
 /// Интерпретатор языка Кумир 3.
 ///
 /// Выполняет программы на языке Кумир, поддерживая полный синтаксис версии 3.
-/// 
+///
 /// ## Интеграция с инфраструктурой
-/// 
+///
 /// Интерпретатор использует:
 /// - `shared/runtime` - для async операций и событий
 /// - `shared/libraries` - для загрузки стандартных библиотек
@@ -91,7 +92,7 @@ impl Interpreter {
         let libraries = std::sync::Arc::new(std::sync::RwLock::new(LibraryManager::new()));
         let mut env = Environment::new();
         env.set_library_manager(std::sync::Arc::clone(&libraries));
-        
+
         Self {
             env,
             libraries,
@@ -106,7 +107,7 @@ impl Interpreter {
         let libraries = std::sync::Arc::new(std::sync::RwLock::new(LibraryManager::new()));
         let mut env = Environment::new();
         env.set_library_manager(std::sync::Arc::clone(&libraries));
-        
+
         Self {
             env,
             libraries,
@@ -120,7 +121,7 @@ impl Interpreter {
     pub fn with_environment(mut env: Environment) -> Self {
         let libraries = std::sync::Arc::new(std::sync::RwLock::new(LibraryManager::new()));
         env.set_library_manager(std::sync::Arc::clone(&libraries));
-        
+
         Self {
             env,
             libraries,
@@ -164,10 +165,7 @@ impl Interpreter {
     pub fn run(&mut self, source: &str) -> RuntimeResult<Value> {
         // Парсим программу
         let program = parse(source).map_err(|e| {
-            RuntimeError::new(
-                format!("Ошибка разбора: {}", e),
-                RuntimeErrorKind::Other,
-            )
+            RuntimeError::new(format!("Ошибка разбора: {}", e), RuntimeErrorKind::Other)
         })?;
 
         self.run_program(&program)
@@ -331,7 +329,7 @@ impl Interpreter {
     // =========================================================================
 
     /// Обрабатывает инструкцию импорта.
-    /// 
+    ///
     /// Поддерживает:
     /// - Стандартные библиотеки: `использовать время`
     /// - Файловые импорты: `подключить "./модуль.kum"`
@@ -342,7 +340,7 @@ impl Interpreter {
                 if FileImporter::is_kum_file(path) {
                     // Файловый импорт (как в Python)
                     let module = self.file_importer.import(path, alias.as_deref())?;
-                    
+
                     // Регистрируем алгоритмы из модуля
                     for (name, alg) in module.public_algorithms() {
                         let full_name = match alias {
@@ -351,13 +349,13 @@ impl Interpreter {
                         };
                         // Регистрируем с префиксом модуля
                         self.env.define_algorithm_with_name(&full_name, alg.clone());
-                        
+
                         // Также регистрируем без префикса если нет alias
                         if alias.is_none() {
                             self.env.define_algorithm(alg.clone());
                         }
                     }
-                    
+
                     // Регистрируем классы из модуля
                     for (name, class) in module.public_classes() {
                         let full_name = match alias {
@@ -366,16 +364,24 @@ impl Interpreter {
                         };
                         self.env.define_class_with_name(&full_name, class.clone());
                     }
-                    
+
                     if self.debug_mode {
-                        eprintln!("[DEBUG] Импортирован модуль: {} ({})", 
-                            alias.as_deref().unwrap_or(&module.name), 
-                            path);
+                        eprintln!(
+                            "[DEBUG] Импортирован модуль: {} ({})",
+                            alias.as_deref().unwrap_or(&module.name),
+                            path
+                        );
                     }
                 } else if let Some(lib_name) = library_bridge::resolve_import_path(path) {
                     // Стандартная библиотека
-                    self.libraries.write()
-                        .map_err(|_| RuntimeError::new("Не удалось получить доступ к библиотекам", RuntimeErrorKind::Other))?
+                    self.libraries
+                        .write()
+                        .map_err(|_| {
+                            RuntimeError::new(
+                                "Не удалось получить доступ к библиотекам",
+                                RuntimeErrorKind::Other,
+                            )
+                        })?
                         .import(&lib_name, alias.as_deref())?;
                     if self.debug_mode {
                         eprintln!("[DEBUG] Импортирована библиотека: {}", lib_name);
@@ -394,34 +400,61 @@ impl Interpreter {
     }
 
     /// Импортирует .kum файл.
-    pub fn import_file(&mut self, path: &str, alias: Option<&str>) -> RuntimeResult<std::sync::Arc<ImportedModule>> {
+    pub fn import_file(
+        &mut self,
+        path: &str,
+        alias: Option<&str>,
+    ) -> RuntimeResult<std::sync::Arc<ImportedModule>> {
         self.file_importer.import(path, alias)
     }
 
     /// Импортирует библиотеку программно.
     pub fn import_library(&mut self, name: &str) -> RuntimeResult<()> {
-        self.libraries.write()
-            .map_err(|_| RuntimeError::new("Не удалось получить доступ к библиотекам", RuntimeErrorKind::Other))?
+        self.libraries
+            .write()
+            .map_err(|_| {
+                RuntimeError::new(
+                    "Не удалось получить доступ к библиотекам",
+                    RuntimeErrorKind::Other,
+                )
+            })?
             .import(name, None)
     }
 
     /// Импортирует библиотеку с алиасом.
     pub fn import_library_as(&mut self, name: &str, alias: &str) -> RuntimeResult<()> {
-        self.libraries.write()
-            .map_err(|_| RuntimeError::new("Не удалось получить доступ к библиотекам", RuntimeErrorKind::Other))?
+        self.libraries
+            .write()
+            .map_err(|_| {
+                RuntimeError::new(
+                    "Не удалось получить доступ к библиотекам",
+                    RuntimeErrorKind::Other,
+                )
+            })?
             .import(name, Some(alias))
     }
 
     /// Вызывает функцию библиотеки.
-    pub fn call_library_function(&self, name: &str, args: &[Value]) -> RuntimeResult<Option<Value>> {
-        self.libraries.read()
-            .map_err(|_| RuntimeError::new("Не удалось получить доступ к библиотекам", RuntimeErrorKind::Other))?
+    pub fn call_library_function(
+        &self,
+        name: &str,
+        args: &[Value],
+    ) -> RuntimeResult<Option<Value>> {
+        self.libraries
+            .read()
+            .map_err(|_| {
+                RuntimeError::new(
+                    "Не удалось получить доступ к библиотекам",
+                    RuntimeErrorKind::Other,
+                )
+            })?
             .call_function(name, args)
     }
 
     /// Проверяет, является ли имя функцией библиотеки.
     pub fn is_library_function(&self, name: &str) -> bool {
-        self.libraries.read()
+        self.libraries
+            .read()
             .map(|m| m.is_library_function(name))
             .unwrap_or(false)
     }
@@ -488,11 +521,20 @@ mod tests {
     #[test]
     fn test_arithmetic() {
         let mut interpreter = Interpreter::new();
-        
-        assert_eq!(interpreter.eval("2 + 3").unwrap(), Value::Number(crate::shared::types::Number::I64(5)));
-        assert_eq!(interpreter.eval("10 - 4").unwrap(), Value::Number(crate::shared::types::Number::I64(6)));
-        assert_eq!(interpreter.eval("3 * 4").unwrap(), Value::Number(crate::shared::types::Number::I64(12)));
-        
+
+        assert_eq!(
+            interpreter.eval("2 + 3").unwrap(),
+            Value::Number(crate::shared::types::Number::I64(5))
+        );
+        assert_eq!(
+            interpreter.eval("10 - 4").unwrap(),
+            Value::Number(crate::shared::types::Number::I64(6))
+        );
+        assert_eq!(
+            interpreter.eval("3 * 4").unwrap(),
+            Value::Number(crate::shared::types::Number::I64(12))
+        );
+
         // Деление возвращает F128 (вещественное деление)
         let div_result = interpreter.eval("15 / 3").unwrap();
         match div_result {
@@ -507,7 +549,7 @@ mod tests {
             }
             _ => panic!("Expected Number"),
         }
-        
+
         // Возведение в степень также может вернуть F128
         let pow_result = interpreter.eval("2 ** 3").unwrap();
         match pow_result {
@@ -527,7 +569,7 @@ mod tests {
     #[test]
     fn test_comparison() {
         let mut interpreter = Interpreter::new();
-        
+
         assert_eq!(interpreter.eval("5 > 3").unwrap(), Value::Boolean(true));
         assert_eq!(interpreter.eval("5 < 3").unwrap(), Value::Boolean(false));
         assert_eq!(interpreter.eval("5 = 5").unwrap(), Value::Boolean(true));
@@ -537,10 +579,13 @@ mod tests {
     #[test]
     fn test_logical() {
         let mut interpreter = Interpreter::new();
-        
+
         assert_eq!(interpreter.eval("да и да").unwrap(), Value::Boolean(true));
         assert_eq!(interpreter.eval("да и нет").unwrap(), Value::Boolean(false));
-        assert_eq!(interpreter.eval("да или нет").unwrap(), Value::Boolean(true));
+        assert_eq!(
+            interpreter.eval("да или нет").unwrap(),
+            Value::Boolean(true)
+        );
         assert_eq!(interpreter.eval("не да").unwrap(), Value::Boolean(false));
     }
 
@@ -656,14 +701,26 @@ mod tests {
     #[test]
     fn test_builtin_functions() {
         let mut interpreter = Interpreter::new();
-        
+
         // Математика
-        assert_eq!(interpreter.eval("abs(-5)").unwrap(), Value::Number(crate::shared::types::Number::I64(5)));
-        assert_eq!(interpreter.eval("min(3, 7)").unwrap(), Value::Number(crate::shared::types::Number::I64(3)));
-        assert_eq!(interpreter.eval("max(3, 7)").unwrap(), Value::Number(crate::shared::types::Number::I64(7)));
-        
+        assert_eq!(
+            interpreter.eval("abs(-5)").unwrap(),
+            Value::Number(crate::shared::types::Number::I64(5))
+        );
+        assert_eq!(
+            interpreter.eval("min(3, 7)").unwrap(),
+            Value::Number(crate::shared::types::Number::I64(3))
+        );
+        assert_eq!(
+            interpreter.eval("max(3, 7)").unwrap(),
+            Value::Number(crate::shared::types::Number::I64(7))
+        );
+
         // Строки
-        assert_eq!(interpreter.eval("длина(\"привет\")").unwrap(), Value::Number(crate::shared::types::Number::I64(6)));
+        assert_eq!(
+            interpreter.eval("длина(\"привет\")").unwrap(),
+            Value::Number(crate::shared::types::Number::I64(6))
+        );
     }
 
     #[test]
@@ -696,7 +753,7 @@ mod tests {
     #[test]
     fn test_conditional_expression() {
         let mut interpreter = Interpreter::new();
-        
+
         let result = interpreter.eval("если 5 > 3 то 1 иначе 0 все").unwrap();
         assert_eq!(result, Value::Number(crate::shared::types::Number::I64(1)));
     }
