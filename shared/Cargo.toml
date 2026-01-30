@@ -25,3 +25,5 @@ colored = {workspace = true}
 ratatui = {workspace = true}
 crossterm = {workspace = true}
 
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]

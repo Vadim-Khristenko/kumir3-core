@@ -1,16 +1,4 @@
-#[package]
-#name = "kumir3-core"
-#version = "0.1.0"
-#edition = "2024"
-#description = "Kumir 3 - Core Library"
-#authors = ["Vadim Khristenko <just@vai-prog.ru>"]
-#license-file = "LICENSE"
-#repository = "https://github.com/Vadim-Khristenko/kumir3-core"
-#default-run = "kumir3-cli"
-#readme = "README.md"
-#keywords = ["kumir3", "kumir", "kumir3-core", "core", "library"]
-
-# This is virtual manifest so no there's no need for this
+# This is virtual manifest so no there's no need for package table
 
 [workspace.dependencies]
 once_cell = "1.21"
@@ -32,28 +20,3 @@ crossterm = "0.29"
 [workspace]
 members = ["compiler", "interpreter", "shared", "tests"]
 resolver = "2"
-
-#[lib]
-# Суффикс lib может показаться лишним, но поверь мне он необходим, 
-# чтобы имя библиотеки было уникальным и не конфликтовало с именем бинарника.
-# Это может быть только на Windows (любим за рандомную хрень ОС), посмотри https://github.com/rust-lang/cargo/issues/8519
-#name = "crate"
-#crate-type = ["staticlib", "cdylib", "rlib"]
-
-#[[bin]]
-#name = "kumir3-interpreter"
-#path = "src/kum_interpreter.rs"
-#tests = false
-
-#[[bin]]
-#name = "kumir3-compiler"
-#path = "src/kum_compiler.rs"
-#tests = false
-
-#[[bin]]
-#name = "kumir3-cli"
-#path = "src/kum_cli.rs"
-
-#[[test]]
-#name = "kumir3-tests"
-#path = "tests/tests.rs"
