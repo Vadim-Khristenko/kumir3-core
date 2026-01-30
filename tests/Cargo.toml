@@ -5,4 +5,4 @@ edition = "2024"
 
 [dependencies]
 shared = { path = "../shared" }
-rstest = "*"
+rstest = "0.26.1"
