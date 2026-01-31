@@ -1,13 +1,13 @@
-# 📜 Kumir 3 | CoreLibrary — Kumir3 House Edition 🐾
+<h1 align="center">📜 Kumir 3 | CoreLibrary — Kumir3 House Edition 🐾</h1>
 
 <div align="center">
-<img src="[https://img.shields.io/badge/Rust-built-orange?style=for-the-badge&logo=rust](https://img.shields.io/badge/Rust-built-orange?style=for-the-badge&logo=rust)" alt="Rust Built" />
-<img src="[https://img.shields.io/badge/Powered%20by-Monster%20Energy-green?style=for-the-badge](https://img.shields.io/badge/Powered%20by-Monster%20Energy-green?style=for-the-badge)" alt="Monster Energy" />
-<img src="[https://img.shields.io/badge/Mascot-Astolfo-pink?style=for-the-badge](https://img.shields.io/badge/Mascot-Astolfo-pink?style=for-the-badge)" alt="Astolfo Mascot" />
-
-<a href="[https://t.me/kumir3com](https://t.me/kumir3com)">
-<img src="[https://img.shields.io/badge/Telegram-Join%20Chat-blue?style=for-the-badge&logo=telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue?style=for-the-badge&logo=telegram)" alt="Telegram Chat" />
-</a>
+  <img src="https://img.shields.io/badge/Rust-built-orange?style=for-the-badge&logo=rust" alt="Rust built" />
+  <img src="https://img.shields.io/badge/Powered%20by-Monster%20Energy-green?style=for-the-badge" alt="Powered by Monster Energy" />
+  <img src="https://img.shields.io/badge/Mascot-Astolfo-pink?style=for-the-badge" alt="Mascot Astolfo" />
+  <br>
+  <a href="https://t.me/kumir3com" target="_blank" rel="noopener">
+    <img src="https://img.shields.io/badge/Telegram-Join%20Chat-blue?style=for-the-badge&logo=telegram" alt="Telegram Join Chat" />
+  </a>
 </div>
 
 ---
