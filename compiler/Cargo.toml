@@ -1,0 +1,13 @@
+[package]
+name = "kumir3-compiler"
+version = "0.1.0"
+edition = "2024"
+description = "Kumir 3 Compiler"
+authors = ["Vadim Khristenko <just@vai-prog.ru>"]
+license-file = "LICENSE"
+repository = "https://github.com/Vadim-Khristenko/kumir3-core"
+readme = "README.md"
+keywords = ["kumir3", "kumir", "kumir3-compiler", "compiler"]
+
+[dependencies]
+shared = { path = "../shared" }

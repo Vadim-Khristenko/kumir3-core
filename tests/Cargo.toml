@@ -1,0 +1,17 @@
+[package]
+name = "tests"
+version = "0.1.0"
+edition = "2024"
+description = "Integration test crate for kumir3-core"
+authors = [
+    "Vadim Khristenko <just@vai-prog.ru>"
+]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Vadim-Khristenko/kumir3-core"
+readme = "README.md"
+keywords = ["kumir3", "kumir3-tests", "tests", "integration"]
+publish = false
+
+[dependencies]
+shared = { path = "../shared" }
+rstest = "0.26.1"
