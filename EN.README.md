@@ -1,77 +1,110 @@
-# Kumir 3 | CoreLibrary
+<h1 align="center">📜 Kumir 3 | CoreLibrary — Kumir3 House Edition 🐾</h1>
+
+<div align="center">
+  <img src="https://img.shields.io/badge/Rust-built-orange?style=for-the-badge&logo=rust" alt="Rust built" />
+  <img src="https://img.shields.io/badge/Powered%20by-Monster%20Energy-green?style=for-the-badge" alt="Powered by Monster Energy" />
+  <img src="https://img.shields.io/badge/Mascot-Astolfo-pink?style=for-the-badge" alt="Mascot Astolfo" />
+  <br>
+  <a href="https://t.me/kumir3com" target="_blank" rel="noopener">
+    <img src="https://img.shields.io/badge/Telegram-Join%20Chat-blue?style=for-the-badge&logo=telegram" alt="Telegram Join Chat" />
+  </a>
+</div>
+
+---
 
 > [!IMPORTANT]
-> Kumir is an educational programming language.
-> It was originally developed by NIISI "Kurchatovskiy University" (National Institute of Information and Systems).
-> This repository is an independent recreation and modification of the original project, created by Vadim Khristenko (VAI‑Prog).
-> If you’re not from Russia or the CIS, you might wonder why this project would interest you — and that’s a fair question.
-> Either way, I’m glad you’re here. Feel free to read the English documentation and explore the project.
-> [English README.md](EN.README.md)
+> **Kumir** is an educational programming language originally developed by NIISI "Kurchatovskiy University". This repository is a total **Rust-powered recreation** by Vadim Khristenko (**VAI‑Prog**). If you aren't from the CIS (Commonwealth of Independent States), you might be a bit confused by the Russian keywords, but stay for the memes and the high-performance Rust code! 🦀✨
+> [Русский README.md](README.md)
+
+---
 
 > [!CAUTION]
-> This project is an independent recreation and modification of the original KuMir. It is not a product of NIISI RAN and is not maintained or endorsed by them. We have no organizational or legal affiliation with NIISI.
->
-> Original materials and resources: [NIISI RAN](https://www.niisi.ru/) · [KuMir on NIISI website](https://www.niisi.ru/kumir/).
->
-> Questions about rights, requests from copyright holders, or official inquiries are handled via this repository's Issues or by contacting the author at [just@vai-prog.ru](mailto:just@vai-prog.ru).
+> **Disclaimer for the Serious Folks:** This project is an independent recreation. We are not legally affiliated with NIISI RAS, though we deeply respect our roots. Original materials can be found here: [NIISI RAS](https://www.niisi.ru/). For any legal inquiries, rights requests, or "where is my merge?" questions, please open an Issue or contact the author at [just@vai-prog.ru](mailto:just@vai-prog.ru).
 
 ---
 
-## Hello — this is the core of Kumir3
+## 👋 Hey there! This is the Kumir3 Core (and it's cozy here)
+
+### 🦀 Who's in charge?
+
+My name is **Vadim**, known online as `VAI‑Prog`. You can call me by my handle or just call me to code. I work with `C++`, `Python`, and of course, `Rust` (because *Rewrite it in Rust* is a lifestyle). I'm a student at School 1501, drinking LemonFresh (working my way up to white Monster), and I firmly believe that code should spark joy.
+
+### 🐱 What is this beast?
+
+`Kumir` is a legendary algorithmic language that raised generations of students in Russia. It teaches programming without the pain, using native Russian keywords and stripping away the "syntactic sugar" that usually confuses beginners.
+
+### 🔄 A bit of history (and why it's all rewritten)
+
+The original Kumir was written in `C` and looked... well, like software from the early 2000s. When I took over, my developer instincts kicked in: **"Let's rewrite this in Rust!"**.
+It started as a heavy monolith (a total *bug-fest*), but now we are building **Kumir3 House**—a modular, lightning-fast, and elegant core that literally purrs when you compile.
 
 ---
 
-### Let me introduce myself — the project author
+## ✨ What's Cooking in Kumir 3 (The Roadmap)
 
-My name is **Vadim**, but I’m better known in the community as `VAI‑Prog` (or `VAI-Programmer`). Feel free to call me by the nickname — I’ll be glad!  
-I work with `C++`, `Rust` and other languages, and I also write in `Python`. I’m currently a student at GBOU School No.1501 — you’ve probably never heard of it 🙂
+We aren't just making an interpreter; we are building an entire ecosystem:
+
+* **📦 Package Manager:** Yes, a dedicated `cargo` for Kumir. Share libraries and educational sets in one click.
+* **⚡ Modularity:** A core as light as Astolfo and as fast as a cat at 3 AM.
+* **🔌 Plugins:** Code in Kumir via VS Code, Vim, or whatever your heart desires.
+* **📖 BDoc Documentation:** No more boring manuals. Guides you actually *want* to read.
+* **🍎 Cross-platform:** Windows, macOS, Linux—it feels at home everywhere.
+
+### 🎯 Why does this matter?
+
+We are taking the idea of a "localized algorithmic language" and making it **fun, modern, and human-centric**. It’s a language for competitions, cool student projects, and that first step into the IT world.
 
 ---
 
-### In short — what is this?
+## 🎨 Tone & Style (Vibe Check)
 
-`Kumir` is an educational algorithmic language created to help school students learn algorithms and the basics of programming without a lot of foreign jargon.  
-The original implementation was written in `C` and shipped with a simple GUI for Windows, macOS and Linux.
+Kumir3 House is not about boring lectures. It's about:
 
-### A bit of history (and memes)
+* **Memes and cats** in the comments.
+* **BDoc Standard:** Code must be beautiful.
+* **Monster Energy:** Fuel for our compiler.
+* **Astolfo:** Our symbol of lightness and the fact that programming is a creative art!
 
-Kumir was born as a practical teaching tool: minimal syntax noise, clear constructs, and few foreign words — so students can focus on logic rather than language quirks. The syntax wasn’t always "sugary", but it worked — and that’s what mattered.
+---
 
-When I took on the project I succumbed to the classic developer syndrome: `Let's rewrite this in Rust`. I built prototypes with Tauri, experimented, and wrote a lot of code — a useful experience, but the result was a rather monolithic and heavy codebase. Not just a bug — a real "bugisha" )))
+## 🚀 Our Roadmap (To the stars)
 
-### What will be in Kumir 3 (cool plans)
+1. ✅ **Stable Core** (We're almost there!).
+2. 📦 **Launch of the Package Manager**.
+3. 🛠 **IDE Plugin API**.
+4. 📚 **Full database** of educational materials and tasks.
+5. 🌍 **Global Domination** (or at least being in every classroom).
 
-We want to keep the simplicity for students and add flexibility for developers. Key directions:
+---
 
-- Modular core — lightweight components you can combine or use separately.
-- Fast and reliable build/interpretation of Kumir code — programs should run without delays.
-- IDE plugins — so writing Kumir feels natural in your favorite editor.
-- Package manager — yes, we plan to build one: share libraries, lesson packs and examples.
-- Documentation — original docs were sparse, so we’ll rewrite and expand them: teacher-friendly guides and clear examples for students.
+## ⚖️ License
 
-### Language and audience
+The **Kumir 3 | CoreLibrary** project is distributed under the **KUL (Kumir Universal License)** umbrella.
 
-Kumir is evolving from a purely educational/algorithmic language into a more practical tool — somewhat like how 1C is used for applied scenarios, but with a much friendlier and more fun approach. This is a language for students — for lessons, projects and contests. We’re not copying 1C; we’re taking the idea of practical use and making it more accessible and lively.
+We value both freedom and legal security. Therefore, the project is **dual-licensed** under your choice of:
 
-### Why this matters
+* **Apache License, Version 2.0** ([LICENSE-APACHE](LICENSE-APACHE) or [http://www.apache.org](http://www.apache.org)) — **(Primary)**
+* **MIT license** ([LICENSE-MIT](LICENSE-MIT) or [http://opensource.org](http://opensource.org))
 
-The original authors’ materials are sometimes sparse — modern teachers and students need clear tutorials, examples and ready-made problem sets. That’s why we’re building not just code but a full set of materials: documentation, examples, lesson packs and distribution tools (including a package manager).
+> [!TIP]
+> **In plain English:** You are free to use, modify, and distribute this code (even for commercial purposes), provided that you keep the original copyright notice. Don't forget to check out the **"House Code"** in our main license manifest — those cats won't pet themselves! 🐾
 
-### Tone and style of the project
+---
 
-The project stays informal and friendly: memes, references and jokes (for example, "not a bug, a feature" or `Let's rewrite this in Rust`) are part of the culture. At the same time, we take stability, compatibility and usability seriously.
+## 🤝 Join the Movement!
 
-### Short roadmap — what to expect next
+If you have ideas, memes, or found a bug—step inside, everyone is welcome!
 
-1. Stable modular core and releases for Windows / macOS / Linux.
-2. Basic package manager for sharing libraries and lesson packs.
-3. Plugin API for editor and IDE integration.
-4. Complete and updated documentation in Russian and English.
-5. Community: lesson materials, examples and problem sets for schools.
+1. **Read:** [CONTRIBUTING.md](EN.CONTRIBUTING.md) (Don't break the cat's paws).
+2. **Laugh:** [FAQ](arch/en/FAQ.md).
+3. **Chat:** Join our cozy **[Telegram Chat](https://t.me/kumir3com)**. That’s where the updates, spoilers, and chill vibes are.
 
-If you want to help — awesome! Contributions, ideas and memes are welcome.  
-Follow the author on social media, give the repo a star on GitHub, and join the discussion.
+Give us a **Star ⭐**, crack open a Monster, and let's make Kumir great again!
 
-<small>Thanks for your interest — together we’ll make Kumir3 easier and more fun to use.</small>
+---
 
-<div align="center"><small>File updated: 2025-11-08</small></div>
+<div align="center">
+<small><b>Kumir3 House: Writing code, purring in the terminal.</b></small>
+
+<small>Updated: 2026-01-31 | Made with ❤️ and 🦀</small>
+</div>

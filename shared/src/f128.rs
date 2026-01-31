@@ -1,271 +1,969 @@
+// =============================================================================
+//         SECTION: IMPORTS
+// =============================================================================
+
 use std::cmp::Ordering;
-use std::ops::{Add, Sub, Mul, Div, Rem, Neg};
-use std::panic;
-use std::fmt;
+use std::fmt::{self, Debug, Display};
+use std::num::FpCategory;
+use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use std::str::FromStr;
 
-// ============================================================================
-// Struct Definition & Constants
-// ============================================================================
+// =============================================================================
+//         SECTION: TYPES
+// =============================================================================
 
-/// Представление 128-битного числа в формате IEEE-754 binary128.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// [STABLE] IEEE 754-2008 binary128 (quadruple-precision) floating-point number.
+///
+/// Layout: 1-bit sign, 15-bit exponent (bias=16383), 112-bit mantissa.
+/// Precision: ~34 decimal digits.
+#[repr(C)]
+#[derive(Clone, Copy, Eq, Hash)]
 pub struct F128 {
     pub high: u64,
     pub low: u64,
 }
 
-impl F128 {
-    // 1 бит знака, 15 бит порядка (bias = 16383), 112 бит мантиссы
-    const FRAC_BITS: u32 = 112;
-    const EXP_BIAS: i32 = 16383;
+// =============================================================================
+//         SECTION: TRAIT IMPLS
+// =============================================================================
 
+impl PartialEq for F128 {
+    /// [STABLE] Equality comparison.
+    fn eq(&self, other: &Self) -> bool {
+        if self.is_nan() || other.is_nan() {
+            return false;
+        }
+        if self.is_zero() && other.is_zero() {
+            return true;
+        }
+        self.high == other.high && self.low == other.low
+    }
+}
+
+// =============================================================================
+//         SECTION: CONSTANTS
+// =============================================================================
+
+impl F128 {
     const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
     const EXP_MASK: u64 = 0x7FFF_0000_0000_0000;
     const FRAC_HIGH_MASK: u64 = 0x0000_FFFF_FFFF_FFFF;
+    const EXP_BITS: u32 = 15;
+    const FRAC_BITS: u32 = 112;
+    const EXP_BIAS: i32 = 16383;
+    const MAX_EXP: i32 = 16383;
+    const MIN_EXP: i32 = -16382;
 
     pub const ZERO: F128 = F128 { high: 0, low: 0 };
     pub const NEG_ZERO: F128 = F128 { high: Self::SIGN_MASK, low: 0 };
+    pub const ONE: F128 = F128 { high: 0x3FFF_0000_0000_0000, low: 0 };
+    pub const NEG_ONE: F128 = F128 { high: 0xBFFF_0000_0000_0000, low: 0 };
 
     pub const INFINITY: F128 = F128 { high: Self::EXP_MASK, low: 0 };
     pub const NEG_INFINITY: F128 = F128 { high: Self::SIGN_MASK | Self::EXP_MASK, low: 0 };
 
-    pub const NAN: F128 = F128 { high: Self::EXP_MASK | 0x0000_8000_0000_0000, low: 0 };
+    /// Quiet NaN (canonical)
+    pub const NAN: F128 = F128 {
+        high: Self::EXP_MASK | 0x0000_8000_0000_0000,
+        low: 0,
+    };
 
-    // Mathematical Constants
-    // PI = 3.14159265358979323846264338327950288...
+    /// Smallest positive subnormal number
+    pub const MIN_POSITIVE_SUBNORMAL: F128 = F128 { high: 0, low: 1 };
+    /// Smallest positive normal number (2^-16382)
+    pub const MIN_POSITIVE_NORMAL: F128 = F128 { high: 0x0001_0000_0000_0000, low: 0 };
+    /// Largest finite number (2^16384 - 2^16372)
+    pub const MAX: F128 = F128 {
+        high: 0x7FFE_FFFF_FFFF_FFFF,
+        low: 0xFFFF_FFFF_FFFF_FFFF,
+    };
+    /// Machine epsilon (2^-112)
+    pub const EPSILON: F128 = F128 { high: 0x3F8F_0000_0000_0000, low: 0 };
+
     pub const PI: F128 = F128 { high: 0x4000_921F_B544_42D1, low: 0x8469_898C_C517_01B8 };
     pub const TWO_PI: F128 = F128 { high: 0x4001_921F_B544_42D1, low: 0x8469_898C_C517_01B8 };
-    pub const PI_2: F128 = F128 { high: 0x3FFF_921F_B544_42D1, low: 0x8469_898C_C517_01B8 };
-    pub const PI_4: F128 = F128 { high: 0x3FFE_921F_B544_42D1, low: 0x8469_898C_C517_01B8 };
-    
+    pub const FRAC_PI_2: F128 = F128 { high: 0x3FFF_921F_B544_42D1, low: 0x8469_898C_C517_01B8 };
+    pub const FRAC_PI_4: F128 = F128 { high: 0x3FFE_921F_B544_42D1, low: 0x8469_898C_C517_01B8 };
     pub const E: F128 = F128 { high: 0x4000_5BF0_A8B1_4576, low: 0x9535_5FB8_AC40_4E7A };
+    pub const LN_2: F128 = F128 { high: 0x3FFE_62E4_2FEF_A39E, low: 0xF357_93C7_7FCE_2BBC };
+    pub const LOG2_E: F128 = F128 { high: 0x3FFF_B8AA_3B29_5C17, low: 0xF0AB_EA67_0764_8776 };
 }
 
-// ============================================================================
-// Constructors & Bitwise Operations
-// ============================================================================
+// =============================================================================
+//         SECTION: CONSTRUCTORS & BIT MANIPULATION
+// =============================================================================
 
 impl F128 {
-    pub fn from_bits(high: u64, low: u64) -> Self { F128 { high, low } }
-    pub fn to_bits(self) -> (u64, u64) { (self.high, self.low) }
+    /// [STABLE] Creates F128 from raw bits.
+    #[inline]
+    pub const fn from_bits(high: u64, low: u64) -> Self {
+        F128 { high, low }
+    }
 
-    pub fn sign_bit(self) -> u8 { ((self.high & Self::SIGN_MASK) != 0) as u8 }
-    pub fn raw_exponent(self) -> u16 { ((self.high & Self::EXP_MASK) >> 48) as u16 }
-    pub fn raw_fraction(self) -> (u64, u64) { (self.high & Self::FRAC_HIGH_MASK, self.low) }
-    
-    fn is_one(self) -> bool { self.high == 0x3FFF_0000_0000_0000 && self.low == 0 }
-    fn one() -> F128 { F128 { high: 0x3FFF_0000_0000_0000, low: 0 } }
+    /// [STABLE] Returns the raw bits of the number.
+    #[inline]
+    pub const fn to_bits(self) -> (u64, u64) {
+        (self.high, self.low)
+    }
+
+    /// [STABLE] Returns the sign bit.
+    #[inline]
+    pub const fn sign_bit(self) -> u8 {
+        ((self.high >> 63) & 1) as u8
+    }
+
+    /// [STABLE] Returns true if the sign is negative.
+    #[inline]
+    pub const fn is_sign_negative(self) -> bool {
+        (self.high & Self::SIGN_MASK) != 0
+    }
+
+    /// [STABLE] Returns true if the sign is positive.
+    #[inline]
+    pub const fn is_sign_positive(self) -> bool {
+        !self.is_sign_negative() && !self.is_nan()
+    }
+
+    /// [STABLE] Returns the raw exponent bits.
+    #[inline]
+    pub const fn raw_exponent(self) -> u16 {
+        ((self.high & Self::EXP_MASK) >> 48) as u16
+    }
+
+    /// [STABLE] Returns raw fraction bits (high 48 bits, low 64 bits).
+    #[inline]
+    pub const fn raw_fraction(self) -> (u64, u64) {
+        (self.high & Self::FRAC_HIGH_MASK, self.low)
+    }
+
+    /// Create F128 from raw sign, exponent, and fraction (no implicit bit).
+    /// For internal use by compose().
+    #[inline]
+    const fn from_raw(sign: bool, exp: u16, frac_high: u64, frac_low: u64) -> Self {
+        let high = ((sign as u64) << 63) | ((exp as u64) << 48) | (frac_high & Self::FRAC_HIGH_MASK);
+        F128 { high, low: frac_low }
+    }
 }
 
-// ============================================================================
-// Classification
-// ============================================================================
+// =============================================================================
+//         SECTION: CLASSIFICATION
+// =============================================================================
 
 impl F128 {
-    pub fn is_nan(self) -> bool {
-        let e = self.raw_exponent();
+    /// [STABLE] Returns true if the value is NaN.
+    #[inline]
+    pub const fn is_nan(self) -> bool {
+        let exp = self.raw_exponent();
         let (fh, fl) = self.raw_fraction();
-        e == 0x7FFF && (fh != 0 || fl != 0)
+        exp == 0x7FFF && (fh != 0 || fl != 0)
     }
 
-    pub fn is_infinite(self) -> bool {
-        let e = self.raw_exponent();
+    /// [STABLE] Returns true if the value is infinite.
+    #[inline]
+    pub const fn is_infinite(self) -> bool {
+        let exp = self.raw_exponent();
         let (fh, fl) = self.raw_fraction();
-        e == 0x7FFF && fh == 0 && fl == 0
+        exp == 0x7FFF && fh == 0 && fl == 0
     }
 
-    pub fn is_finite(self) -> bool { !self.is_nan() && !self.is_infinite() }
+    /// [STABLE] Returns true if the value is finite.
+    #[inline]
+    pub const fn is_finite(self) -> bool {
+        self.raw_exponent() != 0x7FFF
+    }
 
-    pub fn is_zero(self) -> bool {
-        let e = self.raw_exponent();
+    /// [STABLE] Returns true if the value is zero.
+    #[inline]
+    pub const fn is_zero(self) -> bool {
+        (self.high & !Self::SIGN_MASK) == 0 && self.low == 0
+    }
+
+    /// [STABLE] Returns true if the value is exactly 1.0.
+    #[inline]
+    pub const fn is_one(self) -> bool {
+        self.high == 0x3FFF_0000_0000_0000 && self.low == 0
+    }
+
+    /// [STABLE] Returns true if the value is exactly -1.0.
+    #[inline]
+    pub const fn is_neg_one(self) -> bool {
+        self.high == 0xBFFF_0000_0000_0000 && self.low == 0
+    }
+
+    /// [STABLE] Returns true if the value is subnormal.
+    #[inline]
+    pub const fn is_subnormal(self) -> bool {
+        let exp = self.raw_exponent();
         let (fh, fl) = self.raw_fraction();
-        e == 0 && fh == 0 && fl == 0
+        exp == 0 && (fh != 0 || fl != 0)
     }
 
-    pub fn is_sign_negative(self) -> bool { self.sign_bit() == 1 }
+    /// [STABLE] Returns true if the value is normal.
+    #[inline]
+    pub const fn is_normal(self) -> bool {
+        let exp = self.raw_exponent();
+        exp != 0 && exp != 0x7FFF
+    }
 
-    pub fn is_subnormal(self) -> bool {
-        let e = self.raw_exponent();
+    /// [STABLE] Classifies the number.
+    pub fn classify(self) -> FpCategory {
+        if self.is_nan() {
+            FpCategory::Nan
+        } else if self.is_infinite() {
+            FpCategory::Infinite
+        } else if self.is_zero() {
+            FpCategory::Zero
+        } else if self.is_subnormal() {
+            FpCategory::Subnormal
+        } else {
+            FpCategory::Normal
+        }
+    }
+
+    /// [STABLE] Returns the number of radix-2 digits in the mantissa.
+    pub fn mantissa_digits(self) -> u32 {
+        if self.is_subnormal() {
+            112 - (self.raw_fraction().0.leading_zeros() + self.raw_fraction().1.leading_zeros())
+        } else {
+            113 // implicit + explicit
+        }
+    }
+}
+
+
+// =============================================================================
+//         SECTION: DECOMPOSITION & COMPOSITION
+// =============================================================================
+
+impl F128 {
+    /// Decompose into (sign, unbiased exponent, mantissa with implicit bit).
+    fn decompose(self) -> (bool, i32, u128) {
+        let sign = self.is_sign_negative();
+        let exp = self.raw_exponent();
         let (fh, fl) = self.raw_fraction();
-        e == 0 && (fh != 0 || fl != 0)
+        let frac = ((fh as u128) << 64) | (fl as u128);
+
+        match exp {
+            0 => {
+                if frac == 0 {
+                    (sign, Self::MIN_EXP - 1, 0)
+                } else {
+                    let lz = frac.leading_zeros() as i32 - (128 - Self::FRAC_BITS as i32);
+                    (sign, Self::MIN_EXP - lz, frac << lz)
+                }
+            }
+            0x7FFF => (sign, i32::MAX, frac),
+            _ => {
+                let mant = (1u128 << Self::FRAC_BITS) | frac;
+                (sign, exp as i32 - Self::EXP_BIAS, mant)
+            }
+        }
     }
 
-    pub fn is_normal(self) -> bool {
-        let e = self.raw_exponent();
-        e != 0 && e != 0x7FFF
+    /// Compose from (sign, unbiased exponent, mantissa).
+    /// Normalizes the mantissa and handles overflow/underflow.
+    fn compose(sign: bool, mut exp: i32, mut mant: u128) -> Self {
+        if mant == 0 {
+            return if sign { Self::NEG_ZERO } else { Self::ZERO };
+        }
+
+        let lz = mant.leading_zeros();
+        if lz >= 128 {
+            return if sign { Self::NEG_ZERO } else { Self::ZERO };
+        }
+        let msb = 127i32.saturating_sub(lz as i32);
+        let target = Self::FRAC_BITS as i32;
+
+        if msb > target {
+            let shift = (msb - target) as u32;
+            if shift >= 128 {
+                return if sign { Self::NEG_INFINITY } else { Self::INFINITY };
+            }
+            mant >>= shift;
+            exp = exp.saturating_add(shift as i32);
+        } else if msb < target {
+            let shift = (target - msb) as u32;
+            if shift >= 128 {
+                return if sign { Self::NEG_ZERO } else { Self::ZERO };
+            }
+            mant <<= shift;
+            exp = exp.saturating_sub(shift as i32);
+        }
+
+        let biased = exp + Self::EXP_BIAS;
+
+        if biased >= 0x7FFF {
+            return if sign { Self::NEG_INFINITY } else { Self::INFINITY };
+        }
+        if biased <= 0 {
+            let shift = (1i32 - biased) as u32;
+            if shift >= 128 {
+                return if sign { Self::NEG_ZERO } else { Self::ZERO };
+            }
+            mant >>= shift;
+            return Self::from_raw(sign, 0, (mant >> 64) as u64, mant as u64);
+        }
+
+        let frac_mask = (1u128 << Self::FRAC_BITS) - 1;
+        let frac = mant & frac_mask;
+
+        Self::from_raw(
+            sign,
+            biased as u16,
+            (frac >> 64) as u64,
+            frac as u64
+        )
     }
-    
-    /// Преобразует F128 в f64 с возможной потерей точности.
+}
+
+// =============================================================================
+//         SECTION: CONVERSIONS
+// =============================================================================
+
+impl From<f32> for F128 {
+    /// [STABLE] Converts f32 to F128.
+    fn from(value: f32) -> Self {
+        if value.is_nan() { return Self::NAN; }
+        if value.is_infinite() {
+            return if value.is_sign_negative() { Self::NEG_INFINITY } else { Self::INFINITY };
+        }
+        if value == 0.0 {
+            return if value.is_sign_negative() { Self::NEG_ZERO } else { Self::ZERO };
+        }
+
+        let bits = value.to_bits();
+        let sign = (bits >> 31) != 0;
+        let exp = ((bits >> 23) & 0xFF) as i32;
+        let mant = (bits & 0x7FFFFF) as u128;
+
+        let (unbiased_exp, full_mant) = if exp == 0 {
+            (1 - 127 - 23, mant << (Self::FRAC_BITS - 23))
+        } else {
+            let e = exp - 127;
+            let m = (1u128 << 23) | mant;
+            (e, m << (Self::FRAC_BITS - 23))
+        };
+
+        Self::compose(sign, unbiased_exp, full_mant)
+    }
+}
+
+impl From<f64> for F128 {
+    /// [STABLE] Converts f64 to F128.
+    fn from(value: f64) -> Self {
+        if value.is_nan() { return Self::NAN; }
+        if value.is_infinite() {
+            return if value.is_sign_negative() { Self::NEG_INFINITY } else { Self::INFINITY };
+        }
+        if value == 0.0 {
+            return if value.is_sign_negative() { Self::NEG_ZERO } else { Self::ZERO };
+        }
+
+        let bits = value.to_bits();
+        let sign = (bits >> 63) != 0;
+        let exp = ((bits >> 52) & 0x7FF) as i32;
+        let mant = (bits & 0xF_FFFF_FFFF_FFFF) as u128;
+
+        let (unbiased_exp, full_mant) = if exp == 0 {
+            (1 - 1023 - 52, mant << (Self::FRAC_BITS - 52))
+        } else {
+            let e = exp - 1023;
+            let m = (1u128 << 52) | mant;
+            (e, m << (Self::FRAC_BITS - 52))
+        };
+
+        Self::compose(sign, unbiased_exp, full_mant)
+    }
+}
+
+impl F128 {
+    /// [STABLE] Converts F128 to f64 (lossy).
     pub fn to_f64(self) -> f64 {
         if self.is_nan() { return f64::NAN; }
-        if self.is_infinite() { return if self.is_sign_negative() { f64::NEG_INFINITY } else { f64::INFINITY }; }
-        if self.is_zero() { return if self.is_sign_negative() { -0.0 } else { 0.0 }; }
-        
+        if self.is_infinite() {
+            return if self.is_sign_negative() { f64::NEG_INFINITY } else { f64::INFINITY };
+        }
+        if self.is_zero() {
+            return if self.is_sign_negative() { -0.0 } else { 0.0 };
+        }
+
         let (sign, exp, mant) = self.decompose();
-        
-        // f64: 11 бит порядка (bias = 1023), 52 бита мантиссы
-        let f64_exp_bias: i32 = 1023;
-        let f64_frac_bits: u32 = 52;
-        
-        // Приводим порядок к f64
-        let biased_exp = exp + f64_exp_bias;
-        
-        // Проверка на переполнение/антипереполнение
+        let f64_bias = 1023i32;
+        let f64_frac_bits = 52u32;
+
+        let biased_exp = exp + f64_bias;
+
         if biased_exp >= 2047 {
-            // Переполнение -> бесконечность
             return if sign { f64::NEG_INFINITY } else { f64::INFINITY };
         }
         if biased_exp <= 0 {
-            // Субнормальное или ноль
-            // Упрощённо возвращаем ноль
-            return if sign { -0.0 } else { 0.0 };
+            if biased_exp < -52 {
+                return if sign { -0.0 } else { 0.0 };
+            }
+            let shift = 1 - biased_exp as u32;
+            let sub_mant = mant >> shift;
+            let bits = ((sign as u64) << 63) | (sub_mant as u64 & 0xF_FFFF_FFFF_FFFF);
+            return f64::from_bits(bits);
         }
-        
-        // Округляем мантиссу до 52 бит
-        let shift = Self::FRAC_BITS - f64_frac_bits; // 112 - 52 = 60
-        let f64_mant = (mant >> shift) as u64;
-        // Убираем неявную единицу (она подразумевается в f64)
-        let f64_mant_final = f64_mant & 0xF_FFFF_FFFF_FFFF;
-        
-        // Собираем биты f64
-        let sign_bit = if sign { 1u64 << 63 } else { 0 };
-        let exp_bits = ((biased_exp as u64) & 0x7FF) << 52;
-        let bits = sign_bit | exp_bits | f64_mant_final;
-        
+
+        let shift = Self::FRAC_BITS - f64_frac_bits;
+        let rounded_mant = (mant >> shift) as u64;
+        let rem = mant & ((1u128 << shift) - 1);
+        let half = 1u128 << (shift - 1);
+
+        let final_mant = if rem > half || (rem == half && (rounded_mant & 1) != 0) {
+            rounded_mant + 1
+        } else {
+            rounded_mant
+        };
+
+        let bits = ((sign as u64) << 63) 
+            | ((biased_exp as u64) << 52) 
+            | (final_mant & 0xF_FFFF_FFFF_FFFF);
         f64::from_bits(bits)
     }
-    
-    /// Преобразует F128 в f32 с возможной потерей точности.
+
+    /// [STABLE] Converts F128 to f32 (lossy).
     pub fn to_f32(self) -> f32 {
         self.to_f64() as f32
     }
 }
 
-// ============================================================================
-// Mathematical Functions (Public API)
-// ============================================================================
+impl From<i64> for F128 {
+    /// [STABLE] Converts i64 to F128.
+    fn from(value: i64) -> Self {
+        if value == 0 { return Self::ZERO; }
+        let sign = value < 0;
+        let abs = if sign { (value as i128).wrapping_neg() as u128 } else { value as u128 };
+        Self::from_uint_inner(sign, abs)
+    }
+}
+
+impl From<u64> for F128 {
+    /// [STABLE] Converts u64 to F128.
+    fn from(value: u64) -> Self {
+        if value == 0 { return Self::ZERO; }
+        Self::from_uint_inner(false, value as u128)
+    }
+}
+
+impl From<i32> for F128 { fn from(v: i32) -> Self { Self::from(v as i64) } }
+impl From<u32> for F128 { fn from(v: u32) -> Self { Self::from(v as u64) } }
+impl From<i16> for F128 { fn from(v: i16) -> Self { Self::from(v as i64) } }
+impl From<u16> for F128 { fn from(v: u16) -> Self { Self::from(v as u64) } }
+impl From<i8> for F128 { fn from(v: i8) -> Self { Self::from(v as i64) } }
+impl From<u8> for F128 { fn from(v: u8) -> Self { Self::from(v as u64) } }
 
 impl F128 {
-    pub fn abs(self) -> Self {
-        let (high, low) = self.to_bits();
-        Self::from_bits(high & !Self::SIGN_MASK, low)
+    fn from_uint_inner(sign: bool, mut v: u128) -> Self {
+        let msb = 127 - v.leading_zeros() as i32;
+        let shift = Self::FRAC_BITS as i32 - msb;
+        let mant = if shift >= 0 { v << shift } else { v >> (-shift) };
+        let exp = msb;
+        Self::compose(sign, exp, mant)
     }
+}
 
-    pub fn floor(self) -> F128 {
-        if self.is_nan() || self.is_infinite() || self.is_zero() { return self; }
-        let (sign, exp, mant) = self.decompose();
-        let frac_bits = Self::FRAC_BITS as i32;
-        let shift = exp - frac_bits;
-        if shift >= 0 { return self; }
-        let rshift = (-shift) as u32;
-        if rshift == 0 { return self; }
-        let int_part = mant >> rshift;
-        let frac_mask = (1u128 << rshift) - 1;
-        let frac = mant & frac_mask;
-        if frac == 0 { return self; }
-        if !sign {
-            F128::compose(false, frac_bits + shift, int_part)
-        } else {
-            let adj = int_part + 1;
-            F128::compose(true, frac_bits + shift, adj)
+// =============================================================================
+//         SECTION: ARITHMETIC
+// =============================================================================
+
+impl Add for F128 {
+    type Output = Self;
+    
+    /// [STABLE] [PERF-SENSITIVE] Addition.
+    fn add(self, rhs: Self) -> Self {
+        if self.is_nan() || rhs.is_nan() { return Self::NAN; }
+        
+        if self.is_infinite() || rhs.is_infinite() {
+            if self.is_infinite() && rhs.is_infinite() {
+                if self.is_sign_negative() != rhs.is_sign_negative() {
+                    return Self::NAN; // inf + -inf
+                }
+                return self;
+            }
+            return if self.is_infinite() { self } else { rhs };
         }
+
+        let (sa, ea, ma) = self.decompose();
+        let (sb, eb, mb) = rhs.decompose();
+        
+        if ma == 0 { return rhs; }
+        if mb == 0 { return self; }
+
+        
+        let (mut e_res, mut m_a, mut m_b) = if ea >= eb {
+            (ea, ma, mb >> (ea - eb).min(127))
+        } else {
+            (eb, ma >> (eb - ea).min(127), mb)
+        };
+
+        
+        let (sign_res, mant_res) = if sa == sb {
+            (sa, m_a + m_b)
+        } else {
+            if m_a >= m_b {
+                (sa, m_a - m_b)
+            } else {
+                (sb, m_b - m_a)
+            }
+        };
+
+        if mant_res == 0 {
+            return Self::ZERO;
+        }
+
+        Self::compose(sign_res, e_res, mant_res)
+    }
+}
+
+impl Sub for F128 {
+    type Output = Self;
+    
+    /// [STABLE] Subtraction.
+    fn sub(self, rhs: Self) -> Self {
+        self + (-rhs)
+    }
+}
+
+impl Neg for F128 {
+    type Output = Self;
+    
+    /// [STABLE] Negation.
+    fn neg(self) -> Self {
+        if self.is_nan() { return self; }
+        Self::from_bits(self.high ^ Self::SIGN_MASK, self.low)
+    }
+}
+
+impl Mul for F128 {
+    type Output = Self;
+    
+    /// [STABLE] [PERF-SENSITIVE] Multiplication.
+    fn mul(self, rhs: Self) -> Self {
+        if self.is_nan() || rhs.is_nan() { return Self::NAN; }
+        
+        let s_zero = self.is_zero();
+        let r_zero = rhs.is_zero();
+        let s_inf = self.is_infinite();
+        let r_inf = rhs.is_infinite();
+        
+        if (s_zero && r_inf) || (r_zero && s_inf) {
+            return Self::NAN;
+        }
+        if s_zero || r_zero {
+            let sign = self.is_sign_negative() ^ rhs.is_sign_negative();
+            return if sign { Self::NEG_ZERO } else { Self::ZERO };
+        }
+        if s_inf || r_inf {
+            let sign = self.is_sign_negative() ^ rhs.is_sign_negative();
+            return if sign { Self::NEG_INFINITY } else { Self::INFINITY };
+        }
+
+        let (sa, ea, ma) = self.decompose();
+        let (sb, eb, mb) = rhs.decompose();
+        
+        let prod = U256::mul_u128(ma, mb);
+
+        
+        let msb = 255 - prod.leading_zeros() as i32;
+        let target = Self::FRAC_BITS as i32;
+        let shift = msb - target;
+        
+        let norm = if shift > 0 {
+            prod.shr(shift as u32)
+        } else {
+            prod.shl((-shift) as u32)
+        };
+        
+        let mant = norm.low_u128() & ((1u128 << (Self::FRAC_BITS + 1)) - 1);
+        let exp = ea + eb - Self::FRAC_BITS as i32 + shift;
+        
+        Self::compose(sa ^ sb, exp, mant)
+    }
+}
+
+impl Div for F128 {
+    type Output = Self;
+    
+    /// [STABLE] [PERF-SENSITIVE] Division.
+    fn div(self, rhs: Self) -> Self {
+        if self.is_nan() || rhs.is_nan() { return Self::NAN; }
+        
+        let s_zero = self.is_zero();
+        let r_zero = rhs.is_zero();
+        let s_inf = self.is_infinite();
+        let r_inf = rhs.is_infinite();
+        
+        if (s_zero && r_zero) || (s_inf && r_inf) { return Self::NAN; }
+        if s_zero || r_inf {
+            let sign = self.is_sign_negative() ^ rhs.is_sign_negative();
+            return if sign { Self::NEG_ZERO } else { Self::ZERO };
+        }
+        if r_zero || s_inf {
+            let sign = self.is_sign_negative() ^ rhs.is_sign_negative();
+            return if sign { Self::NEG_INFINITY } else { Self::INFINITY };
+        }
+
+        let (sa, ea, ma) = self.decompose();
+        let (sb, eb, mb) = rhs.decompose();
+        
+        let mut n = U256::from_u128(ma).shl(Self::FRAC_BITS);
+        let d = U256::from_u128(mb);
+        let mut q: u128 = 0;
+        
+        for i in (0..=Self::FRAC_BITS).rev() {
+            let ds = d.shl(i);
+            if n.cmp(&ds) != Ordering::Less {
+                n = n.sub(ds);
+                q |= 1u128 << i;
+            }
+        }
+        
+        let exp = ea - eb;
+        Self::compose(sa ^ sb, exp, q)
+    }
+}
+
+impl Rem for F128 {
+    type Output = Self;
+    
+    /// [STABLE] Remainder.
+    fn rem(self, rhs: Self) -> Self {
+        if self.is_nan() || rhs.is_nan() { return Self::NAN; }
+        if self.is_infinite() || rhs.is_zero() { return Self::NAN; }
+        if rhs.is_infinite() || self.is_zero() { return self; }
+        
+        let div = self / rhs;
+        let trunc = div.trunc();
+        self - rhs * trunc
+    }
+}
+
+// =============================================================================
+//         SECTION: COMPARISON
+// =============================================================================
+
+impl PartialOrd for F128 {
+    /// [STABLE] Partial comparison. Returns None if either is NaN.
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self.is_nan() || other.is_nan() { return None; }
+        Some(self.total_cmp(other))
     }
     
+    #[inline] fn lt(&self, other: &Self) -> bool { matches!(self.partial_cmp(other), Some(Ordering::Less)) }
+    #[inline] fn le(&self, other: &Self) -> bool { matches!(self.partial_cmp(other), Some(Ordering::Less | Ordering::Equal)) }
+    #[inline] fn gt(&self, other: &Self) -> bool { matches!(self.partial_cmp(other), Some(Ordering::Greater)) }
+    #[inline] fn ge(&self, other: &Self) -> bool { matches!(self.partial_cmp(other), Some(Ordering::Greater | Ordering::Equal)) }
+}
+
+impl F128 {
+    /// [STABLE] IEEE 754 totalOrder comparison.
+    ///
+    /// # Behavior
+    /// - NaN > all non-NaN (ordered by payload)
+    /// - -0.0 == +0.0 (for compatibility; strict IEEE would have -0.0 < +0.0)
+    /// - Otherwise normal numeric comparison
+    ///
+    /// # Parameters
+    /// - `other`: the value to compare against
+    ///
+    /// # Returns
+    /// - `Ordering`: Less, Equal, or Greater
+    pub fn total_cmp(&self, other: &Self) -> Ordering {
+        if self.high == other.high && self.low == other.low {
+            return Ordering::Equal;
+        }
+        
+        
+        let self_nan = self.is_nan();
+        let other_nan = other.is_nan();
+        if self_nan || other_nan {
+            if self_nan && other_nan {
+                return (self.high, self.low).cmp(&(other.high, other.low));
+            }
+            return if self_nan { Ordering::Greater } else { Ordering::Less };
+        }
+        if self.is_zero() && other.is_zero() {
+            return Ordering::Equal;
+        }
+        
+        let self_neg = self.is_sign_negative();
+        let other_neg = other.is_sign_negative();
+        
+        if self_neg != other_neg {
+            return if self_neg { Ordering::Less } else { Ordering::Greater };
+        }
+        let ord = (self.high, self.low).cmp(&(other.high, other.low));
+        if self_neg { ord.reverse() } else { ord }
+    }
+}
+
+// =============================================================================
+//         SECTION: CORE LOGIC
+// =============================================================================
+
+impl F128 {
+    /// [STABLE] Absolute value.
+    pub fn abs(self) -> Self {
+        Self::from_bits(self.high & !Self::SIGN_MASK, self.low)
+    }
+    
+    /// [STABLE] Copy sign from another value.
+    pub fn copysign(self, sign_from: Self) -> Self {
+        Self::from_bits(
+            (self.high & !Self::SIGN_MASK) | (sign_from.high & Self::SIGN_MASK),
+            self.low
+        )
+    }
+    
+    /// [STABLE] Returns the sign of the number (-1.0, 0.0, or 1.0).
+    pub fn signum(self) -> Self {
+        if self.is_nan() { Self::NAN }
+        else if self.is_zero() { self }
+        else { Self::copysign(Self::ONE, self) }
+    }
+
+    /// Truncate toward zero (remove fractional part).
+    ///
+    /// # Returns
+    /// - Integer part of `self`, rounded toward zero
+    /// - Returns `self` unchanged for NaN, infinite, or zero
     pub fn trunc(self) -> Self {
-        if self.is_nan() || self.is_infinite() || self.is_zero() { return self; }
+        if !self.is_finite() || self.is_zero() { return self; }
+        
         let (sign, exp, mant) = self.decompose();
         let frac_bits = Self::FRAC_BITS as i32;
-        let shift = exp - frac_bits;
-        if shift >= 0 { return self; }
-        let rshift = (-shift) as u32;
-        if rshift >= 128 { return if sign { Self::NEG_ZERO } else { Self::ZERO }; }
-        let int_part = mant >> rshift;
-        let new_mant = int_part << rshift;
+        
+        if exp >= frac_bits { return self; }
+        if exp < 0 { 
+            return if sign { Self::NEG_ZERO } else { Self::ZERO };
+        }
+        
+        let shift = (frac_bits - exp) as u32;
+        if shift >= 128 {
+            return if sign { Self::NEG_ZERO } else { Self::ZERO };
+        }
+        
+        let int_mask = !((1u128 << shift) - 1);
+        let new_mant = mant & int_mask;
+        
         Self::compose(sign, exp, new_mant)
     }
     
-    pub fn round(self) -> Self {
-        let half = Self::from_bits(0x3FFE_0000_0000_0000, 0); // 0.5
-        if self.is_sign_negative() {
-            (self - half).trunc()
-        } else {
-            (self + half).trunc()
-        }
-    }
-
-    pub fn sqrt(self) -> F128 {
-        if self.is_nan() { return F128::NAN; }
-        if self.is_zero() { return self; }
-        if self.is_sign_negative() { return F128::NAN; }
-        if self.is_infinite() { return F128::INFINITY; }
-
-        let (sign, exp, mant) = self.decompose();
-        debug_assert!(!sign);
-
-        let mut e = exp;
-        let mut m = mant;
-
-        // Normalize exponent to be even
-        if e & 1 != 0 {
-            e -= 1;
-            m <<= 1;
-        }
-        let half_exp = e / 2;
-
-        // Construct normalized x in range [1, 4)
-        let x_norm = F128::compose(false, 0, m);
+    /// [STABLE] Round down.
+    pub fn floor(self) -> Self {
+        if !self.is_finite() || self.is_zero() { return self; }
         
-        // Initial guess: y = 1.0
-        let mut y = F128::one();
-        let half = F128::from_bits(0x3FFE_0000_0000_0000, 0); // 0.5
-
-        // Newton-Raphson: y = 0.5 * (y + x/y)
-        for _ in 0..10 {
-            let div = x_norm / y;
-            let sum = y + div;
-            y = sum * half;
+        let trunc = self.trunc();
+        if self.is_sign_negative() && self != trunc {
+            trunc - Self::ONE
+        } else {
+            trunc
         }
-
-        // Re-apply exponent
-        let (ys, ye, ym) = y.decompose();
-        F128::compose(ys, ye + half_exp, ym)
+    }
+    
+    /// [STABLE] Round up.
+    pub fn ceil(self) -> Self {
+        if !self.is_finite() || self.is_zero() { return self; }
+        
+        let trunc = self.trunc();
+        if !self.is_sign_negative() && self != trunc {
+            trunc + Self::ONE
+        } else {
+            trunc
+        }
+    }
+    
+    /// [STABLE] Round to nearest integer (ties to even).
+    pub fn round(self) -> Self {
+        if !self.is_finite() || self.is_zero() { return self; }
+        
+        let trunc = self.trunc();
+        let frac = self - trunc;
+        
+        if frac.is_zero() { return self; }
+        
+        let half = Self::from(0.5);
+        let abs_frac = frac.abs();
+        
+        match abs_frac.partial_cmp(&half) {
+            Some(Ordering::Less) => trunc,
+            Some(Ordering::Greater) => {
+                trunc + Self::copysign(Self::ONE, self)
+            }
+            Some(Ordering::Equal) => {
+                // Round half to even
+                let half_trunc = trunc / Self::from(2);
+                if half_trunc.trunc() == half_trunc {
+                    trunc
+                } else {
+                    trunc + Self::copysign(Self::ONE, self)
+                }
+            }
+            None => Self::NAN,
+        }
     }
 
-    pub fn powf(self, exp: F128) -> F128 {
-        if self.is_nan() || exp.is_nan() { return F128::NAN; }
-        if self.is_one() { return F128::one(); }
-        if exp.is_zero() { return F128::one(); }
-        if self.is_zero() {
-            return if exp.is_sign_negative() { F128::INFINITY } else { F128::ZERO };
+    /// [STABLE] [PERF-SENSITIVE] Square root.
+    pub fn sqrt(self) -> Self {
+        if self.is_nan() || self.is_sign_negative() && !self.is_zero() { 
+            return Self::NAN; 
         }
-        if self.is_infinite() {
-            return if exp.is_sign_negative() { F128::ZERO } else { F128::INFINITY };
-        }
-        if self.is_sign_negative() {
-            if !Self::is_integer(exp) { return F128::NAN; }
-            let abs_base = -self;
-            let y_int = Self::to_i64_saturating(exp);
-            let res = Self::powi(abs_base, y_int.abs() as u64);
-            if y_int < 0 { return F128::one() / res; }
-            return if y_int % 2 != 0 { -res } else { res };
-        }
-        if Self::is_integer(exp) {
-            let y_int = Self::to_i64_saturating(exp);
-            if y_int < 0 {
-                let res = Self::powi(self, (-y_int) as u64);
-                return F128::one() / res;
-            } else {
-                return Self::powi(self, y_int as u64);
+        if self.is_zero() || self.is_infinite() { return self; }
+
+        let guess = Self::from(self.to_f64().sqrt());
+        
+        
+        let half = Self::from(0.5);
+        let mut x = guess;
+        for _ in 0..8 {
+            let div = self / x;
+            x = (x + div) * half;
+            if (x * x - self).abs() < Self::EPSILON * self.abs() {
+                break;
             }
         }
-        let ln_x = Self::ln(self);
-        if ln_x.is_nan() { return F128::NAN; }
-        let y_ln_x = exp * ln_x;
-        Self::exp(y_ln_x)
+        x
     }
-    
-    // --- Trigonometry ---
-    
+}
+
+// =============================================================================
+//         SECTION: MATH (TRANSCENDENTAL)
+// =============================================================================
+
+impl F128 {
+    /// [STABLE] Integer power.
+    pub fn powi(self, exp: i32) -> Self {
+        let mut base = self;
+        let mut exp_abs = exp.abs() as u64;
+        let mut acc = Self::ONE;
+        
+        while exp_abs > 0 {
+            if (exp_abs & 1) != 0 { acc = acc * base; }
+            base = base * base;
+            exp_abs >>= 1;
+        }
+        
+        if exp < 0 { Self::ONE / acc } else { acc }
+    }
+
+    /// [STABLE] Floating point power.
+    pub fn powf(self, exp: Self) -> Self {
+        if self.is_nan() || exp.is_nan() { return Self::NAN; }
+        if exp.is_zero() { return Self::ONE; }
+        if self.is_one() { return Self::ONE; }
+        if self.is_zero() {
+            return if exp.is_sign_negative() { 
+                Self::INFINITY 
+            } else { 
+                Self::ZERO 
+            };
+        }
+        
+        if self.is_sign_negative() && !exp.is_integer() {
+            return Self::NAN;
+        }
+        
+        
+        
+        if exp.is_integer() {
+            if let Some(n) = exp.to_i64_checked() {
+                if n >= i32::MIN as i64 && n <= i32::MAX as i64 {
+                    return self.powi(n as i32);
+                }
+            }
+        }
+        
+        // General case: x^y = exp(y * ln(x))
+        let ln_x = self.ln();
+        if ln_x.is_nan() { return Self::NAN; }
+        (exp * ln_x).exp()
+    }
+
+    /// [STABLE] [PERF-SENSITIVE] Exponential function.
+    pub fn exp(self) -> Self {
+        if self.is_nan() { return Self::NAN; }
+        if self.is_zero() { return Self::ONE; }
+        if self > Self::from(11356) { return Self::INFINITY; }
+        if self < Self::from(-11356) { return Self::ZERO; }
+
+        
+        
+        let k = (self / Self::LN_2).round();
+        let r = self - k * Self::LN_2;
+        let k_int = k.to_i64_checked().unwrap_or(0);
+        
+        
+        let mut term = Self::ONE;
+        let mut sum = Self::ONE;
+        let mut n = 1;
+        loop {
+            term = term * r / Self::from(n);
+            let new_sum = sum + term;
+            if new_sum == sum { break; }
+            sum = new_sum;
+            n += 1;
+            if n > 100 { break; }
+        }
+        
+        if k_int > 0 {
+            sum * Self::from(2i64).powi(k_int as i32)
+        } else if k_int < 0 {
+            sum / Self::from(2i64).powi((-k_int) as i32)
+        } else {
+            sum
+        }
+    }
+
+    /// [STABLE] [PERF-SENSITIVE] Natural logarithm.
+    pub fn ln(self) -> Self {
+        if self.is_nan() || self.is_sign_negative() { return Self::NAN; }
+        if self.is_zero() { return Self::NEG_INFINITY; }
+        if self.is_infinite() { return Self::INFINITY; }
+        if self.is_one() { return Self::ZERO; }
+
+        
+        
+        let (sign, exp, mant) = self.decompose();
+        debug_assert!(!sign);
+        
+        let e_f = Self::from(exp);
+        let m = Self::compose(false, 0, mant); // 1.0 <= m < 2.0
+        
+        
+        
+        let one = Self::ONE;
+        let z = (m - one) / (m + one);
+        let z2 = z * z;
+        
+        let mut term = z;
+        let mut sum = z;
+        let mut n = 3u64;
+        
+        loop {
+            term = term * z2;
+            let add = term / Self::from(n);
+            let new_sum = sum + add;
+            if new_sum == sum { break; }
+            sum = new_sum;
+            n += 2;
+            if n > 200 { break; }
+        }
+        
+        e_f * Self::LN_2 + sum * Self::from(2)
+    }
+
+    #[inline] pub fn log2(self) -> Self { self.ln() / Self::LN_2 }
+    #[inline] pub fn log10(self) -> Self { self.ln() / Self::from(2.302585092994045684f64) }
+}
+
+// =============================================================================
+//         SECTION: TRIGONOMETRY
+// =============================================================================
+
+impl F128 {
+    /// [STABLE] [PERF-SENSITIVE] Sine.
     pub fn sin(self) -> Self {
         if self.is_nan() || self.is_infinite() { return Self::NAN; }
         if self.is_zero() { return self; }
@@ -282,9 +980,10 @@ impl F128 {
         }
     }
 
+    /// [STABLE] [PERF-SENSITIVE] Cosine.
     pub fn cos(self) -> Self {
         if self.is_nan() || self.is_infinite() { return Self::NAN; }
-        if self.is_zero() { return Self::one(); }
+        if self.is_zero() { return Self::ONE; }
         
         let (k, r) = self.reduce_pi_2();
         let r2 = r * r;
@@ -298,866 +997,486 @@ impl F128 {
         }
     }
 
+    /// [STABLE] Tangent.
     pub fn tan(self) -> Self {
         let s = self.sin();
         let c = self.cos();
         s / c
     }
 
+    /// [STABLE] Cotangent.
     pub fn ctg(self) -> Self {
         let s = self.sin();
         let c = self.cos();
         c / s
     }
-    
+
+    /// [STABLE] Arcsine.
     pub fn asin(self) -> Self {
-        if self.is_nan() || self > Self::one() || self < -Self::one() { return Self::NAN; }
+        if self.is_nan() { return Self::NAN; }
+        if self > Self::ONE || self < -Self::ONE { return Self::NAN; }
         if self.is_zero() { return self; }
         
-        // For |x| > 0.5, use asin(x) = pi/2 - 2*asin(sqrt((1-x)/2))
-        if self.abs() > Self::from_bits(0x3FFE_0000_0000_0000, 0) { // 0.5
-             let x = self.abs();
-             let one = Self::one();
-             let two = Self::from_int(2);
-             let sub = (one - x) / two;
-             let inner = sub.sqrt().asin();
-             let res = Self::PI_2 - two * inner;
-             return if self.is_sign_negative() { -res } else { res };
+        
+        if self == Self::ONE { return Self::FRAC_PI_2; }
+        if self == -Self::ONE { return -Self::FRAC_PI_2; }
+        
+        
+        if self.abs() > Self::from(0.5) {
+            let one = Self::ONE;
+            let two = Self::from(2);
+            let sub = (one - self.abs()) / two;
+            let inner = sub.sqrt().asin();
+            let res = Self::FRAC_PI_2 - two * inner;
+            return if self.is_sign_negative() { -res } else { res };
         }
         
-        // Taylor series: x + x^3/6 + 3x^5/40 + ...
+        
         let x2 = self * self;
         let mut term = self;
         let mut sum = self;
-        let mut n = 1;
-        for _ in 0..20 {
-            let num = Self::from_int((2*n - 1) * (2*n - 1));
-            let den = Self::from_int((2*n) * (2*n + 1));
-            term = term * x2 * num / den;
+        let mut n: u64 = 1;
+        
+        for _ in 0..25 {
+            let num = (2 * n - 1) * (2 * n - 1);
+            let den = (2 * n) * (2 * n + 1);
+            term = term * x2 * Self::from(num) / Self::from(den);
             sum = sum + term;
             n += 1;
             if term.is_zero() { break; }
         }
         sum
     }
-    
-    pub fn acos(self) -> Self {
-        Self::PI_2 - self.asin()
-    }
 
-    // --- Helpers for Trig ---
-    
+    /// [STABLE] Arccosine.
+    pub fn acos(self) -> Self {
+        if self.is_nan() { return Self::NAN; }
+        if self > Self::ONE || self < -Self::ONE { return Self::NAN; }
+        if self == Self::ONE { return Self::ZERO; }
+        if self == -Self::ONE { return Self::PI; }
+        
+        Self::FRAC_PI_2 - self.asin()
+    }
+}
+
+// =============================================================================
+//         SECTION: HELPERS (INTERNAL)
+// =============================================================================
+
+impl F128 {
+    /// Reduces angle to range [-π/2, π/2].
     fn reduce_pi_2(self) -> (i64, Self) {
-        // x = k * pi/2 + r
-        let div = self / Self::PI_2;
-        let k_float = div.round(); // round to nearest integer
-        let k = Self::to_i64_saturating(k_float);
-        let r = self - k_float * Self::PI_2;
+        if !self.is_finite() { return (0, Self::NAN); }
+        
+        let abs_self = self.abs();
+        let limit = Self::from_bits(0x403F_0000_0000_0000, 0);
+        
+        if abs_self > limit { return (0, self); }
+        
+        let div = self / Self::FRAC_PI_2;
+        let k_float = div.round();
+        
+        let k = if k_float > Self::from(i64::MAX) {
+            i64::MAX
+        } else if k_float < Self::from(i64::MIN) {
+            i64::MIN
+        } else {
+            k_float.to_i64_checked().unwrap_or(0)
+        };
+        
+        let k_f128 = Self::from(k);
+        let r = self - k_f128 * Self::FRAC_PI_2;
         (k, r)
     }
-    
+
     fn taylor_sin(x: Self, x2: Self) -> Self {
         let mut term = x;
         let mut sum = x;
-        let mut n = 1;
-        for _ in 0..15 {
-            term = -term * x2 / Self::from_int((2*n) * (2*n+1));
+        let mut n = 1u64;
+        for _ in 0..20 {
+            term = -term * x2 / Self::from((2 * n) * (2 * n + 1));
             sum = sum + term;
             n += 1;
             if term.is_zero() { break; }
         }
         sum
     }
-    
-    fn taylor_cos(_x: Self, x2: Self) -> Self {
-        let mut term = Self::one();
-        let mut sum = Self::one();
-        let mut n = 1;
-        for _ in 0..15 {
-            term = -term * x2 / Self::from_int((2*n-1) * (2*n));
+
+    fn taylor_cos(x: Self, x2: Self) -> Self {
+        let mut term = Self::ONE;
+        let mut sum = Self::ONE;
+        let mut n = 1u64;
+        for _ in 0..20 {
+            term = -term * x2 / Self::from((2 * n - 1) * (2 * n));
             sum = sum + term;
             n += 1;
             if term.is_zero() { break; }
         }
         sum
     }
-}
 
-// ============================================================================
-// Private Helpers & Internal Logic
-// ============================================================================
-
-impl F128 {
-    fn decompose(self) -> (bool, i32, u128) {
-        let sign = self.is_sign_negative();
-        let exp = self.raw_exponent();
-        let (fh, fl) = self.raw_fraction();
-        let frac = ((fh as u128) << 64) | (fl as u128);
-
-        if exp == 0 {
-            if frac == 0 { return (sign, 0, 0); }
-            let lz = frac.leading_zeros() as i32;
-            let mant = (frac << lz) & ((1u128 << Self::FRAC_BITS) - 1);
-            let e = 1 - Self::EXP_BIAS - lz;
-            (sign, e, mant)
-        } else if exp == 0x7FFF {
-            (sign, i32::MAX, frac)
-        } else {
-            let mant = (1u128 << Self::FRAC_BITS) | frac;
-            let e = (exp as i32) - Self::EXP_BIAS;
-            (sign, e, mant)
-        }
-    }
-
-    fn compose(sign: bool, exp: i32, mant: u128) -> F128 {
-        if mant == 0 {
-            return if sign { F128::NEG_ZERO } else { F128::ZERO };
-        }
-
-        let mut m = mant;
-        let mut e = exp;
-
-        let msb = 127 - m.leading_zeros() as i32;
-        let target = Self::FRAC_BITS as i32;
-        if msb > target {
-            let shift = (msb - target) as u32;
-            m >>= shift;
-            e += shift as i32;
-        } else if msb < target {
-            let shift = (target - msb) as u32;
-            m <<= shift;
-            e -= shift as i32;
-        }
-
-        let biased = e + Self::EXP_BIAS;
-        if biased >= 0x7FFF {
-            return if sign { F128::NEG_INFINITY } else { F128::INFINITY };
-        }
-        if biased <= 0 {
-            return if sign { F128::NEG_ZERO } else { F128::ZERO };
-        }
-
-        let frac_mask: u128 = (1u128 << Self::FRAC_BITS) - 1;
-        let frac = m & frac_mask;
-
-        let high = ((sign as u64) << 63)
-            | (((biased as u64) & 0x7FFF) << 48)
-            | ((frac >> 64) as u64 & Self::FRAC_HIGH_MASK);
-        let low = frac as u64;
-
-        F128 { high, low }
-    }
-
-    fn add_mant(sign_a: bool, e_a: i32, m_a: u128,
-                sign_b: bool, e_b: i32, m_b: u128) -> (bool, i32, u128) {
-        if m_a == 0 { return (sign_b, e_b, m_b); }
-        if m_b == 0 { return (sign_a, e_a, m_a); }
-
-        let (mut sign_l, mut e_l, mut m_l) = (sign_a, e_a, m_a);
-        let (mut sign_s, mut e_s, mut m_s) = (sign_b, e_b, m_b);
-        if e_l < e_s {
-            core::mem::swap(&mut sign_l, &mut sign_s);
-            core::mem::swap(&mut e_l, &mut e_s);
-            core::mem::swap(&mut m_l, &mut m_s);
-        }
-
-        let de = (e_l - e_s) as u32;
-        let m_s_shifted = if de >= 128 { 0 } else { m_s >> de };
-
-        let (sign_res, mant_res) = if sign_l == sign_s {
-            (sign_l, m_l.wrapping_add(m_s_shifted))
-        } else if m_l >= m_s_shifted {
-            (sign_l, m_l - m_s_shifted)
-        } else {
-            (!sign_l, m_s_shifted - m_l)
-        };
-
-        (sign_res, e_l, mant_res)
-    }
-    
-    fn mul_core(self, rhs: F128) -> F128 {
-        let (sa, ea, ma) = self.decompose();
-        let (sb, eb, mb) = rhs.decompose();
-        if ma == 0 || mb == 0 {
-            return if sa ^ sb { F128::NEG_ZERO } else { F128::ZERO };
-        }
-
-        let prod = U256::mul_u128(ma, mb);
-        let lz = prod.leading_zeros();
-        if lz == 256 { return if sa ^ sb { F128::NEG_ZERO } else { F128::ZERO }; }
-        let msb = 255i32 - lz as i32;
-
-        let target = F128::FRAC_BITS as i32;
-        let shift_right = msb - target;
-        let norm = if shift_right > 0 {
-            prod.shr(shift_right as u32)
-        } else if shift_right < 0 {
-            prod.shl((-shift_right) as u32)
-        } else {
-            prod
-        };
-
-        let mant_mask: u128 = (1u128 << (F128::FRAC_BITS + 1)) - 1;
-        let mant = norm.low_u128() & mant_mask;
-        let exp = ea + eb - F128::FRAC_BITS as i32 + shift_right;
-        F128::compose(sa ^ sb, exp, mant)
-    }
-
-    fn div_core(self, rhs: F128) -> F128 {
-        let (sa, ea, ma) = self.decompose();
-        let (sb, eb, mb) = rhs.decompose();
-        if mb == 0 {
-            if ma == 0 { return F128::NAN; }
-            return if sa ^ sb { F128::NEG_INFINITY } else { F128::INFINITY };
-        }
-        if ma == 0 {
-            return if sa ^ sb { F128::NEG_ZERO } else { F128::ZERO };
-        }
-
-        let mut n = U256::from_u128(ma).shl(F128::FRAC_BITS);
-        let d = U256::from_u128(mb);
-        let mut q: u128 = 0;
-        let mut i = F128::FRAC_BITS as i32;
-        while i >= 0 {
-            let ds = d.shl(i as u32);
-            if n.cmp(&ds) != Ordering::Less {
-                n = n.sub(ds);
-                q |= 1u128 << (i as u32);
-            }
-            i -= 1;
-        }
-
-        let exp = ea - eb;
-        F128::compose(sa ^ sb, exp, q)
-    }
-    
-    fn is_integer(x: F128) -> bool {
-        if x.is_nan() || x.is_infinite() { return false; }
-        if x.is_zero() { return true; }
-
-        let (_sign, exp, mant) = x.decompose();
-        if exp < 0 { return false; }
+    /// Safely converts F128 to i64 with overflow protection.
+    fn to_i64_checked(self) -> Option<i64> {
+        if !self.is_finite() { return None; }
+        if self.is_zero() { return Some(0); }
+        
+        let (sign, exp, mant) = self.decompose();
         let frac_bits = Self::FRAC_BITS as i32;
-        if exp >= frac_bits { return true; }
-        let frac_mask: u128 = (1u128 << (frac_bits - exp)) - 1;
+        
+        if exp >= 63 && (exp > 63 || mant >= (1u128 << (exp - frac_bits + 63))) {
+            return if sign { Some(i64::MIN) } else { Some(i64::MAX) };
+        }
+        
+        if exp < frac_bits - 128 { return Some(0); }
+        
+        let shift = exp - frac_bits;
+        let val: i128 = if shift >= 0 {
+            (mant as i128) << shift
+        } else {
+            (mant as i128) >> (-shift).min(127)
+        };
+        
+        let signed = if sign { -val } else { val };
+        if signed < i64::MIN as i128 || signed > i64::MAX as i128 {
+            None
+        } else {
+            Some(signed as i64)
+        }
+    }
+
+    /// Checks if the value is an exact integer.
+    pub fn is_integer(self) -> bool {
+        if self.is_nan() || self.is_infinite() { return false; }
+        if self.is_zero() { return true; }
+
+        let (_sign, exp, mant) = self.decompose();
+        if exp < 0 { return false; }
+        if exp >= Self::FRAC_BITS as i32 { return true; }
+        
+        let shift = (Self::FRAC_BITS as i32 - exp) as u32;
+        if shift >= 128 { return false; }
+        
+        let frac_mask = (1u128 << shift) - 1;
         (mant & frac_mask) == 0
     }
+}
 
-    pub fn to_i64_saturating(x: F128) -> i64 {
-        if x.is_nan() { return 0; }
-        if x.is_zero() { return 0; }
-        if x.is_infinite() { return if x.is_sign_negative() { i64::MIN } else { i64::MAX }; }
+// =============================================================================
+//         SECTION: DISPLAY & DEBUG
+// =============================================================================
 
-        let (sign, exp, mant) = x.decompose();
-        if mant == 0 { return 0; }
+impl Display for F128 {
+    /// [STABLE] Formats the value as a string.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_nan() { return write!(f, "NaN"); }
+        if self.is_infinite() { 
+            return if self.is_sign_negative() { write!(f, "-inf") } else { write!(f, "inf") }; 
+        }
+        if self.is_zero() { 
+            return if self.is_sign_negative() { write!(f, "-0") } else { write!(f, "0") }; 
+        }
 
-        let frac_bits = Self::FRAC_BITS as i32;
-        let shift = exp - frac_bits;
-
-        let int_val: i128 = if shift >= 0 {
-            if shift as u32 >= 127 { return if sign { i64::MIN } else { i64::MAX }; }
-            let val = mant << (shift as u32);
-            val as i128
+        if let Some(prec) = f.precision() {
+            write!(f, "{:.*}", prec, self.to_f64())
         } else {
-            let r = -shift;
-            if r >= 127 { 0 } else { (mant >> (r as u32)) as i128 }
+            write!(f, "{}", self.to_f64())
+        }
+    }
+}
+
+impl Debug for F128 {
+    /// [STABLE] Debug representation (hex bits).
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "F128(0x{:016X}_{:016X})", self.high, self.low)
+    }
+}
+
+impl FromStr for F128 {
+    type Err = ParseF128Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim();
+
+        if s.is_empty() {
+            return Err(ParseF128Error(()));
+        }
+
+        let lower = s.to_ascii_lowercase();
+        match lower.as_str() {
+            "nan" | "-nan" | "+nan" => return Ok(F128::NAN),
+            "inf" | "+inf" | "infinity" | "+infinity" => return Ok(F128::INFINITY),
+            "-inf" | "-infinity" => return Ok(F128::NEG_INFINITY),
+            _ => {}
+        }
+
+        let mut chars = s.chars().peekable();
+
+        let negative = match chars.peek() {
+            Some('-') => { chars.next(); true }
+            Some('+') => { chars.next(); false }
+            _ => false
         };
 
-        let signed = if sign { -int_val } else { int_val };
-        if signed > i64::MAX as i128 { i64::MAX }
-        else if signed < i64::MIN as i128 { i64::MIN }
-        else { signed as i64 }
-    }
+        let mut mantissa: u128 = 0;
+        let mut mantissa_len: u32 = 0;
+        let mut dot_pos: Option<u32> = None;
+        let mut has_digits = false;
 
-    fn powi(mut base: F128, mut exp: u64) -> F128 {
-        let mut acc = F128::from_int(1);
-        while exp > 0 {
-            if (exp & 1) != 0 { acc = acc * base; }
-            base = base * base;
-            exp >>= 1;
-        }
-        acc
-    }
+        while let Some(&c) = chars.peek() {
+            if c == '.' {
+                if dot_pos.is_some() {
+                    return Err(ParseF128Error(()));
+                }
+                dot_pos = Some(mantissa_len);
+                chars.next();
+                continue;
+            }
+            if !c.is_ascii_digit() { break; }
+            has_digits = true;
+            chars.next();
 
-    fn ln(x: F128) -> F128 {
-        if x.is_nan() || x.is_sign_negative() { return F128::NAN; }
-        if x.is_zero() { return F128::NEG_INFINITY; }
-        if x.is_infinite() { return F128::INFINITY; }
-
-        let (sign, exp, mant) = x.decompose();
-        debug_assert!(!sign);
-        if mant == 0 { return F128::NEG_INFINITY; }
-
-        let one = F128::from_int(1);
-        let m_f = F128::compose(false, 0, mant);
-        let t = (m_f - one) / (m_f + one);
-
-        let mut term = t;
-        let mut sum = t;
-        let max_iter = 20u32;
-        let mut n = 3u32;
-        while n <= max_iter {
-            term = term * t * t;
-            let inv_n = F128::from_int_recip(n as u64);
-            sum = sum + term * inv_n;
-            n += 2;
-        }
-        let two = F128::from_int(2);
-        let ln_m = sum * two;
-
-        let ln2 = F128::ln2_const();
-        let e_f = F128::from_exp(exp);
-        ln_m + e_f * ln2
-    }
-
-    fn exp(x: F128) -> F128 {
-        if x.is_nan() { return F128::NAN; }
-        if x.is_zero() { return F128::one(); }
-
-        let max_e = F128::from_int(11356);
-        let min_e = F128::from_int(-11356);
-        if x > max_e { return F128::INFINITY; }
-        if x < min_e { return F128::ZERO; }
-
-        let ln2 = F128::ln2_const();
-        let k = F128::round_to_int(x / ln2);
-        let r = x - k * ln2;
-
-        let one = F128::from_int(1);
-        let mut term = one;
-        let mut sum = one;
-        let max_n = 40u32;
-        let mut n = 1u32;
-        while n <= max_n {
-            term = term * r;
-            let inv = F128::from_int_recip(n as u64);
-            sum = sum + term * inv;
-            n += 1;
+            let digit = (c as u8 - b'0') as u128;
+            if mantissa_len < 38 {
+                mantissa = mantissa.wrapping_mul(10).wrapping_add(digit);
+            }
+            mantissa_len += 1;
         }
 
-        let two = F128::from_int(2);
-        let k_i = F128::to_i64_saturating(k);
-        if k_i > 0 {
-            let pow2 = Self::powi(two, k_i as u64);
-            sum * pow2
-        } else if k_i < 0 {
-            let pow2 = Self::powi(two, (-k_i) as u64);
-            sum / pow2
+        if !has_digits { return Err(ParseF128Error(())); }
+
+        let frac_digits = if let Some(pos) = dot_pos { mantissa_len - pos - 1 } else { 0 };
+
+        let mut exp10: i32 = 0;
+        if let Some(&c) = chars.peek() {
+            if c == 'e' || c == 'E' {
+                chars.next();
+
+                let exp_neg = match chars.peek() {
+                    Some('-') => { chars.next(); true }
+                    Some('+') => { chars.next(); false }
+                    _ => false
+                };
+
+                let mut exp_digits: u32 = 0;
+                let mut has_exp_digits = false;
+
+                while let Some(&c) = chars.peek() {
+                    if !c.is_ascii_digit() { break; }
+                    has_exp_digits = true;
+                    chars.next();
+
+                    let d = (c as u8 - b'0') as i32;
+                    exp10 = exp10.saturating_mul(10).saturating_add(d);
+                    exp_digits += 1;
+                }
+
+                if !has_exp_digits || exp_digits > 10 { return Err(ParseF128Error(())); }
+                if exp_neg { exp10 = -exp10; }
+            }
+        }
+
+        if chars.peek().is_some() { return Err(ParseF128Error(())); }
+
+        exp10 = exp10.saturating_sub(frac_digits as i32);
+
+        if mantissa == 0 { return Ok(if negative { F128::NEG_ZERO } else { F128::ZERO }); }
+
+        let mut result = Self::from_u128(mantissa);
+        if negative { result = -result; }
+
+        if exp10 != 0 { result = Self::scale_by_power_of_10(result, exp10); }
+
+        Ok(result)
+    }
+}
+
+impl F128 {
+    fn scale_by_power_of_10(mut val: F128, mut n: i32) -> F128 {
+        if n == 0 || val.is_zero() || !val.is_finite() { return val; }
+        
+        const TEN: F128 = F128 { high: 0x4002_8000_0000_0000, low: 0 };
+        if n > 0 {
+            while n > 0 {
+                if n >= 100 {
+                    let factor = TEN.powi(100.min(n));
+                    val = val * factor;
+                    n -= 100;
+                } else if n >= 10 {
+                    let factor = TEN.powi(10.min(n));
+                    val = val * factor;
+                    n -= 10;
+                } else {
+                    val = val * TEN;
+                    n -= 1;
+                }
+                
+                if val.is_infinite() { break; }
+            }
         } else {
-            sum
+            n = -n;
+            while n > 0 {
+                if n >= 100 {
+                    let factor = TEN.powi(100.min(n));
+                    val = val / factor;
+                    n -= 100;
+                } else if n >= 10 {
+                    let factor = TEN.powi(10.min(n));
+                    val = val / factor;
+                    n -= 10;
+                } else {
+                    val = val / TEN;
+                    n -= 1;
+                }
+                
+                if val.is_zero() { break; }
+            }
         }
+        
+        val
     }
     
-    pub fn from_int(value: i64) -> Self {
-        if value == 0 { return F128::ZERO; }
-        let sign = value < 0;
-        let abs = if sign { (value as i128).wrapping_neg() as u128 } else { value as u128 };
-        Self::from_uint_inner(sign, abs)
-    }
-
-    pub fn from_uint(value: u64) -> Self {
-        if value == 0 { return F128::ZERO; }
-        Self::from_uint_inner(false, value as u128)
-    }
-
-    fn from_uint_inner(sign: bool, v: u128) -> Self {
-        let msb = 127 - v.leading_zeros() as i32;
-        let shift = Self::FRAC_BITS as i32 - msb;
-        let mant = if shift >= 0 { v << shift } else { v >> (-shift) };
-        let exp = msb;
-        F128::compose(sign, exp, mant)
-    }
-
-    fn ln2_const() -> F128 {
-        F128::from_bits(0x3FFE_62E4_2FEF_A39E, 0xF357_93C7_7FCE_2BBC)
-    }
-
-    fn from_int_recip(n: u64) -> F128 {
-        let one = F128::from_int(1);
-        one / F128::from_uint(n)
-    }
-
-    fn from_exp(e: i32) -> F128 {
-        F128::from_int(e as i64)
-    }
-
-    fn round_to_int(x: F128) -> F128 {
-        if x.is_nan() || x.is_infinite() || x.is_zero() { return x; }
-        let (sign, exp, mant) = x.decompose();
-        let frac_bits = Self::FRAC_BITS as i32;
-        let shift = exp - frac_bits;
-        if shift >= 0 { return x; }
-        let rshift = (-shift) as u32;
-        if rshift == 0 { return x; }
-        let int_part = mant >> rshift;
-        let frac_mask = (1u128 << rshift) - 1;
-        let frac = mant & frac_mask;
-        let half = 1u128 << (rshift - 1);
-        let rounded = if frac > half || (frac == half && (int_part & 1) == 1) {
-            int_part + 1
-        } else {
-            int_part
-        };
-        F128::compose(sign, frac_bits + shift, rounded)
-    }
-}
-
-// ============================================================================
-// Trait Implementations
-// ============================================================================
-
-impl Add for F128 {
-    type Output = F128;
-    fn add(self, rhs: F128) -> F128 {
-        if self.is_nan() || rhs.is_nan() { return F128::NAN; }
-        if self.is_infinite() || rhs.is_infinite() {
-            match (self, rhs) {
-                (a, b) if a.is_infinite() && b.is_infinite() => {
-                    if a.is_sign_negative() != b.is_sign_negative() { return F128::NAN; }
-                    return a;
-                }
-                (a, _) if a.is_infinite() => return a,
-                (_, b) if b.is_infinite() => return b,
-                _ => {}
-            }
-        }
-        let (sa, ea, ma) = self.decompose();
-        let (sb, eb, mb) = rhs.decompose();
-        let (sr, er, mr) = F128::add_mant(sa, ea, ma, sb, eb, mb);
-        F128::compose(sr, er, mr)
-    }
-}
-
-impl Sub for F128 {
-    type Output = F128;
-    fn sub(self, rhs: F128) -> F128 {
-        let (high, low) = rhs.to_bits();
-        let neg_rhs = F128 { high: high ^ F128::SIGN_MASK, low };
-        self + neg_rhs
-    }
-}
-
-impl Mul for F128 {
-    type Output = F128;
-    fn mul(self, rhs: F128) -> F128 {
-        if self.is_nan() || rhs.is_nan() { return F128::NAN; }
-        if self.is_infinite() || rhs.is_infinite() {
-            let zero_left = self.is_zero();
-            let zero_right = rhs.is_zero();
-            if (zero_left && rhs.is_infinite()) || (zero_right && self.is_infinite()) {
-                return F128::NAN;
-            }
-            let sign = self.is_sign_negative() ^ rhs.is_sign_negative();
-            return if sign { F128::NEG_INFINITY } else { F128::INFINITY };
-        }
-        self.mul_core(rhs)
-    }
-}
-
-impl Div for F128 {
-    type Output = F128;
-    fn div(self, rhs: F128) -> F128 {
-        if self.is_nan() || rhs.is_nan() { return F128::NAN; }
-        if (self.is_zero() && rhs.is_zero()) || (self.is_infinite() && rhs.is_infinite()) {
-            return F128::NAN;
-        }
-        if self.is_infinite() && !rhs.is_zero() && !rhs.is_nan() {
-            let sign = self.is_sign_negative() ^ rhs.is_sign_negative();
-            return if sign { F128::NEG_INFINITY } else { F128::INFINITY };
-        }
-        if rhs.is_zero() {
-            let sign = self.is_sign_negative() ^ rhs.is_sign_negative();
-            return if sign { F128::NEG_INFINITY } else { F128::INFINITY };
-        }
-        if rhs.is_infinite() && !self.is_infinite() {
-            let sign = self.is_sign_negative() ^ rhs.is_sign_negative();
-            return if sign { F128::NEG_ZERO } else { F128::ZERO };
-        }
-        self.div_core(rhs)
-    }
-}
-
-impl Rem for F128 {
-    type Output = F128;
-    fn rem(self, rhs: F128) -> F128 {
-        if self.is_nan() || rhs.is_nan() { return F128::NAN; }
-        if self.is_infinite() { return F128::NAN; }
-        if rhs.is_zero() { return F128::NAN; }
-        if rhs.is_infinite() { return self; }
+    fn from_u128(mut v: u128) -> Self {
+        if v == 0 { return Self::ZERO; }
         
-        let div = self / rhs;
-        let trunc = div.trunc();
-        self - rhs * trunc
-    }
-}
-
-impl Neg for F128 {
-    type Output = Self;
-    fn neg(self) -> Self::Output {
-        if self.is_nan() { return F128::NAN; }
-        let (high, low) = self.to_bits();
-        F128 { high: high ^ Self::SIGN_MASK, low }
-    }
-}
-
-impl PartialOrd for F128 {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self.is_nan() || other.is_nan() { return None; }
-        Some(self.total_cmp(other))
-    }
-}
-
-impl Ord for F128 {
-    fn cmp(&self, other: &Self) -> Ordering { self.total_cmp(other) }
-}
-
-impl F128 {
-    pub fn total_cmp(&self, other: &Self) -> Ordering {
-        if self.high == other.high && self.low == other.low { return Ordering::Equal; }
-        if self.is_zero() && other.is_zero() { return Ordering::Equal; }
-
-        let a_nan = self.is_nan();
-        let b_nan = other.is_nan();
-        if a_nan || b_nan {
-            return match (a_nan, b_nan) {
-                (true, true) => Ordering::Equal,
-                (true, false) => Ordering::Greater,
-                (false, true) => Ordering::Less,
-                (false, false) => unreachable!(),
-            };
-        }
-
-        let a_sign = self.is_sign_negative();
-        let b_sign = other.is_sign_negative();
-        if a_sign != b_sign {
-            return if a_sign { Ordering::Less } else { Ordering::Greater };
-        }
-
-        let a = (self.high, self.low);
-        let b = (other.high, other.low);
-        let ord = if a < b { Ordering::Less } else { Ordering::Greater };
-        if a_sign { ord.reverse() } else { ord }
-    }
-}
-
-impl fmt::Display for F128 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_decimal_string())
-    }
-}
-
-// ============================================================================
-// Conversions (From)
-// ============================================================================
-
-impl From<f32> for F128 {
-    fn from(value: f32) -> Self {
-        if value.is_nan() { return F128::NAN; }
-        if value.is_infinite() { return if value.is_sign_negative() { F128::NEG_INFINITY } else { F128::INFINITY }; }
-        if value == 0.0 { return if value.is_sign_negative() { F128::NEG_ZERO } else { F128::ZERO }; }
-
-        let bits = value.to_bits();
-        let sign = (bits >> 31) != 0;
-        let exp = ((bits >> 23) & 0xFF) as i32;
-        let mant = bits & 0x7FFFFF;
-
-        let unbiased_exp = if exp == 0 { if mant == 0 { 0 } else { 1 - 127 } } else { exp as i32 - 127 };
-        let mantissa = if exp == 0 { mant } else { mant | 0x800000 };
-        let extended_mant = (mantissa as u128) << (F128::FRAC_BITS - 23);
-        F128::compose(sign, unbiased_exp, extended_mant)
-    }
-}
-
-impl From<f64> for F128 {
-    fn from(value: f64) -> Self {
-        if value.is_nan() { return F128::NAN; }
-        if value.is_infinite() { return if value.is_sign_negative() { F128::NEG_INFINITY } else { F128::INFINITY }; }
-        if value == 0.0 { return if value.is_sign_negative() { F128::NEG_ZERO } else { F128::ZERO }; }
-
-        let bits = value.to_bits();
-        let sign = (bits >> 63) != 0;
-        let exp = ((bits >> 52) & 0x7FF) as i32;
-        let mant = bits & 0xF_FFFF_FFFF_FFFF;
-
-        let unbiased_exp = if exp == 0 { if mant == 0 { 0 } else { 1 - 1023 } } else { exp as i32 - 1023 };
-        let mantissa = if exp == 0 { mant } else { mant | 0x10_0000_0000_0000 };
-        let extended_mant = (mantissa as u128) << (F128::FRAC_BITS - 52);
-        F128::compose(sign, unbiased_exp, extended_mant)
-    }
-}
-
-impl From<i32> for F128 {
-    fn from(value: i32) -> Self { F128::from_int(value as i64) }
-}
-
-impl From<u32> for F128 {
-    fn from(value: u32) -> Self { F128::from_uint(value as u64) }
-}
-
-impl From<i64> for F128 {
-    fn from(value: i64) -> Self { F128::from_int(value) }
-}
-
-impl From<u64> for F128 {
-    fn from(value: u64) -> Self { F128::from_uint(value) }
-}
-
-// ============================================================================
-// String Conversion (BigUint10)
-// ============================================================================
-
-impl F128 {
-    fn to_decimal_string(self) -> String {
-        if self.is_nan() { return "nan128".to_string(); }
-        if self.is_infinite() { return if self.is_sign_negative() { "-inf128" } else { "+inf128" }.to_string(); }
-        if self.is_zero() { return if self.is_sign_negative() { "-0.0" } else { "0.0" }.to_string(); }
-
-        let (sign, exp, mant) = self.decompose();
-        if mant == 0 { return if sign { "-0.0" } else { "0.0" }.to_string(); }
-
-        let scale = exp - Self::FRAC_BITS as i32;
-        let mut big = BigUint10::from_u128(mant);
-        let mut dec_exp: i32 = 0;
-
-        if scale > 0 {
-            big.shl_mul2(scale as u32);
-        } else if scale < 0 {
-            let k = (-scale) as u32;
-            big.mul_pow5(k);
-            dec_exp -= k as i32;
-        }
-
-        let s = big.to_string();
-        let mut out = String::new();
-        if sign { out.push('-'); }
-
-        if dec_exp == 0 {
-            out.push_str(&s);
-            out.push_str(".0");
-            return out;
-        }
-
-        if dec_exp < 0 {
-            let shift = (-dec_exp) as usize;
-            if shift >= s.len() {
-                out.push('0');
-                out.push('.');
-                for _ in 0..(shift - s.len()) { out.push('0'); }
-                out.push_str(&s);
-            } else {
-                let split = s.len() - shift;
-                out.push_str(&s[..split]);
-                out.push('.');
-                let frac = &s[split..];
-                let frac_trimmed = frac.trim_end_matches('0');
-                if frac_trimmed.is_empty() { out.push('0'); } else { out.push_str(frac_trimmed); }
-            }
-            return out;
-        }
-
-        out.push_str(&s);
-        for _ in 0..dec_exp { out.push('0'); }
-        out.push_str(".0");
-        out
-    }
-}
-
-#[derive(Clone, Debug)]
-struct BigUint10 {
-    data: Vec<u32>,
-}
-
-impl BigUint10 {
-    const BASE: u64 = 1_000_000_000;
-
-    fn is_zero(&self) -> bool { self.data.is_empty() }
-
-    fn from_u128(mut x: u128) -> Self {
-        let mut v = Vec::new();
-        while x > 0 {
-            let rem = (x % Self::BASE as u128) as u32;
-            v.push(rem);
-            x /= Self::BASE as u128;
-        }
-        Self { data: v }
-    }
-
-    fn mul_u32(&mut self, m: u32) {
-        if m == 0 || self.is_zero() {
-            self.data.clear();
-            return;
-        }
-        let mut carry: u64 = 0;
-        for d in &mut self.data {
-            let cur = (*d as u64) * (m as u64) + carry;
-            *d = (cur % Self::BASE) as u32;
-            carry = cur / Self::BASE;
-        }
-        if carry != 0 { self.data.push(carry as u32); }
-    }
-
-    fn shl_mul2(&mut self, k: u32) {
-        for _ in 0..k { self.mul_u32(2); }
-    }
-
-    fn mul_pow5(&mut self, mut k: u32) {
-        while k >= 9 {
-            self.mul_u32(1_953_125); // 5^9
-            k -= 9;
-        }
-        let m = match k {
-            0 => 1, 1 => 5, 2 => 25, 3 => 125, 4 => 625,
-            5 => 3_125, 6 => 15_625, 7 => 78_125, 8 => 390_625,
-            _ => unreachable!(),
+        let msb = 127 - v.leading_zeros() as i32;
+        let target = Self::FRAC_BITS as i32;
+        
+        let (exp, mant) = if msb > target {
+            let shift = (msb - target) as u32;
+            (msb, v >> shift)
+        } else if msb < target {
+            let shift = (target - msb) as u32;
+            (msb, v << shift)
+        } else {
+            (msb, v)
         };
-        self.mul_u32(m);
-    }
-
-    fn div_mod_10(&mut self) -> u32 {
-        if self.is_zero() { return 0; }
-        let mut carry: u64 = 0;
-        for d in self.data.iter_mut().rev() {
-            let cur = carry * Self::BASE + (*d as u64);
-            *d = (cur / 10) as u32;
-            carry = cur % 10;
-        }
-        while self.data.last().map_or(false, |&x| x == 0) { self.data.pop(); }
-        carry as u32
-    }
-
-    fn to_string(&self) -> String {
-        if self.is_zero() { return "0".to_string(); }
-        let mut tmp = self.clone();
-        let mut digits = Vec::new();
-        while !tmp.is_zero() {
-            digits.push((tmp.div_mod_10() as u8) + b'0');
-        }
-        digits.reverse();
-        String::from_utf8(digits).unwrap_or_else(|_| "0".to_string())
+        
+        Self::compose(false, exp, mant as u128)
     }
 }
 
-// ============================================================================
-// Helper Struct U256
-// ============================================================================
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParseF128Error(());
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+impl Display for ParseF128Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid F128 literal")
+    }
+}
+
+impl std::error::Error for ParseF128Error {}
+
+// =============================================================================
+//         SECTION: INTERNALS (U256)
+// =============================================================================
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct U256 {
-    hi_hi: u64,
-    hi_lo: u64,
-    lo_hi: u64,
-    lo_lo: u64,
+    d: [u64; 4],
 }
 
 impl U256 {
-    const ZERO: U256 = U256 { hi_hi: 0, hi_lo: 0, lo_hi: 0, lo_lo: 0 };
-
+    const ZERO: Self = Self { d: [0, 0, 0, 0] };
+    
     fn from_u128(x: u128) -> Self {
-        U256 { hi_hi: 0, hi_lo: 0, lo_hi: (x >> 64) as u64, lo_lo: x as u64 }
+        Self { d: [x as u64, (x >> 64) as u64, 0, 0] }
     }
-
-    fn shl(self, shift: u32) -> Self {
-        if shift == 0 { return self; }
-        if shift >= 256 { return U256::ZERO; }
-        let limb_shift = (shift / 64) as usize;
-        let bit_shift = shift % 64;
-        let limbs = [self.lo_lo, self.lo_hi, self.hi_lo, self.hi_hi];
-        let mut out = [0u64; 4];
-        for i in 0..4 {
-            if i + limb_shift < 4 {
-                out[i + limb_shift] |= limbs[i] << bit_shift;
-                if bit_shift > 0 && i + limb_shift + 1 < 4 {
-                    out[i + limb_shift + 1] |= limbs[i] >> (64 - bit_shift);
-                }
-            }
-        }
-        U256 { lo_lo: out[0], lo_hi: out[1], hi_lo: out[2], hi_hi: out[3] }
-    }
-
+    
     fn mul_u128(a: u128, b: u128) -> Self {
-        let a_lo = (a & 0xFFFF_FFFF_FFFF_FFFFu128) as u128;
-        let a_hi = (a >> 64) as u128;
-        let b_lo = (b & 0xFFFF_FFFF_FFFF_FFFFu128) as u128;
-        let b_hi = (b >> 64) as u128;
-
+        let a_lo = a & 0xFFFFFFFFFFFFFFFFu128;
+        let a_hi = a >> 64;
+        let b_lo = b & 0xFFFFFFFFFFFFFFFFu128;
+        let b_hi = b >> 64;
+        
         let p0 = a_lo * b_lo;
         let p1 = a_lo * b_hi;
         let p2 = a_hi * b_lo;
         let p3 = a_hi * b_hi;
-
-        let mask = 0xFFFF_FFFF_FFFF_FFFFu128;
-
+        
+        let mask = 0xFFFFFFFFFFFFFFFFu128;
         let r0 = p0 & mask;
         let t1 = (p0 >> 64) + (p1 & mask) + (p2 & mask);
         let r1 = t1 & mask;
         let t2 = (p1 >> 64) + (p2 >> 64) + (p3 & mask) + (t1 >> 64);
         let r2 = t2 & mask;
-        let t3 = (p3 >> 64) + (t2 >> 64);
-        let r3 = t3 & mask;
-
-        U256 { lo_lo: r0 as u64, lo_hi: r1 as u64, hi_lo: r2 as u64, hi_hi: r3 as u64 }
+        let r3 = (p3 >> 64) + (t2 >> 64);
+        
+        Self { d: [r0 as u64, r1 as u64, r2 as u64, r3 as u64] }
     }
-
-    fn leading_zeros(self) -> u32 {
-        if self.hi_hi != 0 { return self.hi_hi.leading_zeros(); }
-        if self.hi_lo != 0 { return 64 + self.hi_lo.leading_zeros(); }
-        if self.lo_hi != 0 { return 128 + self.lo_hi.leading_zeros(); }
-        if self.lo_lo != 0 { return 192 + self.lo_lo.leading_zeros(); }
-        256
-    }
-
-    fn shr(self, shift: u32) -> Self {
-        if shift == 0 { return self; }
-        if shift >= 256 { return U256::ZERO; }
+    
+    fn shl(self, shift: u32) -> Self {
+        if shift == 0 || self.is_zero() { return self; }
+        if shift >= 256 { return Self::ZERO; }
+        
         let limb_shift = (shift / 64) as usize;
         let bit_shift = shift % 64;
-        let limbs = [self.lo_lo, self.lo_hi, self.hi_lo, self.hi_hi];
         let mut out = [0u64; 4];
+        
+        for i in 0..4 {
+            let dest = i + limb_shift;
+            if dest < 4 {
+                out[dest] |= self.d[i] << bit_shift;
+                if bit_shift > 0 && dest + 1 < 4 {
+                    out[dest + 1] |= self.d[i] >> (64 - bit_shift);
+                }
+            }
+        }
+        Self { d: out }
+    }
+    
+    fn shr(self, shift: u32) -> Self {
+        if shift == 0 || self.is_zero() { return self; }
+        if shift >= 256 { return Self::ZERO; }
+        
+        let limb_shift = (shift / 64) as usize;
+        let bit_shift = shift % 64;
+        let mut out = [0u64; 4];
+        
         for i in limb_shift..4 {
-            let j = i - limb_shift;
-            let upper = limbs[i];
-            out[j] = if bit_shift == 0 { upper } else { upper >> bit_shift };
-            if bit_shift > 0 && i + 1 < 4 {
-                out[j] |= limbs[i + 1] << (64 - bit_shift);
-            }
+            let src = i;
+            let dest = i - limb_shift;
+            out[dest] = if bit_shift == 0 {
+                self.d[src]
+            } else {
+                (self.d[src] >> bit_shift) | 
+                (if src + 1 < 4 { self.d[src + 1] << (64 - bit_shift) } else { 0 })
+            };
         }
-        U256 { lo_lo: out[0], lo_hi: out[1], hi_lo: out[2], hi_hi: out[3] }
+        Self { d: out }
     }
-
-    fn low_u128(self) -> u128 {
-        ((self.lo_hi as u128) << 64) | (self.lo_lo as u128)
+    
+    fn sub(self, other: Self) -> Self {
+        let mut out = [0u64; 4];
+        let mut borrow = false;
+        for i in 0..4 {
+            let (diff, b1) = self.d[i].overflowing_sub(other.d[i]);
+            let (res, b2) = diff.overflowing_sub(borrow as u64);
+            out[i] = res;
+            borrow = b1 || b2;
+        }
+        debug_assert!(!borrow, "U256 underflow");
+        Self { d: out }
     }
-
+    
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.hi_hi != other.hi_hi { return self.hi_hi.cmp(&other.hi_hi); }
-        if self.hi_lo != other.hi_lo { return self.hi_lo.cmp(&other.hi_lo); }
-        if self.lo_hi != other.lo_hi { return self.lo_hi.cmp(&other.lo_hi); }
-        self.lo_lo.cmp(&other.lo_lo)
-    }
-
-    fn sub(self, other: U256) -> U256 {
-        let (lo_lo, b0) = self.lo_lo.overflowing_sub(other.lo_lo);
-        let (mut lo_hi, b1) = self.lo_hi.overflowing_sub(other.lo_hi);
-        let (mut hi_lo, b2) = self.hi_lo.overflowing_sub(other.hi_lo);
-        let (mut hi_hi, b3) = self.hi_hi.overflowing_sub(other.hi_hi);
-
-        if b0 {
-            let (v, c) = lo_hi.overflowing_sub(1);
-            lo_hi = v;
-            if c {
-                let (v2, c2) = hi_lo.overflowing_sub(1);
-                hi_lo = v2;
-                if c2 { hi_hi = hi_hi.wrapping_sub(1); }
+        for i in (0..4).rev() {
+            match self.d[i].cmp(&other.d[i]) {
+                Ordering::Equal => continue,
+                ord => return ord,
             }
         }
-        if b1 {
-            let (v, c) = hi_lo.overflowing_sub(1);
-            hi_lo = v;
-            if c { hi_hi = hi_hi.wrapping_sub(1); }
-        }
-        if b2 { hi_hi = hi_hi.wrapping_sub(1); }
-        if b3 { panic!("U256 underflow. Actually you did something wrong please review your code."); }
-
-        U256 { lo_lo, lo_hi, hi_lo, hi_hi }
+        Ordering::Equal
     }
+    
+    fn is_zero(&self) -> bool { self.d.iter().all(|&x| x == 0) }
+    
+    fn leading_zeros(&self) -> u32 {
+        for i in (0..4).rev() {
+            if self.d[i] != 0 {
+                return self.d[i].leading_zeros() + (3 - i) as u32 * 64;
+            }
+        }
+        256
+    }
+    
+    fn low_u128(&self) -> u128 { ((self.d[1] as u128) << 64) | (self.d[0] as u128) }
 }
