@@ -366,8 +366,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_udp_connected() {
-        let mut socket1 = UdpSocket::any(UdpConfig::default()).await.unwrap();
-        let socket2 = UdpSocket::any(UdpConfig::default()).await.unwrap();
+        let mut socket1 = UdpSocket::bind(
+            "127.0.0.1:0".parse().unwrap(),
+            UdpConfig::default()
+        ).await.unwrap();
+        let socket2 = UdpSocket::bind(
+            "127.0.0.1:0".parse().unwrap(),
+            UdpConfig::default()
+        ).await.unwrap();
 
         let addr2 = socket2.local_addr();
         socket1.connect(addr2).await.unwrap();
