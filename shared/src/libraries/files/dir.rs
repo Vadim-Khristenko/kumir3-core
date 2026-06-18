@@ -1,87 +1,213 @@
-//! Работа с директориями
+//! Операции с директориями
 
-use std::fs;
+use std::sync::Arc;
 
 use crate::types::library::{LibFunctionDef, LibParamDef};
-use crate::types::type_spec::TypeSpec;
-use crate::types::Value;
+use crate::types::value::{TypeKind, Value};
 
-fn expect_string(args: &[Value], idx: usize, name: &str) -> Result<String, String> {
-    let v = args
-        .get(idx)
-        .ok_or_else(|| format!("Не передан параметр: {}", name))?;
-    match v {
-        Value::String(s) => Ok(s.clone()),
-        Value::Number(n) => Ok(n.to_string()),
-        _ => Err(format!("Ожидается строка для параметра {}", name)),
-    }
-}
-
-fn list_entries(path: &str, files_only: bool) -> Result<Value, String> {
-    let entries = fs::read_dir(path)
-        .map_err(|e| format!("Не удалось прочитать директорию: {}", e))?;
-    let mut out = Vec::new();
-    for entry in entries {
-        let entry = entry.map_err(|e| format!("Ошибка чтения элемента: {}", e))?;
-        let meta = entry.metadata().map_err(|e| format!("Не удалось получить метаданные: {}", e))?;
-        if files_only && !meta.is_file() {
-            continue;
-        }
-        out.push(Value::String(entry.path().to_string_lossy().to_string()));
-    }
-    Ok(Value::Array(out))
-}
-
-/// содержимое(дир) -> массив путей
+/// список_файлов(путь) → [лит]
 pub fn list_dir_fn() -> LibFunctionDef {
-    LibFunctionDef::new("содержимое")
-        .with_aliases(&["list_dir", "ls", "dir"])
-        .with_description("Возвращает список всех элементов директории")
-        .with_param(LibParamDef::value("директория", TypeSpec::String))
-        .returns(TypeSpec::Array(Box::new(TypeSpec::String)))
+    LibFunctionDef::new("список_файлов")
+        .with_aliases(vec![
+            Arc::from("list_dir"),
+            Arc::from("readdir"),
+            Arc::from("содержимое_директории"),
+        ])
+        .with_description("Возвращает список имён файлов и подпапок в директории")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::Array(Box::new(TypeKind::String)))
         .with_handler(|args| {
-            let dir = expect_string(args, 0, "директория")?;
-            list_entries(&dir, false)
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let mut entries = Vec::new();
+            let dir = std::fs::read_dir(path.as_str())
+                .map_err(|e| format!("Ошибка чтения директории '{}': {}", path, e))?;
+            for entry in dir {
+                let entry = entry.map_err(|e| format!("Ошибка чтения элемента: {}", e))?;
+                let name = entry.file_name().to_string_lossy().into_owned();
+                entries.push(Value::String(name));
+            }
+            Ok(Value::Array(entries))
         })
 }
 
-/// файлы(дир) -> массив путей
+/// только_файлы(путь) → [лит]
 pub fn list_files_fn() -> LibFunctionDef {
-    LibFunctionDef::new("файлы")
-        .with_aliases(&["list_files", "ls_files"])
-        .with_description("Возвращает список файлов в директории")
-        .with_param(LibParamDef::value("директория", TypeSpec::String))
-        .returns(TypeSpec::Array(Box::new(TypeSpec::String)))
+    LibFunctionDef::new("только_файлы")
+        .with_aliases(vec![Arc::from("list_files"), Arc::from("файлы")])
+        .with_description("Возвращает список только файлов (без подпапок) в директории")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::Array(Box::new(TypeKind::String)))
         .with_handler(|args| {
-            let dir = expect_string(args, 0, "директория")?;
-            list_entries(&dir, true)
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let mut entries = Vec::new();
+            let dir = std::fs::read_dir(path.as_str())
+                .map_err(|e| format!("Ошибка чтения директории '{}': {}", path, e))?;
+            for entry in dir {
+                let entry = entry.map_err(|e| format!("Ошибка чтения элемента: {}", e))?;
+                if entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    entries.push(Value::String(name));
+                }
+            }
+            Ok(Value::Array(entries))
+        })
+}
+
+/// только_директории(путь) → [лит]
+pub fn list_dirs_fn() -> LibFunctionDef {
+    LibFunctionDef::new("только_директории")
+        .with_aliases(vec![Arc::from("list_dirs"), Arc::from("директории")])
+        .with_description("Возвращает список только поддиректорий")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::Array(Box::new(TypeKind::String)))
+        .with_handler(|args| {
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let mut entries = Vec::new();
+            let dir = std::fs::read_dir(path.as_str())
+                .map_err(|e| format!("Ошибка чтения директории '{}': {}", path, e))?;
+            for entry in dir {
+                let entry = entry.map_err(|e| format!("Ошибка чтения элемента: {}", e))?;
+                if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    entries.push(Value::String(name));
+                }
+            }
+            Ok(Value::Array(entries))
         })
 }
 
 /// создать_директорию(путь)
 pub fn make_dir_fn() -> LibFunctionDef {
     LibFunctionDef::new("создать_директорию")
-        .with_aliases(&["mkdir", "make_dir"])
-        .with_description("Создаёт одну директорию")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
+        .with_aliases(vec![Arc::from("mkdir"), Arc::from("make_dir")])
+        .with_description("Создаёт директорию")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
-            let dir = expect_string(args, 0, "путь")?;
-            fs::create_dir(&dir).map_err(|e| format!("Не удалось создать директорию: {}", e))?;
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            std::fs::create_dir(path.as_str())
+                .map_err(|e| format!("Ошибка создания директории '{}': {}", path, e))?;
             Ok(Value::Null)
         })
 }
 
-/// создать_дерево(путь)
+/// создать_все_директории(путь)
 pub fn make_dirs_fn() -> LibFunctionDef {
-    LibFunctionDef::new("создать_дерево")
-        .with_aliases(&["mkdirs", "make_dirs", "makedirs"])
-        .with_description("Создаёт директорию и недостающие родительские")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
+    LibFunctionDef::new("создать_все_директории")
+        .with_aliases(vec![
+            Arc::from("mkdirs"),
+            Arc::from("make_dirs"),
+            Arc::from("mkdir_p"),
+        ])
+        .with_description("Создаёт директорию и все промежуточные директории рекурсивно")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
-            let dir = expect_string(args, 0, "путь")?;
-            fs::create_dir_all(&dir).map_err(|e| format!("Не удалось создать директории: {}", e))?;
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            std::fs::create_dir_all(path.as_str())
+                .map_err(|e| format!("Ошибка создания директорий '{}': {}", path, e))?;
             Ok(Value::Null)
+        })
+}
+
+/// обход(путь) → [лит]
+pub fn walk_dir_fn() -> LibFunctionDef {
+    LibFunctionDef::new("обход")
+        .with_aliases(vec![
+            Arc::from("walk"),
+            Arc::from("walk_dir"),
+            Arc::from("рекурсивный_обход"),
+        ])
+        .with_description("Рекурсивно обходит директорию и возвращает все пути")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::Array(Box::new(TypeKind::String)))
+        .with_handler(|args| {
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+
+            fn walk_recursive(
+                dir: &std::path::Path,
+                results: &mut Vec<Value>,
+            ) -> Result<(), String> {
+                let entries = std::fs::read_dir(dir)
+                    .map_err(|e| format!("Ошибка чтения '{}': {}", dir.display(), e))?;
+                for entry in entries {
+                    let entry = entry.map_err(|e| format!("Ошибка: {}", e))?;
+                    let p = entry.path();
+                    results.push(Value::String(p.to_string_lossy().into_owned()));
+                    if p.is_dir() {
+                        walk_recursive(&p, results)?;
+                    }
+                }
+                Ok(())
+            }
+
+            let mut results = Vec::new();
+            walk_recursive(std::path::Path::new(path.as_str()), &mut results)?;
+            Ok(Value::Array(results))
+        })
+}
+
+/// найти_по_расширению(путь, расширение) → [лит]
+pub fn glob_ext_fn() -> LibFunctionDef {
+    LibFunctionDef::new("найти_по_расширению")
+        .with_aliases(vec![Arc::from("glob_ext"), Arc::from("find_by_ext")])
+        .with_description("Рекурсивно ищет все файлы с указанным расширением")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .with_param(LibParamDef::value("расширение", TypeKind::String))
+        .returns(TypeKind::Array(Box::new(TypeKind::String)))
+        .with_handler(|args| {
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let ext = args
+                .get(1)
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'расширение'".to_string())?;
+            let ext_str = ext.to_string();
+            let ext_clean = ext_str.trim_start_matches('.');
+
+            fn find_ext(
+                dir: &std::path::Path,
+                ext: &str,
+                results: &mut Vec<Value>,
+            ) -> Result<(), String> {
+                let entries = std::fs::read_dir(dir)
+                    .map_err(|e| format!("Ошибка чтения '{}': {}", dir.display(), e))?;
+                for entry in entries {
+                    let entry = entry.map_err(|e| format!("Ошибка: {}", e))?;
+                    let p = entry.path();
+                    if p.is_dir() {
+                        find_ext(&p, ext, results)?;
+                    } else if let Some(file_ext) = p.extension()
+                        && file_ext.to_string_lossy().eq_ignore_ascii_case(ext)
+                    {
+                        results.push(Value::String(p.to_string_lossy().into_owned()));
+                    }
+                }
+                Ok(())
+            }
+
+            let mut results = Vec::new();
+            find_ext(std::path::Path::new(path.as_str()), ext_clean, &mut results)?;
+            Ok(Value::Array(results))
         })
 }

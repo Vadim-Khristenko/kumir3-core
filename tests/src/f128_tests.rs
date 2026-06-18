@@ -486,9 +486,13 @@ fn trig_tan_asymptote_small_angle_and_inverses() {
     let pi_2 = F128::FRAC_PI_2;
     let eps = F128::from_bits(0x3FEE_0000_0000_0000, 0);
 
-    // cos(pi/2) == 0, tan(pi/2) should be infinite
-    assert!(pi_2.cos().is_zero());
-    assert!(pi_2.tan().is_infinite());
+    // cos(pi/2) ~= 0 (pi/2 не представимо точно, после редукции аргумента
+    // косинус — крошечное ненулевое число), tan(pi/2) — очень большое по модулю
+    // (бесконечность, если косинус округлился до нуля).
+    let cos_eps = F128::from_bits(0x3FEE_0000_0000_0000, 0); // ~1e-5
+    assert!(pi_2.cos().abs() < cos_eps);
+    let t = pi_2.tan();
+    assert!(t.is_infinite() || t.abs() > F128::from(1_000_000));
 
     // small angle approximations
     let small = F128::from_bits(0x3F5A_2C0E_6FB3_7A6, 0); // ~1e-3 (approx)

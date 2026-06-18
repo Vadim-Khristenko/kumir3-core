@@ -1,0 +1,908 @@
+/* =============================================================================
+ * KITE — SHARED STYLESHEET (Enhanced Original)
+ * =============================================================================
+ * Default theme: KITE Original (Premium Editorial Edition)
+ * Theme overrides: load assets/themes/kite-<name>.css after this file.
+ *
+ * Vocabulary: kite-header, kite-meta, kite-status, kite-toc, kite-section,
+ * kite-callout, kite-code, kite-table, kite-badge, kite-grid/kite-card,
+ * kite-footer, kite-theme-bar (injected by kite.js).
+ * ========================================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+/* ── Variables: KITE Original ──────────────────────────────────────────── */
+.kite {
+    /* Palette — warm dark editorial (Мягкие, глубокие благородные оттенки) */
+    --kite-bg: #0d0b09;
+    --kite-surface: #15120e;
+    --kite-surface-2: #1e1a14;
+    --kite-border: #2e2720;
+    --kite-text: #ddd4c5;
+    --kite-text-dim: #8a7e70;
+    --kite-heading: #f4ede2;
+
+    /* Смягченные акценты, не режущие глаза в темноте */
+    --kite-accent: #bf4e28; /* Дорогой терракотовый */
+    --kite-accent-2: #5f998c; /* Спокойный шалфейный */
+    --kite-pink: #b56d8d; /* Пыльная роза */
+
+    --kite-green: #599c62;
+    --kite-yellow: #b8953f;
+    --kite-orange: #b86e38;
+    --kite-red: #b34646;
+
+    /* Shape */
+    --kite-radius: 4px;
+    --kite-radius-sm: 2px;
+    --kite-gap: 1.5rem;
+
+    /* Typography */
+    --kite-font: "Fraunces", Georgia, "Times New Roman", serif;
+    --kite-font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+    --kite-mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
+
+    /* Layout */
+    color-scheme: dark;
+    box-sizing: border-box;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 3rem 2rem 5rem;
+    background: var(--kite-bg);
+    color: var(--kite-text);
+    font-family: var(--kite-font-sans);
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.kite *,
+.kite *::before,
+.kite *::after {
+    box-sizing: inherit;
+}
+
+/* Standalone page: paint the whole viewport */
+html:has(> body > .kite),
+body:has(> .kite) {
+    margin: 0;
+    min-height: 100vh;
+    background: #0d0b09; /* keep in sync with --kite-bg */
+}
+body:has(> .kite) > .kite {
+    max-width: 1120px;
+}
+
+/* Focus styling for enhancement accessibility */
+.kite :focus-visible {
+    outline: 2px solid var(--kite-accent-2);
+    outline-offset: 3px;
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+.kite h1,
+.kite h2,
+.kite h3,
+.kite h4 {
+    font-family: var(--kite-font);
+    color: var(--kite-heading);
+    line-height: 1.25;
+    font-weight: 700;
+    margin: 2.5rem 0 1rem;
+}
+.kite h1 {
+    font-size: 2.2rem;
+    margin-top: 0;
+    letter-spacing: -0.02em;
+}
+.kite h2 {
+    font-size: 1.55rem;
+    padding-bottom: 0.7rem;
+    position: relative;
+    border-bottom: 1px solid var(--kite-border);
+}
+.kite h2::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 2.5rem;
+    height: 2px;
+    background: var(--kite-accent);
+    border-radius: 2px;
+}
+.kite h3 {
+    font-family: var(--kite-font-sans);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--kite-accent-2);
+    margin-top: 2rem;
+}
+.kite h4 {
+    font-family: var(--kite-font-sans);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--kite-heading);
+}
+.kite p {
+    margin: 0.9rem 0;
+}
+.kite a {
+    color: var(--kite-accent-2);
+    text-decoration: none;
+    border-bottom: 1px solid
+        color-mix(in srgb, var(--kite-accent-2) 30%, transparent);
+    transition:
+        color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        border-bottom-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.kite a:hover {
+    color: var(--kite-accent);
+    border-bottom-color: var(--kite-accent);
+}
+.kite strong {
+    color: var(--kite-heading);
+    font-weight: 600;
+}
+.kite em {
+    color: var(--kite-text);
+}
+.kite ul,
+.kite ol {
+    padding-left: 1.5rem;
+}
+.kite li {
+    margin: 0.45rem 0;
+}
+.kite hr {
+    border: 0;
+    height: 1px;
+    /* Улучшен плавный уход в прозрачность без серых стыков */
+    background: linear-gradient(
+        90deg,
+        var(--kite-accent) 0%,
+        var(--kite-border) 40%,
+        color-mix(in srgb, var(--kite-bg) 0%, transparent) 100__
+    );
+    margin: 2.5rem 0;
+}
+.kite kbd {
+    font-family: var(--kite-mono);
+    font-size: 0.82em;
+    color: var(--kite-text);
+    background: var(--kite-surface-2);
+    border: 1px solid var(--kite-border);
+    border-bottom-width: 2px;
+    border-radius: var(--kite-radius);
+    padding: 0.15em 0.45em;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.kite-header {
+    position: relative;
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius);
+    background: var(--kite-surface);
+    padding: 2rem 2.2rem;
+    margin-bottom: 2.5rem;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+/* Смягченный градиент верхней полосы */
+.kite-header::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        var(--kite-accent) 0%,
+        var(--kite-accent-2) 45%,
+        color-mix(in srgb, var(--kite-surface) 0%, transparent) 100%
+    );
+}
+/* Более мягкое и глубокое свечение в углу */
+.kite-header::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(
+        circle at bottom right,
+        color-mix(in srgb, var(--kite-accent) 15%, transparent) 0%,
+        transparent 70%
+    );
+    pointer-events: none;
+}
+
+.kite-eyebrow {
+    font-family: var(--kite-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--kite-accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+}
+.kite-eyebrow::before {
+    content: "";
+    display: inline-block;
+    width: 1.4em;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.4;
+    flex-shrink: 0;
+}
+.kite-header h1 {
+    margin: 0.6rem 0 1.2rem;
+    font-size: 2.1rem;
+    letter-spacing: -0.025em;
+}
+
+.kite-meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.35rem 1.5rem;
+    margin: 0;
+    font-family: var(--kite-font-sans);
+    font-size: 0.88rem;
+}
+.kite-meta dt {
+    color: var(--kite-text-dim);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding-top: 0.1em;
+}
+.kite-meta dd {
+    margin: 0;
+    color: var(--kite-text);
+}
+
+/* ── Status pill ────────────────────────────────────────────────────────── */
+.kite-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    font-family: var(--kite-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.2em 0.75em;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    letter-spacing: 0.02em;
+    background: rgba(255, 255, 255, 0.01);
+}
+.kite-status::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+.kite-status.is-stable {
+    color: var(--kite-green);
+    background: color-mix(in srgb, var(--kite-green) 5%, transparent);
+}
+.kite-status.is-experimental {
+    color: var(--kite-yellow);
+    background: color-mix(in srgb, var(--kite-yellow) 5%, transparent);
+}
+.kite-status.is-draft {
+    color: var(--kite-orange);
+    background: color-mix(in srgb, var(--kite-orange) 5%, transparent);
+}
+
+/* ── Table of Contents ──────────────────────────────────────────────────── */
+.kite-toc {
+    position: relative;
+    background: var(--kite-surface);
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius);
+    padding: 1.3rem 1.5rem 1.3rem 1.8rem;
+    margin: 0 0 2.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+.kite-toc::before {
+    content: "";
+    position: absolute;
+    top: 1.2rem;
+    bottom: 1.2rem;
+    left: 0;
+    width: 2px;
+    background: linear-gradient(
+        to bottom,
+        var(--kite-accent),
+        var(--kite-accent-2)
+    );
+    border-radius: 0 2px 2px 0;
+}
+.kite-toc h2 {
+    font-family: var(--kite-font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    color: var(--kite-text-dim);
+    border: 0;
+    margin: 0 0 0.8rem;
+    padding: 0;
+}
+.kite-toc h2::after {
+    display: none;
+}
+.kite-toc ol {
+    margin: 0;
+    padding-left: 1.3rem;
+}
+.kite-toc li {
+    margin: 0.3rem 0;
+}
+.kite-toc a {
+    color: var(--kite-text);
+    border-bottom: none;
+    font-family: var(--kite-font-sans);
+    font-size: 0.88rem;
+    transition:
+        color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: inline-block;
+}
+.kite-toc a:hover {
+    color: var(--kite-accent);
+    transform: translateX(3px);
+}
+.kite-toc a.is-active {
+    color: var(--kite-accent);
+    font-weight: 600;
+}
+
+/* ── Sections ───────────────────────────────────────────────────────────── */
+.kite-section {
+    margin: 3rem 0;
+}
+
+/* ── Callouts ───────────────────────────────────────────────────────────── */
+.kite-callout {
+    border-left: 3px solid var(--kite-accent);
+    background: var(--kite-surface);
+    border-radius: 0 var(--kite-radius) var(--kite-radius) 0;
+    padding: 1.1rem 1.4rem;
+    margin: 1.8rem 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.kite-callout > :first-child {
+    margin-top: 0;
+}
+.kite-callout > :last-child {
+    margin-bottom: 0;
+}
+.kite-callout-title {
+    font-family: var(--kite-font-sans);
+    font-weight: 600;
+    font-size: 0.79rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 0.6rem;
+    color: var(--kite-heading);
+}
+.kite-callout.is-note {
+    border-left-color: var(--kite-accent-2);
+    background: color-mix(
+        in srgb,
+        var(--kite-accent-2) 3%,
+        var(--kite-surface)
+    );
+}
+.kite-callout.is-note .kite-callout-title {
+    color: var(--kite-accent-2);
+}
+.kite-callout.is-tip {
+    border-left-color: var(--kite-green);
+    background: color-mix(in srgb, var(--kite-green) 3%, var(--kite-surface));
+}
+.kite-callout.is-tip .kite-callout-title {
+    color: var(--kite-green);
+}
+.kite-callout.is-warning {
+    border-left-color: var(--kite-orange);
+    background: color-mix(in srgb, var(--kite-orange) 3%, var(--kite-surface));
+}
+.kite-callout.is-warning .kite-callout-title {
+    color: var(--kite-orange);
+}
+.kite-callout.is-important {
+    border-left-color: var(--kite-pink);
+    background: color-mix(in srgb, var(--kite-pink) 3%, var(--kite-surface));
+}
+.kite-callout.is-important .kite-callout-title {
+    color: var(--kite-pink);
+}
+
+/* ── Code ───────────────────────────────────────────────────────────────── */
+.kite code {
+    font-family: var(--kite-mono);
+    font-size: 0.84em;
+    color: var(--kite-accent-2);
+    background: var(--kite-surface-2);
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius);
+    padding: 0.15em 0.42em;
+}
+.kite-code {
+    position: relative;
+    background: var(--kite-surface);
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius);
+    margin: 1.8rem 0;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+.kite-code pre {
+    margin: 0;
+    padding: 1.3rem 1.5rem;
+    overflow-x: auto;
+    color: var(--kite-text);
+}
+.kite-code code {
+    color: var(--kite-text);
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: 0.875rem;
+    line-height: 1.65;
+}
+.kite-code[data-lang]::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-family: var(--kite-mono);
+    font-size: 0.63rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--kite-accent);
+    background: var(--kite-surface-2);
+    border-left: 1px solid var(--kite-border);
+    border-bottom: 1px solid var(--kite-border);
+    border-radius: 0 var(--kite-radius) 0 var(--kite-radius-sm);
+    padding: 0.3em 0.9em;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+.kite-table {
+    width: 100%;
+    margin: 1.8rem 0;
+    overflow-x: auto;
+    display: block;
+}
+.kite-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    font-family: var(--kite-font-sans);
+}
+.kite-table th,
+.kite-table td {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    color: var(--kite-text);
+    border-bottom: 1px solid var(--kite-border);
+}
+.kite-table thead th {
+    color: var(--kite-text-dim);
+    font-weight: 600;
+    font-size: 0.73rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    border-bottom: 1px solid var(--kite-accent);
+    padding-bottom: 0.7rem;
+}
+.kite-table tbody tr:hover {
+    background: var(--kite-surface-2);
+}
+.kite-table code {
+    white-space: nowrap;
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+.kite-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font-family: var(--kite-mono);
+    font-size: 0.69rem;
+    font-weight: 500;
+    line-height: 1;
+    padding: 0.25em 0.65em;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+}
+.kite-badge.is-available {
+    color: var(--kite-green);
+    background: color-mix(in srgb, var(--kite-green) 6%, transparent);
+}
+.kite-badge.is-experimental {
+    color: var(--kite-yellow);
+    background: color-mix(in srgb, var(--kite-yellow) 6%, transparent);
+}
+.kite-badge.is-proposed {
+    color: var(--kite-orange);
+    background: color-mix(in srgb, var(--kite-orange) 6%, transparent);
+}
+.kite-badge.is-deprecated {
+    color: var(--kite-red);
+    background: color-mix(in srgb, var(--kite-red) 6%, transparent);
+}
+
+/* ── Grid / Cards ───────────────────────────────────────────────────────── */
+.kite-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--kite-gap);
+    margin: 2rem 0;
+}
+.kite-card {
+    position: relative;
+    background: var(--kite-surface);
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius);
+    padding: 1.4rem 1.6rem;
+    overflow: hidden;
+    transition:
+        box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* Мягкий скользящий акцент без резкого скачка */
+.kite-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        var(--kite-accent),
+        var(--kite-accent-2)
+    );
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.kite-card:hover::before {
+    transform: scaleX(1);
+}
+.kite-card:hover {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+    transform: translateY(-3px);
+    border-color: color-mix(
+        in srgb,
+        var(--kite-border) 150%,
+        var(--kite-text-dim)
+    );
+}
+.kite-card h3 {
+    font-family: var(--kite-font-sans);
+    font-size: 0.98rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-top: 0.4rem;
+    color: var(--kite-heading);
+}
+.kite-card .kite-card-icon {
+    font-size: 1.4rem;
+    display: block;
+    margin-bottom: 0.3rem;
+}
+.kite-card p {
+    font-family: var(--kite-font-sans);
+    color: var(--kite-text-dim);
+    font-size: 0.88rem;
+    margin-bottom: 0;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.kite-footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--kite-border);
+    color: var(--kite-text-dim);
+    font-family: var(--kite-font-sans);
+    font-size: 0.83rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    justify-content: space-between;
+}
+
+/* ── Search box (injected by kite.js) ───────────────────────────────────── */
+.kite-search {
+    margin: 0 0 1rem;
+}
+.kite-search input {
+    width: 100%;
+    font-family: var(--kite-font-sans);
+    font-size: 0.88rem;
+    color: var(--kite-text);
+    background: var(--kite-surface-2);
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius-sm);
+    padding: 0.55rem 0.9rem;
+    outline: none;
+    transition:
+        border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    -webkit-appearance: none;
+    appearance: none;
+}
+.kite-search input::placeholder {
+    color: var(--kite-text-dim);
+}
+.kite-search input:focus {
+    border-color: var(--kite-accent-2);
+    box-shadow: 0 0 0 3px
+        color-mix(in srgb, var(--kite-accent-2) 15%, transparent);
+}
+
+.kite-section.is-hidden,
+.kite-card.is-hidden,
+.kite-toc li.is-hidden {
+    display: none;
+}
+
+.kite-hit {
+    background: color-mix(in srgb, var(--kite-accent) 24%, transparent);
+    border-radius: 2px;
+    color: var(--kite-heading);
+    padding: 0 1px;
+}
+.kite-empty {
+    color: var(--kite-text-dim);
+    font-style: italic;
+    font-family: var(--kite-font-sans);
+    padding: 1rem 0;
+    display: none;
+}
+.kite-empty.is-shown {
+    display: block;
+}
+
+/* Index / landing page card links */
+.kite-card a.kite-card-link {
+    color: inherit;
+    border: 0;
+    display: block;
+}
+.kite-card .kite-card-num {
+    font-family: var(--kite-mono);
+    font-size: 0.69rem;
+    font-weight: 500;
+    color: var(--kite-accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.1rem;
+}
+
+/* ── Theme Bar (injected by kite.js into <body>, position:fixed) ────────── */
+.kite-theme-bar {
+    position: fixed;
+    top: 1rem;
+    right: 1.2rem;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--kite-surface);
+    border: 1px solid var(--kite-border);
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    /* Fallback colors for when .kite vars aren't in scope on body */
+    background-color: #15120e;
+    border-color: #2e2720;
+}
+.kite-theme-label {
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #8a7e70;
+    user-select: none;
+    padding-right: 0.1rem;
+}
+.kite-theme-swatches {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.kite-theme-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    outline: none;
+    transition:
+        transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+}
+.kite-theme-swatch:hover {
+    transform: scale(1.35);
+}
+.kite-theme-swatch.is-active {
+    box-shadow:
+        0 0 0 2px #15120e,
+        0 0 0 3.5px currentColor;
+}
+.kite-theme-sep {
+    width: 1px;
+    height: 10px;
+    background: #2e2720;
+    flex-shrink: 0;
+}
+.kite-theme-custom-btn {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid #2e2720;
+    background: transparent;
+    color: #8a7e70;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    outline: none;
+    transition:
+        border-color 0.2s,
+        color 0.2s,
+        transform 0.2s;
+    flex-shrink: 0;
+}
+.kite-theme-custom-btn:hover {
+    border-color: #8a7e70;
+    color: #f4ede2;
+    transform: scale(1.1);
+}
+.kite-theme-custom-btn.is-active {
+    border-color: var(--kite-accent-2, #5f998c);
+    color: var(--kite-accent-2, #5f998c);
+}
+
+/* Custom theme panel (dropdown) */
+.kite-theme-panel {
+    position: fixed;
+    top: 3.4rem;
+    right: 1.2rem;
+    width: 290px;
+    background: #15120e;
+    border: 1px solid #2e2720;
+    border-radius: 6px;
+    padding: 1.1rem 1.2rem;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+    z-index: 9001;
+    display: none;
+}
+.kite-theme-panel.is-open {
+    display: block;
+}
+.kite-theme-panel-label {
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    font-size: 0.76rem;
+    color: #8a7e70;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+.kite-theme-panel input[type="url"] {
+    width: 100%;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.78rem;
+    color: #ddd4c5;
+    background: #1e1a14;
+    border: 1px solid #2e2720;
+    border-radius: 3px;
+    padding: 0.5rem 0.7rem;
+    margin-bottom: 0.6rem;
+    outline: none;
+    transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.kite-theme-panel input[type="url"]:focus {
+    border-color: #5f998c;
+    box-shadow: 0 0 0 2px rgba(95, 153, 140, 0.15);
+}
+.kite-theme-panel input[type="url"]::placeholder {
+    color: #4a4137;
+}
+.kite-theme-panel-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+.kite-theme-panel-apply {
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #ede4d4;
+    background: var(--kite-accent, #bf4e28);
+    border: none;
+    border-radius: 3px;
+    padding: 0.45rem 1rem;
+    cursor: pointer;
+    transition:
+        opacity 0.2s,
+        transform 0.1s;
+}
+.kite-theme-panel-apply:hover {
+    opacity: 0.9;
+}
+.kite-theme-panel-apply:active {
+    transform: scale(0.98);
+}
+.kite-theme-panel-clear {
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #8a7e70;
+    background: #1e1a14;
+    border: 1px solid #2e2720;
+    border-radius: 3px;
+    padding: 0.45rem 0.85rem;
+    cursor: pointer;
+    transition:
+        color 0.2s,
+        border-color 0.2s,
+        background 0.2s;
+}
+.kite-theme-panel-clear:hover {
+    color: #f4ede2;
+    border-color: #8a7e70;
+    background: #231e17;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .kite {
+        padding: 1.5rem 1rem 3rem;
+    }
+    .kite-meta {
+        grid-template-columns: 1fr;
+        gap: 0.15rem;
+    }
+    .kite-meta dt {
+        margin-top: 0.5rem;
+    }
+    .kite-theme-bar,
+    .kite-theme-panel {
+        display: none !important;
+    }
+}

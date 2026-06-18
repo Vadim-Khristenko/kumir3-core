@@ -1,12 +1,13 @@
 //! Функции для работы с датой и временем
 //!
 //! Содержит функции получения текущего времени и его компонентов.
+//! Все вычисления без внешних зависимостей, только std.
 
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::types::library::{LibFunctionDef, LibParamDef};
-use crate::types::type_spec::TypeSpec;
-use crate::types::{Value, Number};
+use crate::types::{Number, TypeKind, Value};
 
 use super::constants::*;
 
@@ -18,19 +19,23 @@ use super::constants::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DateTimeParts {
     pub year: i32,
-    pub month: u8,      // 1..=12
-    pub day: u8,        // 1..=31
-    pub hour: u8,       // 0..=23
-    pub minute: u8,     // 0..=59
-    pub second: u8,     // 0..=59
-    pub weekday: u8,    // 1 (пн) .. 7 (вс)
-    pub yearday: u16,   // 0..365
+    pub month: u8,    // 1..=12
+    pub day: u8,      // 1..=31
+    pub hour: u8,     // 0..=23
+    pub minute: u8,   // 0..=59
+    pub second: u8,   // 0..=59
+    pub weekday: u8,  // 1 (пн) .. 7 (вс)
+    pub yearday: u16, // 0..365
 }
 
 fn expect_number(args: &[Value], idx: usize, what: &str) -> Result<i64, String> {
-    let v = args.get(idx).ok_or_else(|| format!("Не передан параметр: {}", what))?;
+    let v = args
+        .get(idx)
+        .ok_or_else(|| format!("Не передан параметр: {}", what))?;
     match v {
-        Value::Number(n) => n.to_i64().ok_or_else(|| format!("Ожидается целое: {}", what)),
+        Value::Number(n) => n
+            .to_i64()
+            .ok_or_else(|| format!("Ожидается целое: {}", what)),
         _ => Err(format!("Ожидается число для параметра {}", what)),
     }
 }
@@ -77,6 +82,22 @@ pub fn system_time_sec() -> Result<i64, String> {
         .map_err(|e| format!("Ошибка получения системного времени: {}", e))
 }
 
+/// Возвращает текущее время в микросекундах
+pub fn system_time_us() -> Result<i64, String> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_micros() as i64)
+        .map_err(|e| format!("Ошибка получения системного времени: {}", e))
+}
+
+/// Возвращает текущее время в наносекундах
+pub fn system_time_ns() -> Result<i64, String> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos() as i64)
+        .map_err(|e| format!("Ошибка получения системного времени: {}", e))
+}
+
 /// Вычисляет день недели ISO (1=пн, 7=вс) по количеству дней от эпохи
 #[inline]
 pub fn weekday_from_days(days: i64) -> u8 {
@@ -120,14 +141,17 @@ pub fn days_from_civil(year: i32, month: u8, day: u8) -> Result<i64, String> {
     let yoe = y - era * 400;
     let doy = (153 * (m + if m > 2 { -3 } else { 9 }) + 2) / 5 + d - 1;
     let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    
+
     Ok(era as i64 * 146_097 + doe as i64 - 719_468)
 }
 
 /// Преобразует UNIX timestamp в компоненты даты-времени
 pub fn timestamp_to_parts(secs: i64) -> Result<DateTimeParts, String> {
     if secs < 0 {
-        return Err(format!("Отрицательные штампы времени не поддерживаются: {}", secs));
+        return Err(format!(
+            "Отрицательные штампы времени не поддерживаются: {}",
+            secs
+        ));
     }
 
     let days = secs.div_euclid(SECONDS_PER_DAY);
@@ -140,11 +164,27 @@ pub fn timestamp_to_parts(secs: i64) -> Result<DateTimeParts, String> {
     let (year, month, day, yearday) = civil_from_days(days);
     let weekday = weekday_from_days(days);
 
-    Ok(DateTimeParts { year, month, day, hour, minute, second, weekday, yearday })
+    Ok(DateTimeParts {
+        year,
+        month,
+        day,
+        hour,
+        minute,
+        second,
+        weekday,
+        yearday,
+    })
 }
 
 /// Собирает компоненты даты-времени в UNIX timestamp
-pub fn parts_to_timestamp(year: i32, month: u8, day: u8, hour: u8, minute: u8, second: u8) -> Result<i64, String> {
+pub fn parts_to_timestamp(
+    year: i32,
+    month: u8,
+    day: u8,
+    hour: u8,
+    minute: u8,
+    second: u8,
+) -> Result<i64, String> {
     if hour > 23 {
         return Err(format!("Часы должны быть 0..23, получено: {}", hour));
     }
@@ -156,7 +196,10 @@ pub fn parts_to_timestamp(year: i32, month: u8, day: u8, hour: u8, minute: u8, s
     }
 
     let days = days_from_civil(year, month, day)?;
-    Ok(days * SECONDS_PER_DAY + (hour as i64) * SECONDS_PER_HOUR + (minute as i64) * SECONDS_PER_MINUTE + (second as i64))
+    Ok(days * SECONDS_PER_DAY
+        + (hour as i64) * SECONDS_PER_HOUR
+        + (minute as i64) * SECONDS_PER_MINUTE
+        + (second as i64))
 }
 
 // ============================================================================
@@ -166,9 +209,9 @@ pub fn parts_to_timestamp(year: i32, month: u8, day: u8, hour: u8, minute: u8, s
 /// текущее_время_мс() -> цел_64
 pub fn now_ms_fn() -> LibFunctionDef {
     LibFunctionDef::new("текущее_время_мс")
-        .with_aliases(&["now_ms", "time_ms"])
+        .with_aliases(vec![Arc::from("now_ms"), Arc::from("time_ms")])
         .with_description("Возвращает количество миллисекунд с 1 января 1970 UTC")
-        .returns(TypeSpec::Int64)
+        .returns(TypeKind::Int64)
         .with_handler(|_args| {
             let ms = system_time_ms()?;
             Ok(Value::Number(Number::I64(ms)))
@@ -178,21 +221,49 @@ pub fn now_ms_fn() -> LibFunctionDef {
 /// текущее_время_сек() -> цел_64
 pub fn now_sec_fn() -> LibFunctionDef {
     LibFunctionDef::new("текущее_время_сек")
-        .with_aliases(&["now", "time", "now_sec"])
+        .with_aliases(vec![
+            Arc::from("now"),
+            Arc::from("time"),
+            Arc::from("now_sec"),
+        ])
         .with_description("Возвращает количество секунд с 1 января 1970 UTC")
-        .returns(TypeSpec::Int64)
+        .returns(TypeKind::Int64)
         .with_handler(|_args| {
             let secs = system_time_sec()?;
             Ok(Value::Number(Number::I64(secs)))
         })
 }
 
+/// текущее_время_мкс() -> цел_64
+pub fn now_us_fn() -> LibFunctionDef {
+    LibFunctionDef::new("текущее_время_мкс")
+        .with_aliases(vec![Arc::from("now_us"), Arc::from("time_us")])
+        .with_description("Возвращает количество микросекунд с 1 января 1970 UTC")
+        .returns(TypeKind::Int64)
+        .with_handler(|_args| {
+            let us = system_time_us()?;
+            Ok(Value::Number(Number::I64(us)))
+        })
+}
+
+/// текущее_время_нс() -> цел_64
+pub fn now_ns_fn() -> LibFunctionDef {
+    LibFunctionDef::new("текущее_время_нс")
+        .with_aliases(vec![Arc::from("now_ns"), Arc::from("time_ns")])
+        .with_description("Возвращает количество наносекунд с 1 января 1970 UTC")
+        .returns(TypeKind::Int64)
+        .with_handler(|_args| {
+            let ns = system_time_ns()?;
+            Ok(Value::Number(Number::I64(ns)))
+        })
+}
+
 /// текущий_год() -> цел_32
 pub fn current_year_fn() -> LibFunctionDef {
     LibFunctionDef::new("текущий_год")
-        .with_aliases(&["year", "current_year"])
+        .with_aliases(vec![Arc::from("year"), Arc::from("current_year")])
         .with_description("Возвращает текущий год (UTC)")
-        .returns(TypeSpec::Int32)
+        .returns(TypeKind::Int32)
         .with_handler(|_args| {
             let secs = system_time_sec()?;
             let parts = timestamp_to_parts(secs)?;
@@ -203,9 +274,9 @@ pub fn current_year_fn() -> LibFunctionDef {
 /// текущий_месяц() -> нат_8
 pub fn current_month_fn() -> LibFunctionDef {
     LibFunctionDef::new("текущий_месяц")
-        .with_aliases(&["month", "current_month"])
+        .with_aliases(vec![Arc::from("month"), Arc::from("current_month")])
         .with_description("Возвращает текущий месяц (1..12, UTC)")
-        .returns(TypeSpec::UInt8)
+        .returns(TypeKind::UInt8)
         .with_handler(|_args| {
             let secs = system_time_sec()?;
             let parts = timestamp_to_parts(secs)?;
@@ -216,9 +287,9 @@ pub fn current_month_fn() -> LibFunctionDef {
 /// текущий_день() -> нат_8
 pub fn current_day_fn() -> LibFunctionDef {
     LibFunctionDef::new("текущий_день")
-        .with_aliases(&["day", "current_day"])
+        .with_aliases(vec![Arc::from("day"), Arc::from("current_day")])
         .with_description("Возвращает текущий день месяца (1..31, UTC)")
-        .returns(TypeSpec::UInt8)
+        .returns(TypeKind::UInt8)
         .with_handler(|_args| {
             let secs = system_time_sec()?;
             let parts = timestamp_to_parts(secs)?;
@@ -229,9 +300,9 @@ pub fn current_day_fn() -> LibFunctionDef {
 /// текущий_час() -> нат_8
 pub fn current_hour_fn() -> LibFunctionDef {
     LibFunctionDef::new("текущий_час")
-        .with_aliases(&["hour", "current_hour"])
+        .with_aliases(vec![Arc::from("hour"), Arc::from("current_hour")])
         .with_description("Возвращает текущий час (0..23, UTC)")
-        .returns(TypeSpec::UInt8)
+        .returns(TypeKind::UInt8)
         .with_handler(|_args| {
             let secs = system_time_sec()?;
             let parts = timestamp_to_parts(secs)?;
@@ -242,9 +313,9 @@ pub fn current_hour_fn() -> LibFunctionDef {
 /// текущая_минута() -> нат_8
 pub fn current_minute_fn() -> LibFunctionDef {
     LibFunctionDef::new("текущая_минута")
-        .with_aliases(&["minute", "current_minute"])
+        .with_aliases(vec![Arc::from("minute"), Arc::from("current_minute")])
         .with_description("Возвращает текущую минуту (0..59, UTC)")
-        .returns(TypeSpec::UInt8)
+        .returns(TypeKind::UInt8)
         .with_handler(|_args| {
             let secs = system_time_sec()?;
             let parts = timestamp_to_parts(secs)?;
@@ -255,9 +326,9 @@ pub fn current_minute_fn() -> LibFunctionDef {
 /// текущая_секунда() -> нат_8
 pub fn current_second_fn() -> LibFunctionDef {
     LibFunctionDef::new("текущая_секунда")
-        .with_aliases(&["second", "current_second"])
+        .with_aliases(vec![Arc::from("second"), Arc::from("current_second")])
         .with_description("Возвращает текущую секунду (0..59, UTC)")
-        .returns(TypeSpec::UInt8)
+        .returns(TypeKind::UInt8)
         .with_handler(|_args| {
             let secs = system_time_sec()?;
             let parts = timestamp_to_parts(secs)?;
@@ -268,9 +339,9 @@ pub fn current_second_fn() -> LibFunctionDef {
 /// текущий_день_недели() -> нат_8
 pub fn current_weekday_fn() -> LibFunctionDef {
     LibFunctionDef::new("текущий_день_недели")
-        .with_aliases(&["weekday", "current_weekday"])
+        .with_aliases(vec![Arc::from("weekday"), Arc::from("current_weekday")])
         .with_description("Возвращает текущий день недели ISO (1=пн, 7=вс, UTC)")
-        .returns(TypeSpec::UInt8)
+        .returns(TypeKind::UInt8)
         .with_handler(|_args| {
             let secs = system_time_sec()?;
             let parts = timestamp_to_parts(secs)?;
@@ -281,10 +352,10 @@ pub fn current_weekday_fn() -> LibFunctionDef {
 /// високосный_год(год: цел_32) -> лог
 pub fn is_leap_year_fn() -> LibFunctionDef {
     LibFunctionDef::new("високосный_год")
-        .with_aliases(&["is_leap_year", "leap_year"])
+        .with_aliases(vec![Arc::from("is_leap_year"), Arc::from("leap_year")])
         .with_description("Проверяет, является ли год високосным")
-        .with_param(LibParamDef::value("год", TypeSpec::Int32))
-        .returns(TypeSpec::Bool)
+        .with_param(LibParamDef::value("год", TypeKind::Int32))
+        .returns(TypeKind::Bool)
         .with_handler(|args| {
             let year = expect_number(args, 0, "год")?;
             Ok(Value::Boolean(is_leap_year(year as i32)))
@@ -294,15 +365,16 @@ pub fn is_leap_year_fn() -> LibFunctionDef {
 /// дней_в_месяце(год: цел_32, месяц: нат_8) -> нат_8
 pub fn days_in_month_fn() -> LibFunctionDef {
     LibFunctionDef::new("дней_в_месяце")
-        .with_aliases(&["days_in_month"])
+        .with_aliases(vec![Arc::from("days_in_month")])
         .with_description("Возвращает количество дней в указанном месяце года")
-        .with_param(LibParamDef::value("год", TypeSpec::Int32))
-        .with_param(LibParamDef::value("месяц", TypeSpec::UInt8))
-        .returns(TypeSpec::UInt8)
+        .with_param(LibParamDef::value("год", TypeKind::Int32))
+        .with_param(LibParamDef::value("месяц", TypeKind::UInt8))
+        .returns(TypeKind::UInt8)
         .with_handler(|args| {
             let year = expect_number(args, 0, "год")? as i32;
             let month = expect_number(args, 1, "месяц")? as u8;
-            let days = days_in_month(year, month).ok_or_else(|| "Некорректный месяц".to_string())?;
+            let days =
+                days_in_month(year, month).ok_or_else(|| "Некорректный месяц".to_string())?;
             Ok(Value::Number(Number::U8(days)))
         })
 }
@@ -310,10 +382,10 @@ pub fn days_in_month_fn() -> LibFunctionDef {
 /// дней_в_году(год: цел_32) -> нат_16
 pub fn days_in_year_fn() -> LibFunctionDef {
     LibFunctionDef::new("дней_в_году")
-        .with_aliases(&["days_in_year"])
+        .with_aliases(vec![Arc::from("days_in_year")])
         .with_description("Возвращает количество дней в указанном году (365 или 366)")
-        .with_param(LibParamDef::value("год", TypeSpec::Int32))
-        .returns(TypeSpec::UInt16)
+        .with_param(LibParamDef::value("год", TypeKind::Int32))
+        .returns(TypeKind::UInt16)
         .with_handler(|args| {
             let year = expect_number(args, 0, "год")? as i32;
             Ok(Value::Number(Number::U16(days_in_year(year))))
@@ -323,11 +395,11 @@ pub fn days_in_year_fn() -> LibFunctionDef {
 /// разница_сек(штамп1: цел_64, штамп2: цел_64) -> цел_64
 pub fn diff_seconds_fn() -> LibFunctionDef {
     LibFunctionDef::new("разница_сек")
-        .with_aliases(&["diff_seconds", "diff_sec"])
+        .with_aliases(vec![Arc::from("diff_seconds"), Arc::from("diff_sec")])
         .with_description("Возвращает разницу между двумя timestamp в секундах (ts2 - ts1)")
-        .with_param(LibParamDef::value("штамп1", TypeSpec::Int64))
-        .with_param(LibParamDef::value("штамп2", TypeSpec::Int64))
-        .returns(TypeSpec::Int64)
+        .with_param(LibParamDef::value("штамп1", TypeKind::Int64))
+        .with_param(LibParamDef::value("штамп2", TypeKind::Int64))
+        .returns(TypeKind::Int64)
         .with_handler(|args| {
             let ts1 = expect_number(args, 0, "штамп1")?;
             let ts2 = expect_number(args, 1, "штамп2")?;
@@ -338,11 +410,11 @@ pub fn diff_seconds_fn() -> LibFunctionDef {
 /// разница_дней(штамп1: цел_64, штамп2: цел_64) -> цел_64
 pub fn diff_days_fn() -> LibFunctionDef {
     LibFunctionDef::new("разница_дней")
-        .with_aliases(&["diff_days"])
+        .with_aliases(vec![Arc::from("diff_days")])
         .with_description("Возвращает разницу между двумя timestamp в днях")
-        .with_param(LibParamDef::value("штамп1", TypeSpec::Int64))
-        .with_param(LibParamDef::value("штамп2", TypeSpec::Int64))
-        .returns(TypeSpec::Int64)
+        .with_param(LibParamDef::value("штамп1", TypeKind::Int64))
+        .with_param(LibParamDef::value("штамп2", TypeKind::Int64))
+        .returns(TypeKind::Int64)
         .with_handler(|args| {
             let ts1 = expect_number(args, 0, "штамп1")?;
             let ts2 = expect_number(args, 1, "штамп2")?;
@@ -353,11 +425,11 @@ pub fn diff_days_fn() -> LibFunctionDef {
 /// добавить_сек(штамп: цел_64, секунды: цел_64) -> цел_64
 pub fn add_seconds_fn() -> LibFunctionDef {
     LibFunctionDef::new("добавить_сек")
-        .with_aliases(&["add_seconds", "add_sec"])
+        .with_aliases(vec![Arc::from("add_seconds"), Arc::from("add_sec")])
         .with_description("Добавляет указанное количество секунд к timestamp")
-        .with_param(LibParamDef::value("штамп", TypeSpec::Int64))
-        .with_param(LibParamDef::value("секунды", TypeSpec::Int64))
-        .returns(TypeSpec::Int64)
+        .with_param(LibParamDef::value("штамп", TypeKind::Int64))
+        .with_param(LibParamDef::value("секунды", TypeKind::Int64))
+        .returns(TypeKind::Int64)
         .with_handler(|args| {
             let ts = expect_number(args, 0, "штамп")?;
             let delta = expect_number(args, 1, "секунды")?;
@@ -368,11 +440,11 @@ pub fn add_seconds_fn() -> LibFunctionDef {
 /// добавить_дней(штамп: цел_64, дни: цел_64) -> цел_64
 pub fn add_days_fn() -> LibFunctionDef {
     LibFunctionDef::new("добавить_дней")
-        .with_aliases(&["add_days"])
+        .with_aliases(vec![Arc::from("add_days")])
         .with_description("Добавляет указанное количество дней к timestamp")
-        .with_param(LibParamDef::value("штамп", TypeSpec::Int64))
-        .with_param(LibParamDef::value("дни", TypeSpec::Int64))
-        .returns(TypeSpec::Int64)
+        .with_param(LibParamDef::value("штамп", TypeKind::Int64))
+        .with_param(LibParamDef::value("дни", TypeKind::Int64))
+        .returns(TypeKind::Int64)
         .with_handler(|args| {
             let ts = expect_number(args, 0, "штамп")?;
             let days = expect_number(args, 1, "дни")?;

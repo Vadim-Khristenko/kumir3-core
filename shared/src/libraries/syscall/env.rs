@@ -1,10 +1,10 @@
 //! Функции работы с переменными окружения
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use crate::types::library::{LibFunctionDef, LibParamDef};
-use crate::types::type_spec::TypeSpec;
-use crate::types::Value;
+use crate::types::{TypeKind, Value};
 
 fn expect_string(args: &[Value], idx: usize, name: &str) -> Result<String, String> {
     let v = args
@@ -20,10 +20,14 @@ fn expect_string(args: &[Value], idx: usize, name: &str) -> Result<String, Strin
 /// окружение(имя) -> лит | пусто
 pub fn env_get_fn() -> LibFunctionDef {
     LibFunctionDef::new("окружение")
-        .with_aliases(&["env", "env_get", "получить_окружение"])
-        .with_description("Возвращает значение переменной окружения или пусто, если нет")
-        .with_param(LibParamDef::value("имя", TypeSpec::String))
-        .returns(TypeSpec::String)
+        .with_aliases(vec![
+            Arc::from("env"),
+            Arc::from("env_get"),
+            Arc::from("получить_окружение"),
+        ])
+        .with_description("Возвращает значение переменной окружения или пусто")
+        .with_param(LibParamDef::value("имя", TypeKind::String))
+        .returns(TypeKind::String)
         .with_handler(|args| {
             let name = expect_string(args, 0, "имя")?;
             match std::env::var(&name) {
@@ -36,15 +40,14 @@ pub fn env_get_fn() -> LibFunctionDef {
 /// установить_окружение(имя, значение)
 pub fn env_set_fn() -> LibFunctionDef {
     LibFunctionDef::new("установить_окружение")
-        .with_aliases(&["env_set", "set_env"])
+        .with_aliases(vec![Arc::from("env_set"), Arc::from("set_env")])
         .with_description("Устанавливает переменную окружения")
-        .with_param(LibParamDef::value("имя", TypeSpec::String))
-        .with_param(LibParamDef::value("значение", TypeSpec::String))
+        .with_param(LibParamDef::value("имя", TypeKind::String))
+        .with_param(LibParamDef::value("значение", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
             let name = expect_string(args, 0, "имя")?;
             let val = expect_string(args, 1, "значение")?;
-            // SAFETY: Mutating process environment is intended here
             unsafe { std::env::set_var(&name, &val) };
             Ok(Value::Null)
         })
@@ -53,13 +56,12 @@ pub fn env_set_fn() -> LibFunctionDef {
 /// удалить_окружение(имя)
 pub fn env_unset_fn() -> LibFunctionDef {
     LibFunctionDef::new("удалить_окружение")
-        .with_aliases(&["env_unset", "unset_env"])
+        .with_aliases(vec![Arc::from("env_unset"), Arc::from("unset_env")])
         .with_description("Удаляет переменную окружения")
-        .with_param(LibParamDef::value("имя", TypeSpec::String))
+        .with_param(LibParamDef::value("имя", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
             let name = expect_string(args, 0, "имя")?;
-            // SAFETY: Removing process environment variables is intended here
             unsafe { std::env::remove_var(&name) };
             Ok(Value::Null)
         })
@@ -68,9 +70,16 @@ pub fn env_unset_fn() -> LibFunctionDef {
 /// все_окружение() -> словарь
 pub fn env_all_fn() -> LibFunctionDef {
     LibFunctionDef::new("все_окружение")
-        .with_aliases(&["env_all", "get_all_env", "environ"])
+        .with_aliases(vec![
+            Arc::from("env_all"),
+            Arc::from("get_all_env"),
+            Arc::from("environ"),
+        ])
         .with_description("Возвращает словарь всех переменных окружения")
-        .returns(TypeSpec::Map(Box::new(TypeSpec::String), Box::new(TypeSpec::String)))
+        .returns(TypeKind::Map(
+            Box::new(TypeKind::String),
+            Box::new(TypeKind::String),
+        ))
         .with_handler(|_args| {
             let mut map = BTreeMap::new();
             for (key, value) in std::env::vars() {
@@ -83,10 +92,10 @@ pub fn env_all_fn() -> LibFunctionDef {
 /// есть_окружение(имя) -> лог
 pub fn env_exists_fn() -> LibFunctionDef {
     LibFunctionDef::new("есть_окружение")
-        .with_aliases(&["env_exists", "has_env"])
+        .with_aliases(vec![Arc::from("env_exists"), Arc::from("has_env")])
         .with_description("Проверяет существование переменной окружения")
-        .with_param(LibParamDef::value("имя", TypeSpec::String))
-        .returns(TypeSpec::Bool)
+        .with_param(LibParamDef::value("имя", TypeKind::String))
+        .returns(TypeKind::Bool)
         .with_handler(|args| {
             let name = expect_string(args, 0, "имя")?;
             Ok(Value::Boolean(std::env::var(&name).is_ok()))

@@ -7,19 +7,6 @@
 //! - Получение системной информации
 //!
 //! Без внешних зависимостей, только std.
-//!
-//! ## Пример использования
-//! ```kumir
-//! использовать syscall
-//!
-//! вывод "ОС:", имя_ос()
-//! вывод "Пользователь:", имя_пользователя()
-//! вывод "Домашняя директория:", домашняя_директория()
-//!
-//! | Выполнение команды
-//! результат := выполнить("echo Hello")
-//! вывод "Вывод:", результат["stdout"]
-//! ```
 
 mod constants;
 mod env;
@@ -27,9 +14,10 @@ mod path;
 mod process;
 mod sysinfo;
 
-use crate::types::library::{LibraryDef, LibVersion};
+use std::sync::Arc;
 
-// Реэкспорт внутренних модулей
+use crate::types::library::{LibVersion, LibraryDef};
+
 pub use constants::*;
 pub use env::*;
 pub use path::*;
@@ -39,13 +27,19 @@ pub use sysinfo::*;
 /// Создаёт библиотеку syscall
 pub fn create_syscall_library() -> LibraryDef {
     let mut lib = LibraryDef::new("syscall", "Системные вызовы");
-    lib.aliases = &["syscall", "sys", "системные_вызовы", "os"];
-    lib.description = "Выполнение команд ОС, работа с окружением, путями и системной информацией";
-    lib.author = "Vadim Khristenko <just@vai-prog.ru>";
+    lib.aliases = vec![
+        Arc::from("syscall"),
+        Arc::from("sys"),
+        Arc::from("системные_вызовы"),
+        Arc::from("os"),
+    ];
+    lib.description = Some(Arc::from(
+        "Выполнение команд ОС, работа с окружением, путями и системной информацией",
+    ));
+    lib.author = Arc::from("Vadim Khristenko <just@vai-prog.ru>");
     lib.version = LibVersion::new(2, 0, 0);
     lib.stable = false;
 
-    // Регистрируем все функции
     lib.functions = vec![
         // === Переменные окружения ===
         env_get_fn(),
@@ -53,13 +47,11 @@ pub fn create_syscall_library() -> LibraryDef {
         env_unset_fn(),
         env_all_fn(),
         env_exists_fn(),
-        
         // === Выполнение команд ===
         run_fn(),
         system_fn(),
         popen_fn(),
         run_success_fn(),
-        
         // === Пути и директории ===
         cwd_fn(),
         chdir_fn(),
@@ -73,7 +65,7 @@ pub fn create_syscall_library() -> LibraryDef {
         dirname_fn(),
         extension_fn(),
         join_path_fn(),
-        
+        stem_fn(),
         // === Системная информация ===
         os_name_fn(),
         os_family_fn(),
@@ -87,9 +79,9 @@ pub fn create_syscall_library() -> LibraryDef {
         argv_fn(),
         exe_path_fn(),
         system_info_fn(),
+        pid_fn(),
     ];
 
-    // Регистрируем константы
     lib.constants = vec![
         const_windows(),
         const_linux(),
@@ -102,4 +94,39 @@ pub fn create_syscall_library() -> LibraryDef {
     ];
 
     lib
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_library_creation() {
+        let lib = create_syscall_library();
+        assert_eq!(lib.id.as_ref(), "syscall");
+        assert!(!lib.functions.is_empty());
+        assert!(!lib.constants.is_empty());
+    }
+
+    #[test]
+    fn test_os_name() {
+        let f = os_name_fn();
+        let result = f.call(&[]).unwrap();
+        match result {
+            crate::types::Value::String(s) => {
+                assert!(["windows", "linux", "macos", "unknown"].contains(&s.as_str()));
+            }
+            _ => panic!("Expected String"),
+        }
+    }
+
+    #[test]
+    fn test_cwd() {
+        let f = cwd_fn();
+        let result = f.call(&[]).unwrap();
+        match result {
+            crate::types::Value::String(s) => assert!(!s.is_empty()),
+            _ => panic!("Expected String"),
+        }
+    }
 }

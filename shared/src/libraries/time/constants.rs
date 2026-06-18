@@ -1,8 +1,9 @@
 //! Константы для работы со временем
 
+use std::sync::Arc;
+
 use crate::types::library::LibConstantDef;
-use crate::types::type_spec::TypeSpec;
-use crate::types::{Value, Number};
+use crate::types::{Number, TypeKind, Value};
 
 // ============================================================================
 // ВРЕМЕННЫЕ КОНСТАНТЫ
@@ -16,6 +17,10 @@ pub const SECONDS_PER_HOUR: i64 = 60 * SECONDS_PER_MINUTE;
 pub const SECONDS_PER_DAY: i64 = 24 * SECONDS_PER_HOUR;
 /// Миллисекунд в секунде
 pub const MILLIS_PER_SECOND: i64 = 1000;
+/// Микросекунд в секунде
+pub const MICROS_PER_SECOND: i64 = 1_000_000;
+/// Наносекунд в секунде
+pub const NANOS_PER_SECOND: i64 = 1_000_000_000;
 
 // ============================================================================
 // НАЗВАНИЯ ДНЕЙ И МЕСЯЦЕВ
@@ -26,20 +31,34 @@ pub const WEEKDAY_RU_SHORT: [&str; 7] = ["пн", "вт", "ср", "чт", "пт",
 
 /// Полные названия дней недели (ISO: 1 = пн, 7 = вс)
 pub const WEEKDAY_RU_LONG: [&str; 7] = [
-    "понедельник", "вторник", "среда", "четверг", 
-    "пятница", "суббота", "воскресенье"
+    "понедельник",
+    "вторник",
+    "среда",
+    "четверг",
+    "пятница",
+    "суббота",
+    "воскресенье",
 ];
 
 /// Краткие названия месяцев (1..12)
 pub const MONTH_RU_SHORT: [&str; 12] = [
-    "янв", "фев", "мар", "апр", "май", "июн", 
-    "июл", "авг", "сен", "окт", "ноя", "дек"
+    "янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек",
 ];
 
 /// Полные названия месяцев (1..12)
 pub const MONTH_RU_LONG: [&str; 12] = [
-    "январь", "февраль", "март", "апрель", "май", "июнь",
-    "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"
+    "январь",
+    "февраль",
+    "март",
+    "апрель",
+    "май",
+    "июнь",
+    "июль",
+    "август",
+    "сентябрь",
+    "октябрь",
+    "ноябрь",
+    "декабрь",
 ];
 
 // ============================================================================
@@ -48,40 +67,60 @@ pub const MONTH_RU_LONG: [&str; 12] = [
 
 pub fn seconds_per_minute_const() -> LibConstantDef {
     LibConstantDef {
-        name: "СЕКУНД_В_МИНУТЕ",
-        aliases: &["SECONDS_PER_MINUTE"],
-        const_type: TypeSpec::Int64,
+        name: Arc::from("СЕКУНД_В_МИНУТЕ"),
+        aliases: vec![Arc::from("SECONDS_PER_MINUTE")],
+        const_type: TypeKind::Int64,
         value: Value::Number(Number::I64(SECONDS_PER_MINUTE)),
-        description: "Количество секунд в минуте (60)",
+        description: Some(Arc::from("Количество секунд в минуте (60)")),
     }
 }
 
 pub fn seconds_per_hour_const() -> LibConstantDef {
     LibConstantDef {
-        name: "СЕКУНД_В_ЧАСЕ",
-        aliases: &["SECONDS_PER_HOUR"],
-        const_type: TypeSpec::Int64,
+        name: Arc::from("СЕКУНД_В_ЧАСЕ"),
+        aliases: vec![Arc::from("SECONDS_PER_HOUR")],
+        const_type: TypeKind::Int64,
         value: Value::Number(Number::I64(SECONDS_PER_HOUR)),
-        description: "Количество секунд в часе (3600)",
+        description: Some(Arc::from("Количество секунд в часе (3600)")),
     }
 }
 
 pub fn seconds_per_day_const() -> LibConstantDef {
     LibConstantDef {
-        name: "СЕКУНД_В_СУТКАХ",
-        aliases: &["SECONDS_PER_DAY"],
-        const_type: TypeSpec::Int64,
+        name: Arc::from("СЕКУНД_В_СУТКАХ"),
+        aliases: vec![Arc::from("SECONDS_PER_DAY")],
+        const_type: TypeKind::Int64,
         value: Value::Number(Number::I64(SECONDS_PER_DAY)),
-        description: "Количество секунд в сутках (86400)",
+        description: Some(Arc::from("Количество секунд в сутках (86400)")),
     }
 }
 
 pub fn millis_per_second_const() -> LibConstantDef {
     LibConstantDef {
-        name: "МС_В_СЕКУНДЕ",
-        aliases: &["MILLIS_PER_SECOND"],
-        const_type: TypeSpec::Int64,
+        name: Arc::from("МС_В_СЕКУНДЕ"),
+        aliases: vec![Arc::from("MILLIS_PER_SECOND")],
+        const_type: TypeKind::Int64,
         value: Value::Number(Number::I64(MILLIS_PER_SECOND)),
-        description: "Количество миллисекунд в секунде (1000)",
+        description: Some(Arc::from("Количество миллисекунд в секунде (1000)")),
+    }
+}
+
+pub fn micros_per_second_const() -> LibConstantDef {
+    LibConstantDef {
+        name: Arc::from("МКС_В_СЕКУНДЕ"),
+        aliases: vec![Arc::from("MICROS_PER_SECOND")],
+        const_type: TypeKind::Int64,
+        value: Value::Number(Number::I64(MICROS_PER_SECOND)),
+        description: Some(Arc::from("Количество микросекунд в секунде (1 000 000)")),
+    }
+}
+
+pub fn nanos_per_second_const() -> LibConstantDef {
+    LibConstantDef {
+        name: Arc::from("НС_В_СЕКУНДЕ"),
+        aliases: vec![Arc::from("NANOS_PER_SECOND")],
+        const_type: TypeKind::Int64,
+        value: Value::Number(Number::I64(NANOS_PER_SECOND)),
+        description: Some(Arc::from("Количество наносекунд в секунде (1 000 000 000)")),
     }
 }

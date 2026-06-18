@@ -2,10 +2,10 @@
 
 use std::collections::BTreeMap;
 use std::process::Command;
+use std::sync::Arc;
 
 use crate::types::library::{LibFunctionDef, LibParamDef};
-use crate::types::type_spec::TypeSpec;
-use crate::types::{Number, Value};
+use crate::types::{Number, TypeKind, Value};
 
 fn expect_string(args: &[Value], idx: usize, name: &str) -> Result<String, String> {
     let v = args
@@ -32,31 +32,41 @@ fn run_shell(cmd: &str) -> Result<(i32, String, String), String> {
     Ok((code, stdout, stderr))
 }
 
-/// выполнить(команда) -> словарь { code, stdout, stderr }
 pub fn run_fn() -> LibFunctionDef {
     LibFunctionDef::new("выполнить")
-        .with_aliases(&["run", "exec", "shell"])
-        .with_description("Выполняет команду через оболочку. Возвращает словарь: code, stdout, stderr")
-        .with_param(LibParamDef::value("команда", TypeSpec::String))
-        .returns(TypeSpec::Map(Box::new(TypeSpec::String), Box::new(TypeSpec::Any)))
+        .with_aliases(vec![
+            Arc::from("run"),
+            Arc::from("exec"),
+            Arc::from("shell"),
+        ])
+        .with_description(
+            "Выполняет команду через оболочку. Возвращает словарь: code, stdout, stderr",
+        )
+        .with_param(LibParamDef::value("команда", TypeKind::String))
+        .returns(TypeKind::Map(
+            Box::new(TypeKind::String),
+            Box::new(TypeKind::Any),
+        ))
         .with_handler(|args| {
             let cmd = expect_string(args, 0, "команда")?;
             let (code, stdout, stderr) = run_shell(&cmd)?;
             let mut map = BTreeMap::new();
-            map.insert(Value::String("code".into()), Value::Number(Number::I32(code)));
+            map.insert(
+                Value::String("code".into()),
+                Value::Number(Number::I32(code)),
+            );
             map.insert(Value::String("stdout".into()), Value::String(stdout));
             map.insert(Value::String("stderr".into()), Value::String(stderr));
             Ok(Value::Map(map))
         })
 }
 
-/// система(команда) -> цел (код возврата)
 pub fn system_fn() -> LibFunctionDef {
     LibFunctionDef::new("система")
-        .with_aliases(&["system", "os_system"])
+        .with_aliases(vec![Arc::from("system"), Arc::from("os_system")])
         .with_description("Выполняет команду и возвращает только код возврата")
-        .with_param(LibParamDef::value("команда", TypeSpec::String))
-        .returns(TypeSpec::Int32)
+        .with_param(LibParamDef::value("команда", TypeKind::String))
+        .returns(TypeKind::Int32)
         .with_handler(|args| {
             let cmd = expect_string(args, 0, "команда")?;
             let (code, _, _) = run_shell(&cmd)?;
@@ -64,13 +74,16 @@ pub fn system_fn() -> LibFunctionDef {
         })
 }
 
-/// вывод_команды(команда) -> лит
 pub fn popen_fn() -> LibFunctionDef {
     LibFunctionDef::new("вывод_команды")
-        .with_aliases(&["popen", "getoutput", "command_output"])
+        .with_aliases(vec![
+            Arc::from("popen"),
+            Arc::from("getoutput"),
+            Arc::from("command_output"),
+        ])
         .with_description("Выполняет команду и возвращает её stdout")
-        .with_param(LibParamDef::value("команда", TypeSpec::String))
-        .returns(TypeSpec::String)
+        .with_param(LibParamDef::value("команда", TypeKind::String))
+        .returns(TypeKind::String)
         .with_handler(|args| {
             let cmd = expect_string(args, 0, "команда")?;
             let (_, stdout, _) = run_shell(&cmd)?;
@@ -78,13 +91,12 @@ pub fn popen_fn() -> LibFunctionDef {
         })
 }
 
-/// успех_команды(команда) -> лог
 pub fn run_success_fn() -> LibFunctionDef {
     LibFunctionDef::new("успех_команды")
-        .with_aliases(&["run_success", "command_success"])
+        .with_aliases(vec![Arc::from("run_success"), Arc::from("command_success")])
         .with_description("Выполняет команду и возвращает да, если код возврата 0")
-        .with_param(LibParamDef::value("команда", TypeSpec::String))
-        .returns(TypeSpec::Bool)
+        .with_param(LibParamDef::value("команда", TypeKind::String))
+        .returns(TypeKind::Bool)
         .with_handler(|args| {
             let cmd = expect_string(args, 0, "команда")?;
             let (code, _, _) = run_shell(&cmd)?;

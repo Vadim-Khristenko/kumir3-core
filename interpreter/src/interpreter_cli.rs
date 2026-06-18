@@ -8,10 +8,10 @@ use std::fs;
 use std::time::Instant;
 
 use clap::Parser;
-mod interpreter;
 mod cli;
-use interpreter::Interpreter;
+mod interpreter;
 pub use cli::{Cli, Commands};
+use interpreter::Interpreter;
 
 fn main() {
     let cli = Cli::parse();
@@ -28,6 +28,14 @@ fn main() {
 
     // Создаём интерпретатор
     let mut interpreter = Interpreter::new();
+
+    // [KITE 5] Базовая директория для импорта — папка скрипта, чтобы
+    // `использовать "соседний.kum"` работало независимо от текущего каталога.
+    if let Some(dir) = file.parent()
+        && !dir.as_os_str().is_empty()
+    {
+        interpreter.set_base_dir(dir);
+    }
 
     if cli.debug {
         interpreter.set_debug_mode(true);

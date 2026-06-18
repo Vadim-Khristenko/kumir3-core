@@ -1,0 +1,149 @@
+# Пример конфигурации библиотеки Kumir 3
+# kumir.toml
+
+[package]
+name = "математика_доп"
+version = "1.0.0"
+authors = ["Иван Иванов <ivan@example.com>"]
+description = "Дополнительные математические функции для Kumir 3"
+license = "MIT"
+homepage = "https://example.com/math-lib"
+repository = "https://github.com/user/kumir-math"
+keywords = ["математика", "алгоритмы", "числа"]
+readme = "README.md"
+kumir_version = "3.0.0"
+edition = "2024"
+
+# Тип пакета: library или binary
+type = "library"
+
+# Главный файл библиотеки
+main = "src/lib.kum"
+
+# Экспортируемые функции (если не указано, экспортируются все публичные)
+exports = [
+    "факториал",
+    "фибоначчи",
+    "простое",
+    "НОД",
+    "НОК"
+]
+
+# Зависимости от других библиотек
+[dependencies]
+время = "^2.0"
+файлы = { version = "1.5", optional = true }
+
+# Зависимости для разработки
+[dev-dependencies]
+тесты = "1.0"
+
+# Настройки сборки
+[build]
+main_file = "src/lib.kum"
+output_dir = "./build"
+optimization_level = 2
+debug_info = false
+bounds_check = true
+strict_mode = true
+incremental = true
+
+# Профили сборки
+[profile.dev]
+optimization_level = 0
+debug_info = true
+bounds_check = true
+incremental = true
+
+[profile.release]
+optimization_level = 3
+debug_info = false
+bounds_check = false
+lto = true
+
+[profile.test]
+optimization_level = 0
+debug_info = true
+bounds_check = true
+
+# Метаданные библиотеки
+[library]
+# Категория библиотеки
+category = "математика"
+
+# Теги для поиска
+tags = ["math", "algorithms", "numbers", "factorial", "fibonacci"]
+
+# Минимальная версия Kumir для использования
+min_kumir_version = "3.0.0"
+
+# Стабильность API
+stable = true
+
+# Документация
+[documentation]
+# Путь к документации
+path = "docs/"
+
+# Примеры использования
+examples = [
+    "examples/factorial.kum",
+    "examples/fibonacci.kum",
+    "examples/primes.kum"
+]
+
+# Тесты
+[tests]
+# Директория с тестами
+path = "tests/"
+
+# Файлы тестов
+files = [
+    "tests/test_factorial.kum",
+    "tests/test_fibonacci.kum",
+    "tests/test_primes.kum"
+]
+
+# Бенчмарки
+[benchmarks]
+enabled = true
+path = "benches/"
+
+# Особенности (features)
+[features]
+default = ["базовые"]
+базовые = []
+расширенные = ["файлы"]
+все = ["базовые", "расширенные"]
+
+# Целевые платформы
+[targets]
+windows = { enabled = true }
+linux = { enabled = true }
+macos = { enabled = true }
+wasm = { enabled = false }
+
+# Переменные окружения
+[env]
+MATH_LIB_DEBUG = "0"
+MATH_LIB_CACHE = "1"
+
+# Метаданные для публикации
+[publish]
+# Реестр для публикации
+registry = "kumir-registry"
+
+# Исключить файлы из публикации
+exclude = [
+    "tests/",
+    "benches/",
+    ".git/",
+    "*.tmp"
+]
+
+# Включить только определённые файлы
+include = [
+    "src/",
+    "README.md",
+    "LICENSE"
+]

@@ -1,6 +1,9 @@
+// Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
+// Licensed under MIT OR Apache-2.0
+
+use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
-use std::fmt;
 
 // ============================================================================
 // Error Handling
@@ -36,11 +39,15 @@ impl fmt::Display for StreamError {
 }
 
 impl From<io::Error> for StreamError {
-    fn from(e: io::Error) -> Self { StreamError::Io(e) }
+    fn from(e: io::Error) -> Self {
+        StreamError::Io(e)
+    }
 }
 
 impl From<fmt::Error> for StreamError {
-    fn from(e: fmt::Error) -> Self { StreamError::Format(e) }
+    fn from(e: fmt::Error) -> Self {
+        StreamError::Format(e)
+    }
 }
 
 // ============================================================================
@@ -93,7 +100,10 @@ impl<R: BufRead, W: Write> IOStream<R, W> {
         self.buffer.clear();
         let bytes = self.reader.read_line(&mut self.buffer)?;
         if bytes == 0 {
-            return Err(StreamError::Io(io::Error::new(io::ErrorKind::UnexpectedEof, "EOF")));
+            return Err(StreamError::Io(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "EOF",
+            )));
         }
         Ok(self.buffer.trim_end().to_string())
     }
@@ -116,7 +126,9 @@ impl<R: BufRead, W: Write> IOStream<R, W> {
                 Ok(_) => {
                     let c = char_buf[0] as char;
                     if c.is_whitespace() {
-                        if started { break; } // End of token
+                        if started {
+                            break;
+                        } // End of token
                     } else {
                         started = true;
                         token.push(c);
@@ -127,7 +139,10 @@ impl<R: BufRead, W: Write> IOStream<R, W> {
         }
 
         if token.is_empty() && !started {
-            return Err(StreamError::Io(io::Error::new(io::ErrorKind::UnexpectedEof, "EOF")));
+            return Err(StreamError::Io(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "EOF",
+            )));
         }
         Ok(token)
     }
@@ -135,7 +150,9 @@ impl<R: BufRead, W: Write> IOStream<R, W> {
     /// Парсит следующий токен в указанный тип.
     pub fn parse<T: std::str::FromStr>(&mut self) -> Result<T, StreamError> {
         let token = self.read_token()?;
-        token.parse::<T>().map_err(|_| StreamError::Parse(format!("Failed to parse '{}'", token)))
+        token
+            .parse::<T>()
+            .map_err(|_| StreamError::Parse(format!("Failed to parse '{}'", token)))
     }
 
     pub fn into_writer(self) -> W {
@@ -167,7 +184,7 @@ impl FileStream {
     }
 
     pub fn open_read(&mut self) -> Result<(), StreamError> {
-        let file = File::open(&self.path).map_err(|e| StreamError::Io(e))?;
+        let file = File::open(&self.path).map_err(StreamError::Io)?;
         self.mode = FileMode::Read(BufReader::new(file));
         Ok(())
     }
@@ -238,4 +255,3 @@ impl Drop for FileStream {
         self.close();
     }
 }
-

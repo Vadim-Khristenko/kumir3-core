@@ -8,10 +8,10 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use super::version::{Version, VersionSpec};
-use super::config::{DependencySpec, LockFile, LockEntry};
-use super::environment::{VirtualEnvironment, VersionedLibrary, LibrarySource};
+use super::config::{DependencySpec, LockEntry, LockFile};
+use super::environment::{LibrarySource, VersionedLibrary, VirtualEnvironment};
 use super::library::LibraryDef;
+use super::version::{Version, VersionSpec};
 
 // ============================================================================
 //                         ГРАФ ЗАВИСИМОСТЕЙ
@@ -84,8 +84,10 @@ impl DependencyGraph {
 
     /// Добавляет зависимость
     pub fn add_dependency(&mut self, spec: &DependencySpec, requested_by: &str) {
-        let node = self.nodes.entry(spec.name.clone()).or_insert_with(|| {
-            DependencyNode {
+        let node = self
+            .nodes
+            .entry(spec.name.clone())
+            .or_insert_with(|| DependencyNode {
                 name: spec.name.clone(),
                 version: None,
                 requested: spec.version.clone(),
@@ -93,8 +95,7 @@ impl DependencyGraph {
                 requested_by: Vec::new(),
                 source: spec.path.as_ref().map(|p| LibrarySource::Local(p.clone())),
                 status: ResolutionStatus::Pending,
-            }
-        });
+            });
 
         node.requested_by.push(requested_by.to_string());
     }
@@ -224,10 +225,10 @@ pub enum ConflictStrategy {
 pub trait LibraryProvider {
     /// Возвращает все доступные версии библиотеки
     fn available_versions(&self, name: &str) -> Vec<Version>;
-    
+
     /// Возвращает определение библиотеки для версии
     fn get_library(&self, name: &str, version: &Version) -> Option<LibraryDef>;
-    
+
     /// Возвращает зависимости библиотеки
     fn get_dependencies(&self, name: &str, version: &Version) -> Vec<DependencySpec>;
 }
@@ -254,9 +255,15 @@ pub enum ResolutionError {
     /// Библиотека не найдена
     NotFound { name: String },
     /// Нет совместимой версии
-    NoCompatibleVersion { name: String, requested: VersionSpec },
+    NoCompatibleVersion {
+        name: String,
+        requested: VersionSpec,
+    },
     /// Конфликт версий
-    Conflict { name: String, conflicts: Vec<VersionConflict> },
+    Conflict {
+        name: String,
+        conflicts: Vec<VersionConflict>,
+    },
     /// Циклическая зависимость
     CyclicDependency { cycle: Vec<String> },
 }
@@ -310,7 +317,10 @@ impl<'a> DependencyResolver<'a> {
     }
 
     /// Разрешает зависимости
-    pub fn resolve(&mut self, dependencies: &[DependencySpec]) -> Result<ResolutionResult, Vec<ResolutionError>> {
+    pub fn resolve(
+        &mut self,
+        dependencies: &[DependencySpec],
+    ) -> Result<ResolutionResult, Vec<ResolutionError>> {
         // Добавляем корневые зависимости
         for dep in dependencies {
             self.graph.add_root(dep);
@@ -347,7 +357,8 @@ impl<'a> DependencyResolver<'a> {
 
         // Проверяем циклы
         if let Some(cycle) = self.graph.has_cycle() {
-            self.errors.push(ResolutionError::CyclicDependency { cycle });
+            self.errors
+                .push(ResolutionError::CyclicDependency { cycle });
         }
 
         if !self.errors.is_empty() {
@@ -355,7 +366,9 @@ impl<'a> DependencyResolver<'a> {
         }
 
         // Формируем результат
-        let install_order = self.graph.topological_sort()
+        let install_order = self
+            .graph
+            .topological_sort()
             .map_err(|e| vec![ResolutionError::CyclicDependency { cycle: vec![e] }])?;
 
         let mut result = ResolutionResult {
@@ -367,21 +380,26 @@ impl<'a> DependencyResolver<'a> {
         for (name, version) in &self.resolved {
             if self.provider.get_library(name, version).is_some() {
                 let node = self.graph.get(name);
-                result.resolved.insert(name.clone(), ResolvedPackage {
-                    name: name.clone(),
-                    version: version.clone(),
-                    source: node.and_then(|n| n.source.clone())
-                        .unwrap_or(LibrarySource::Builtin),
-                    dependencies: node.map(|n| n.dependencies.clone())
-                        .unwrap_or_default(),
-                });
+                result.resolved.insert(
+                    name.clone(),
+                    ResolvedPackage {
+                        name: name.clone(),
+                        version: version.clone(),
+                        source: node
+                            .and_then(|n| n.source.clone())
+                            .unwrap_or(LibrarySource::Builtin),
+                        dependencies: node.map(|n| n.dependencies.clone()).unwrap_or_default(),
+                    },
+                );
 
                 result.lock_entries.push(LockEntry {
                     name: name.clone(),
                     version: version.clone(),
                     checksum: None,
                     source: "registry".to_string(),
-                    dependencies: self.provider.get_dependencies(name, version)
+                    dependencies: self
+                        .provider
+                        .get_dependencies(name, version)
                         .iter()
                         .map(|d| d.name.clone())
                         .collect(),
@@ -393,25 +411,28 @@ impl<'a> DependencyResolver<'a> {
     }
 
     fn resolve_single(&mut self, name: &str) -> Result<(), ResolutionError> {
-        let node = self.graph.get(name)
-            .ok_or_else(|| ResolutionError::NotFound { name: name.to_string() })?;
-        
+        let node = self
+            .graph
+            .get(name)
+            .ok_or_else(|| ResolutionError::NotFound {
+                name: name.to_string(),
+            })?;
+
         let requested = node.requested.clone();
 
         // Проверяем lock файл
-        if self.strategy == ConflictStrategy::UseLock {
-            if let Some(lock) = self.lock_file {
-                if let Some(locked_version) = lock.locked_version(name) {
-                    if requested.matches(locked_version) {
-                        self.resolved.insert(name.to_string(), locked_version.clone());
-                        if let Some(node) = self.graph.get_mut(name) {
-                            node.version = Some(locked_version.clone());
-                            node.status = ResolutionStatus::Resolved;
-                        }
-                        return Ok(());
-                    }
-                }
+        if self.strategy == ConflictStrategy::UseLock
+            && let Some(lock) = self.lock_file
+            && let Some(locked_version) = lock.locked_version(name)
+            && requested.matches(locked_version)
+        {
+            self.resolved
+                .insert(name.to_string(), locked_version.clone());
+            if let Some(node) = self.graph.get_mut(name) {
+                node.version = Some(locked_version.clone());
+                node.status = ResolutionStatus::Resolved;
             }
+            return Ok(());
         }
 
         // Получаем доступные версии
@@ -420,11 +441,14 @@ impl<'a> DependencyResolver<'a> {
             if let Some(node) = self.graph.get_mut(name) {
                 node.status = ResolutionStatus::NotFound;
             }
-            return Err(ResolutionError::NotFound { name: name.to_string() });
+            return Err(ResolutionError::NotFound {
+                name: name.to_string(),
+            });
         }
 
         // Фильтруем по спецификации
-        let mut matching: Vec<Version> = available.into_iter()
+        let mut matching: Vec<Version> = available
+            .into_iter()
             .filter(|v| requested.matches(v))
             .collect();
 
@@ -454,21 +478,22 @@ impl<'a> DependencyResolver<'a> {
         };
 
         // Проверяем конфликт с уже разрешённой версией
-        if let Some(existing) = self.resolved.get(name) {
-            if existing != &version && !requested.matches(existing) {
-                let conflict = VersionConflict {
-                    requester: "previous resolution".to_string(),
-                    requested: requested.clone(),
-                    conflicts_with: existing.clone(),
-                };
-                if let Some(node) = self.graph.get_mut(name) {
-                    node.status = ResolutionStatus::Conflict(vec![conflict.clone()]);
-                }
-                return Err(ResolutionError::Conflict {
-                    name: name.to_string(),
-                    conflicts: vec![conflict],
-                });
+        if let Some(existing) = self.resolved.get(name)
+            && existing != &version
+            && !requested.matches(existing)
+        {
+            let conflict = VersionConflict {
+                requester: "previous resolution".to_string(),
+                requested: requested.clone(),
+                conflicts_with: existing.clone(),
+            };
+            if let Some(node) = self.graph.get_mut(name) {
+                node.status = ResolutionStatus::Conflict(vec![conflict.clone()]);
             }
+            return Err(ResolutionError::Conflict {
+                name: name.to_string(),
+                conflicts: vec![conflict],
+            });
         }
 
         // Сохраняем разрешённую версию
@@ -525,17 +550,17 @@ impl ResolutionResult {
         provider: &dyn LibraryProvider,
     ) {
         for name in &self.install_order {
-            if let Some(pkg) = self.resolved.get(name) {
-                if let Some(def) = provider.get_library(name, &pkg.version) {
-                    let versioned = VersionedLibrary {
-                        def,
-                        version: pkg.version.clone(),
-                        source: pkg.source.clone(),
-                        path: None,
-                        checksum: None,
-                    };
-                    env.register(versioned);
-                }
+            if let Some(pkg) = self.resolved.get(name)
+                && let Some(def) = provider.get_library(name, &pkg.version)
+            {
+                let versioned = VersionedLibrary {
+                    def,
+                    version: pkg.version.clone(),
+                    source: pkg.source.clone(),
+                    path: None,
+                    checksum: None,
+                };
+                env.register(versioned);
             }
         }
     }
@@ -556,14 +581,15 @@ mod tests {
     impl MockProvider {
         fn new() -> Self {
             let mut libs = HashMap::new();
-            libs.insert("Сокеты".to_string(), vec![
-                Version::new(1, 0, 0),
-                Version::new(1, 5, 0),
-                Version::new(2, 0, 0),
-            ]);
-            libs.insert("HTTP".to_string(), vec![
-                Version::new(1, 0, 0),
-            ]);
+            libs.insert(
+                "Сокеты".to_string(),
+                vec![
+                    Version::new(1, 0, 0),
+                    Version::new(1, 5, 0),
+                    Version::new(2, 0, 0),
+                ],
+            );
+            libs.insert("HTTP".to_string(), vec![Version::new(1, 0, 0)]);
             Self { libraries: libs }
         }
     }
@@ -596,13 +622,14 @@ mod tests {
         let provider = MockProvider::new();
         let mut resolver = DependencyResolver::new(&provider);
 
-        let deps = vec![
-            DependencySpec::version("Сокеты", VersionSpec::compatible(Version::new(1, 0, 0))),
-        ];
+        let deps = vec![DependencySpec::version(
+            "Сокеты",
+            VersionSpec::compatible(Version::new(1, 0, 0)),
+        )];
 
         let result = resolver.resolve(&deps).unwrap();
         assert!(result.resolved.contains_key("Сокеты"));
-        
+
         // Должна быть выбрана 1.5.0 (самая новая совместимая с ^1.0)
         let pkg = result.resolved.get("Сокеты").unwrap();
         assert_eq!(pkg.version, Version::new(1, 5, 0));
@@ -613,9 +640,10 @@ mod tests {
         let provider = MockProvider::new();
         let mut resolver = DependencyResolver::new(&provider);
 
-        let deps = vec![
-            DependencySpec::version("НесуществующаяБиблиотека", VersionSpec::any()),
-        ];
+        let deps = vec![DependencySpec::version(
+            "НесуществующаяБиблиотека",
+            VersionSpec::any(),
+        )];
 
         let result = resolver.resolve(&deps);
         assert!(result.is_err());

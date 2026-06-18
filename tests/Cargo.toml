@@ -1,6 +1,6 @@
 [package]
 name = "tests"
-version = "0.1.0"
+version = "0.2.0-alpha.1"
 edition = "2024"
 description = "Integration test crate for kumir3-core"
 authors = [
@@ -15,3 +15,6 @@ publish = false
 [dependencies]
 shared = { path = "../shared" }
 rstest = "0.26.1"
+
+[lints]
+workspace = true

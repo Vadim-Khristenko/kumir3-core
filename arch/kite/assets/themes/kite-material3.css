@@ -1,0 +1,138 @@
+/* =============================================================================
+ * KITE THEME: Material Design 3 (Material You) - Deep Orange Seed
+ * ========================================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap");
+
+.kite {
+    /* Официальная система Surface Container (без теней!) */
+    --kite-bg: #141211; /* Surface (Tone 6) */
+    --kite-surface: #1c1a19; /* Surface Container Low (Tone 10) */
+    --kite-surface-2: #211e1d; /* Surface Container (Tone 12) */
+
+    /* Контуры вместо разделителей и теней */
+    --kite-border: #51433f; /* Outline Variant (Tone 30) */
+
+    /* Текст: отказ от чисто белого */
+    --kite-text: #eaddd9; /* On Surface (Tone 90) */
+    --kite-text-dim: #d5c2be; /* On Surface Variant (Tone 80) */
+    --kite-heading: #ffdad3; /* On Primary Container (Tone 90) */
+
+    /* Роли акцентов M3 */
+    --kite-accent: #ffb59f; /* Primary (Tone 80) */
+    --kite-accent-2: #e7bdb1; /* Secondary (Tone 80) */
+
+    /* Скругления M3 (Shape System) */
+    --kite-radius: 12px; /* Medium Shape */
+    --kite-radius-lg: 16px; /* Large Shape */
+
+    --kite-font-sans: "Roboto", sans-serif;
+}
+
+html:has(> body > .kite),
+body:has(> .kite) {
+    background: #141211;
+}
+
+/* Типографика стала плотнее, заголовки менее жирные (wght 400/500) */
+.kite h1 {
+    font-weight: 400;
+    font-size: 1.8rem;
+}
+.kite h2 {
+    font-weight: 400;
+    border-bottom: 1px solid var(--kite-border);
+}
+.kite h2::after {
+    background: var(--kite-accent);
+    height: 3px;
+    border-radius: 999px;
+}
+.kite h3 {
+    font-weight: 500;
+    color: var(--kite-accent);
+}
+
+/* Шапка: Surface Container High + Скругления 16px + Без теней */
+.kite-header {
+    background: #2b2826; /* Surface Container High (Tone 17) */
+    border: 1px solid var(--kite-border); /* В M3 используются Outlines */
+    border-radius: var(--kite-radius-lg);
+    box-shadow: none;
+}
+.kite-header::before {
+    background: #6e2911;
+    height: 3px;
+} /* Primary Container (Tone 30) */
+.kite-header::after {
+    display: none;
+}
+
+/* Карточки: плоские (Surface Container Low), обводка Outline Variant */
+.kite-card {
+    background: var(--kite-surface);
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius);
+    box-shadow: none;
+    transition:
+        background-color 0.2s,
+        border-color 0.2s;
+}
+.kite-card::before {
+    display: none;
+}
+.kite-card:hover {
+    background: var(--kite-surface-2); /* Приподнимаем тоном, а не тенью */
+    border-color: #85736e; /* Outline (Tone 50) */
+    transform: none; /* Элементы M3 не взлетают физически, только меняют стейт */
+}
+
+/* Навигация (TOC) под стиль M3 Navigation Rail/Drawer */
+.kite-toc {
+    background: var(--kite-surface);
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius-lg);
+    box-shadow: none;
+}
+.kite-toc::before {
+    display: none;
+}
+.kite-toc a {
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    margin-left: -0.4rem;
+}
+.kite-toc a:hover {
+    background: rgba(255, 181, 159, 0.08); /* 8% State Layer */
+    color: var(--kite-accent);
+}
+.kite-toc a.is-active {
+    background: #6e2911; /* M3 Active item = Primary Container */
+    color: #ffdad3; /* M3 Active text = On Primary Container */
+    font-weight: 500;
+}
+
+/* Колл-ауты в стиле M3 */
+.kite-callout {
+    background: var(--kite-surface-2);
+    border: 1px solid var(--kite-border);
+    border-left-width: 4px;
+    border-radius: 8px; /* Small shape */
+}
+
+/* Чипы (Бейджи/Статусы) полностью скругленные */
+.kite-status {
+    background: var(--kite-surface-2);
+    border: 1px solid var(--kite-border);
+    border-radius: 999px;
+    color: var(--kite-text);
+}
+
+/* Ссылки (Primary) */
+.kite a {
+    color: var(--kite-accent);
+    border-bottom: 1px solid transparent;
+}
+.kite a:hover {
+    border-bottom-color: var(--kite-accent);
+}

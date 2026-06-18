@@ -1,256 +1,206 @@
-//! Классы и ООП (Kumir 3)
+//! Classes, interfaces, traits, and implementation blocks (Kumir 3).
+//!
+//! [STABLE] Defines the object model abstractions used by the Kumir 3 compiler
+//! and runtime. The data structures are intentionally extensible for future
+//! LSP support, debugger integration, and alternative backends (AOT/JIT or
+//! transpilers).
+//!
+//! ## Architecture
+//!
+//! ```text
+//! ┌─────────────────────────────────────────────────────────────────┐
+//! │ ClassDef                                                       │
+//! ├─────────────────────────────────────────────────────────────────┤
+//! │  name, kind, parent, interfaces, traits, fields, methods        │
+//! │  constructors, destructor, attributes, span, docs               │
+//! └─────────────────────────────────────────────────────────────────┘
+//!      ▲         ▲             ▲
+//!      │         │ implements  │ declares
+//!      │         │             │
+//! ┌───────────┐  ┌───────────┐  ┌───────────────┐
+//! │ TraitDef  │  │ Interface │  │ ImplDef       │
+//! └───────────┘  └───────────┘  └───────────────┘
+//! ```
 
-use super::type_spec::TypeSpec;
+use std::sync::Arc;
+
+use super::algorithm::{Algorithm, Attribute, NodeId, Parameter, SourceSpan, TypeParam};
 use super::expr::Expr;
 use super::stmt::Stmt;
-use super::algorithm::Parameter;
+use super::value::TypeKind;
 
-/// Модификатор доступа.
+// =============================================================================
+//         SECTION: VISIBILITY
+// =============================================================================
+
+/// Visibility modifier for members and types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Visibility {
     #[default]
-    Public,     // открытый
-    Private,    // закрытый
-    Protected,  // защищённый
+    Public,
+    Private,
+    Protected,
 }
 
 // =============================================================================
-//                          ИНТЕРФЕЙСЫ
+//         SECTION: CLASS KINDS
 // =============================================================================
 
-/// Определение интерфейса.
-/// 
-/// Интерфейс — набор сигнатур методов, которые класс обязан реализовать.
-/// 
-/// Пример:
-/// ```kumir
-/// интерфейс Сравнимый
-///     алг лог меньше(арг Сравнимый другой)
-///     алг лог равно(арг Сравнимый другой)
-/// кон
-/// ```
+/// Kind of type in the object system.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClassKind {
+    /// Standard class with inheritance and methods
+    Class,
+    /// Lightweight struct (no virtual dispatch, plain data)
+    Struct,
+    /// Performer/driver (Robot, Board, etc.)
+    Performer,
+    /// Native host type provided by runtime or plugin
+    Native,
+}
+
+// =============================================================================
+//         SECTION: INTERFACES
+// =============================================================================
+
+/// Interface definition (method signatures only).
 #[derive(Debug, Clone, PartialEq)]
 pub struct InterfaceDef {
-    /// Имя интерфейса
-    pub name: String,
-    
-    /// Родительские интерфейсы (множественное наследование для интерфейсов)
-    pub extends: Vec<String>,
-    
-    /// Сигнатуры методов (без реализации)
+    pub id: NodeId,
+    pub name: Arc<str>,
+    pub type_params: Vec<TypeParam>,
+    pub extends: Vec<Arc<str>>,
     pub methods: Vec<MethodSignature>,
+    pub attributes: Vec<Attribute>,
+    pub span: Option<SourceSpan>,
+    pub doc: Option<Arc<str>>,
 }
 
 // =============================================================================
-//                          TRAIT (ТИПАЖ)
+//         SECTION: TRAITS (TYPECLASSES)
 // =============================================================================
 
-/// Определение trait (типажа).
-/// 
-/// Trait похож на интерфейс, но может содержать реализации методов по умолчанию.
-/// 
-/// Пример:
-/// ```kumir
-/// типаж Отображаемый
-///     алг лит в_строку()  | обязательный метод
-///     
-///     алг вывести()       | метод с реализацией по умолчанию
-///     нач
-///         вывод в_строку(), нс
-///     кон
-/// кон
-/// ```
+/// Trait definition with optional default implementations.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TraitDef {
-    /// Имя типажа
-    pub name: String,
-    
-    /// Супер-типажи (требуемые типажи)
-    pub supertraits: Vec<String>,
-    
-    /// Методы типажа (могут иметь реализацию по умолчанию)
+    pub id: NodeId,
+    pub name: Arc<str>,
+    pub type_params: Vec<TypeParam>,
+    pub supertraits: Vec<Arc<str>>,
     pub methods: Vec<TraitMethod>,
+    pub attributes: Vec<Attribute>,
+    pub span: Option<SourceSpan>,
+    pub doc: Option<Arc<str>>,
 }
 
-/// Метод в типаже
+/// Method inside a trait.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TraitMethod {
-    /// Сигнатура метода
     pub signature: MethodSignature,
-    
-    /// Реализация по умолчанию (None = обязательный для реализации)
     pub default_impl: Option<Vec<Stmt>>,
+    pub attributes: Vec<Attribute>,
+    pub span: Option<SourceSpan>,
 }
 
 // =============================================================================
-//                          IMPL-БЛОК
+//         SECTION: IMPL BLOCKS
 // =============================================================================
 
-/// Блок реализации (impl).
-/// 
-/// Используется для:
-/// 1. Реализации методов для типа: `реализация для Точка`
-/// 2. Реализации типажа для типа: `реализация Отображаемый для Точка`
-/// 
-/// Пример:
-/// ```kumir
-/// реализация Отображаемый для Точка
-///     алг лит в_строку()
-///     нач
-///         знач := "(" + строка(я.x) + ", " + строка(я.y) + ")"
-///     кон
-/// кон
-/// ```
+/// Implementation block (impl Trait for Type or inherent impl).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImplDef {
-    /// Имя типажа (None = собственные методы типа)
-    pub trait_name: Option<String>,
-    
-    /// Целевой тип
-    pub target_type: String,
-    
-    /// Реализуемые методы
+    pub id: NodeId,
+    pub trait_name: Option<Arc<str>>,
+    pub type_params: Vec<TypeParam>,
+    /// Target type being implemented (Object/Class/Struct name)
+    pub target: Arc<str>,
     pub methods: Vec<Method>,
+    pub attributes: Vec<Attribute>,
+    pub span: Option<SourceSpan>,
+    pub doc: Option<Arc<str>>,
 }
 
 // =============================================================================
-//                          КЛАССЫ
+//         SECTION: FIELDS
 // =============================================================================
 
-/// Определение класса.
-/// 
-/// Пример:
-/// ```kumir
-/// класс Точка
-///     закрытый:
-///         вещ x, y
-///     открытый:
-///         конструктор(арг вещ x, арг вещ y)
-///         нач
-///             я.x := x
-///             я.y := y
-///         кон
-///         
-///         алг вещ расстояние(арг Точка другая)
-///         нач
-///             знач := sqrt((я.x - другая.x)**2 + (я.y - другая.y)**2)
-///         кон
-/// кон
-/// ```
-#[derive(Debug, Clone, PartialEq)]
-pub struct ClassDef {
-    /// Имя класса
-    pub name: String,
-    
-    /// Родительский класс (наследование)
-    pub parent: Option<String>,
-    
-    /// Реализуемые интерфейсы
-    pub interfaces: Vec<String>,
-    
-    /// Поля класса
-    pub fields: Vec<Field>,
-    
-    /// Методы класса
-    pub methods: Vec<Method>,
-    
-    /// Конструкторы (может быть несколько — перегрузка)
-    pub constructors: Vec<Constructor>,
-    
-    /// Деструктор (опционально)
-    pub destructor: Option<Method>,
-    
-    /// Является ли класс абстрактным
-    pub is_abstract: bool,
-    
-    /// Является ли класс финальным (нельзя наследовать)
-    pub is_final: bool,
-}
-
-/// Поле класса или структуры.
+/// Field of a class or struct.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
-    /// Имя поля
-    pub name: String,
-    
-    /// Тип поля
-    pub type_spec: TypeSpec,
-    
-    /// Модификатор доступа
+    pub id: NodeId,
+    pub name: Arc<str>,
+    pub type_kind: TypeKind,
     pub visibility: Visibility,
-    
-    /// Начальное значение (по умолчанию)
     pub default: Option<Expr>,
-    
-    /// Является ли поле статическим
     pub is_static: bool,
+    pub is_mutable: bool,
+    pub attributes: Vec<Attribute>,
+    pub span: Option<SourceSpan>,
+    pub doc: Option<Arc<str>>,
 }
 
-/// Метод класса.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Method {
-    /// Имя метода
-    pub name: String,
-    
-    /// Параметры
-    pub params: Vec<Parameter>,
-    
-    /// Возвращаемый тип
-    pub return_type: Option<TypeSpec>,
-    
-    /// Тело метода (None для абстрактных методов)
-    pub body: Option<Vec<Stmt>>,
-    
-    /// Модификатор доступа
-    pub visibility: Visibility,
-    
-    /// Является ли метод статическим
-    pub is_static: bool,
-    
-    /// Является ли метод виртуальным
-    pub is_virtual: bool,
-    
-    /// Является ли метод абстрактным
-    pub is_abstract: bool,
-    
-    /// Переопределяет ли метод родительский
-    pub is_override: bool,
-    
-    /// Является ли метод финальным
-    pub is_final: bool,
-    
-    /// Является ли метод асинхронным
-    pub is_async: bool,
-}
+// =============================================================================
+//         SECTION: METHODS & SIGNATURES
+// =============================================================================
 
-/// Сигнатура метода (для интерфейсов).
+/// Signature of a method (used by interfaces and traits).
 #[derive(Debug, Clone, PartialEq)]
 pub struct MethodSignature {
-    /// Имя метода
-    pub name: String,
-    
-    /// Параметры
+    pub name: Arc<str>,
+    pub type_params: Vec<TypeParam>,
     pub params: Vec<Parameter>,
-    
-    /// Возвращаемый тип
-    pub return_type: Option<TypeSpec>,
+    pub return_type: Option<TypeKind>,
+    pub attributes: Vec<Attribute>,
+    pub span: Option<SourceSpan>,
 }
 
-/// Конструктор класса.
-/// 
-/// Поддерживает перегрузку — может быть несколько конструкторов
-/// с разными параметрами.
+/// Method definition bound to a class or struct.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Method {
+    /// Algorithm payload (kind should be Method/Constructor/Destructor)
+    pub algorithm: Algorithm,
+    pub visibility: Visibility,
+    pub is_static: bool,
+    pub is_virtual: bool,
+    pub is_override: bool,
+    pub is_final: bool,
+    pub is_abstract: bool,
+    pub attributes: Vec<Attribute>,
+    pub span: Option<SourceSpan>,
+}
+
+/// Constructor definition.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Constructor {
-    /// Параметры конструктора
-    pub params: Vec<Parameter>,
-    
-    /// Вызов конструктора родителя (если есть)
+    pub algorithm: Algorithm,
+    /// Optional call to parent constructor
     pub super_call: Option<Vec<Expr>>,
-    
-    /// Тело конструктора
-    pub body: Vec<Stmt>,
-    
-    /// Модификатор доступа
     pub visibility: Visibility,
+    pub attributes: Vec<Attribute>,
+    pub span: Option<SourceSpan>,
+}
+
+// =============================================================================
+//         SECTION: CLASSES
+// =============================================================================
+
+/// Class or struct definition.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClassDef {
+    pub id: NodeId,
+    pub name: Arc<str>,
+    pub kind: ClassKind,
+    pub type_params: Vec<TypeParam>,
+    pub parent: Option<Arc<str>>,
+    pub interfaces: Vec<Arc<str>>,
+    pub traits: Vec<Arc<str>>,
+    pub fields: Vec<Field>,
+    pub methods: Vec<Method>,
+    pub constructors: Vec<Constructor>,
+    pub destructor: Option<Method>,
+    pub is_abstract: bool,
+    pub is_final: bool,
+    pub attributes: Vec<Attribute>,
+    pub span: Option<SourceSpan>,
+    pub doc: Option<Arc<str>>,
 }

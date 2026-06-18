@@ -13,15 +13,15 @@
 
 pub mod callback;
 pub mod channel;
-pub mod executor;
 pub mod events;
+pub mod executor;
 pub mod handle;
 
 // Реэкспорты для удобного доступа
 pub use callback::*;
 pub use channel::*;
-pub use executor::*;
 pub use events::*;
+pub use executor::*;
 pub use handle::*;
 
 use std::sync::Arc;
@@ -32,7 +32,7 @@ use tokio::sync::RwLock;
 // ============================================================================
 
 /// Глобальный runtime для асинхронных операций.
-/// 
+///
 /// Предоставляет единую точку доступа к:
 /// - Tokio runtime для async задач
 /// - Системе событий и подписок
@@ -84,13 +84,15 @@ impl KumirRuntime {
             .worker_threads(4)
             .enable_all()
             .build()
-            .map_err(|e| RuntimeError::new(
-                RuntimeErrorKind::InitializationFailed,
-                format!("Не удалось создать tokio runtime: {}", e)
-            ))?;
+            .map_err(|e| {
+                RuntimeError::new(
+                    RuntimeErrorKind::InitializationFailed,
+                    format!("Не удалось создать tokio runtime: {}", e),
+                )
+            })?;
 
         self.tokio_handle = Some(rt.handle().clone());
-        
+
         // Держим runtime в фоне
         std::thread::spawn(move || {
             rt.block_on(async {
@@ -189,21 +191,21 @@ impl RuntimeError {
     pub fn callback_not_found(name: &str) -> Self {
         Self::new(
             RuntimeErrorKind::CallbackNotFound,
-            format!("Коллбэк '{}' не найден", name)
+            format!("Коллбэк '{}' не найден", name),
         )
     }
 
     pub fn resource_not_found(id: u64) -> Self {
         Self::new(
             RuntimeErrorKind::ResourceNotFound,
-            format!("Ресурс с ID {} не найден", id)
+            format!("Ресурс с ID {} не найден", id),
         )
     }
 
     pub fn timeout(operation: &str) -> Self {
         Self::new(
             RuntimeErrorKind::Timeout,
-            format!("Таймаут операции: {}", operation)
+            format!("Таймаут операции: {}", operation),
         )
     }
 }
@@ -227,9 +229,7 @@ use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
 /// Глобальный runtime (lazy initialized).
-static GLOBAL_RUNTIME: Lazy<Mutex<KumirRuntime>> = Lazy::new(|| {
-    Mutex::new(KumirRuntime::new())
-});
+static GLOBAL_RUNTIME: Lazy<Mutex<KumirRuntime>> = Lazy::new(|| Mutex::new(KumirRuntime::new()));
 
 /// Получает доступ к глобальному runtime.
 pub fn global_runtime() -> std::sync::MutexGuard<'static, KumirRuntime> {

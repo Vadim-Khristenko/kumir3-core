@@ -1,0 +1,245 @@
+<link rel="stylesheet" href="./assets/kite.css">
+<!-- =============================================================================
+     KITE 1 — Kumir 3: язык, цели и преимущества
+============================================================================== -->
+<article class="kite" data-kite="0001" data-status="active" lang="ru">
+
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE 1 · Информационный</span>
+    <h1>Kumir 3: язык, цели и преимущества</h1>
+    <dl class="kite-meta">
+      <dt>Номер</dt>            <dd>KITE 1</dd>
+      <dt>Название</dt>         <dd>Обзор языка Kumir 3</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
+      <dt>Тип</dt>              <dd>Информационный</dd>
+      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Создан</dt>           <dd>2026-05-30</dd>
+      <dt>Версия документа</dt> <dd>1.0.0</dd>
+    </dl>
+  </header>
+
+  <nav class="kite-toc" aria-label="Содержание">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#chto">Что такое Kumir 3</a></li>
+      <li><a href="#istoriya">Немного истории</a></li>
+      <li><a href="#filosofiya">Философия</a></li>
+      <li><a href="#celi">Цели</a></li>
+      <li><a href="#preimushchestva">Ключевые преимущества</a></li>
+      <li><a href="#paradigmy">Парадигмы</a></li>
+      <li><a href="#instrumenty">Инструменты</a></li>
+      <li><a href="#sovmestimost">Совместимость с КуМир 2</a></li>
+      <li><a href="#primer">Пример программы</a></li>
+      <li><a href="#roadmap">Дорожная карта</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section class="kite-section" id="chto">
+    <h2>1. Что такое Kumir 3</h2>
+    <p>
+      <strong>Kumir&nbsp;3</strong> — это современная реинкарнация легендарного учебного
+      алгоритмического языка <em>КуМир</em>, полностью переписанная на <strong>Rust</strong>.
+      Язык сохраняет главную черту оригинала — обучение программированию на русском языке без
+      боли — но добавляет всё, что нужно для настоящих проектов: строгую и гибкую типизацию,
+      владение и заимствование, ООП, функциональный стиль, асинхронность и прямой мост в Rust.
+    </p>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Двуязычность</span>
+      Каждое ключевое слово имеет русский и английский вариант: <code>алг</code>/<code>alg</code>,
+      <code>нач</code>/<code>begin</code>, <code>если</code>/<code>if</code>. Учись на русском —
+      переходи на международный синтаксис без смены языка.
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="kite-section" id="istoriya">
+    <h2>2. Немного истории</h2>
+    <p>
+      Оригинальный КуМир был создан в НИИСИ РАН и вырастил не одно поколение школьников.
+      Раньше он был написан на C и выглядел «как софт из нулевых». Kumir&nbsp;3 — независимая
+      реализация: модульное, быстрое и элегантное ядро (<em>Kumir3 House</em>), которое уважает
+      корни, но смотрит в будущее.
+    </p>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">От «по приколу» — к профессии</span>
+      Проект начинался как затея «по приколу», на энтузиазме и мемах. Но он перерос рамки
+      развлечения: сегодня Kumir&nbsp;3 целенаправленно становится <strong>профессиональным
+      проектом</strong>, который развивается своим чередом — со стандартами (серия KITE),
+      чистым кодом, тестами и осознанной архитектурой. Лёгкий тон мы сохраняем, но к качеству
+      относимся всерьёз.
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="kite-section" id="filosofiya">
+    <h2>3. Философия</h2>
+    <ul>
+      <li><strong>Architecture as Art. Code as Narrative.</strong> Код должен читаться как история.</li>
+      <li><strong>Образование прежде всего.</strong> Понятность важнее «умного» синтаксиса.</li>
+      <li><strong>Русский как первый класс.</strong> Родной язык — не костыль, а полноценный синтаксис.</li>
+      <li><strong>Честность.</strong> Документация чётко разделяет реализованное и предложенное.</li>
+    </ul>
+  </section>
+
+  <!-- 4 -->
+  <section class="kite-section" id="celi">
+    <h2>4. Цели</h2>
+    <ul>
+      <li>Дать плавный путь от первых алгоритмов до промышленного кода в одном языке.</li>
+      <li>Сохранить и улучшить функционал КуМир, приведя его к строгим стандартам (серия KITE).</li>
+      <li>Построить экосистему: пакетный менеджер, плагины IDE, библиотеки, виртуальные окружения.</li>
+      <li>Оставаться кроссплатформенным (Windows, macOS, Linux) и быстрым за счёт Rust.</li>
+    </ul>
+  </section>
+
+  <!-- 5 -->
+  <section class="kite-section" id="preimushchestva">
+    <h2>5. Ключевые преимущества</h2>
+    <div class="kite-grid">
+      <div class="kite-card">
+        <span class="kite-card-icon">🌐</span>
+        <h3>Двуязычные ключевые слова</h3>
+        <p>Полные русские и английские наборы лексем — учись на родном, расти к международному.</p>
+      </div>
+      <div class="kite-card">
+        <span class="kite-card-icon">🎚️</span>
+        <h3>Градуальная типизация</h3>
+        <p>От <code>авто</code> и <code>любой</code> до строгих типов с проверкой — по мере роста.</p>
+      </div>
+      <div class="kite-card">
+        <span class="kite-card-icon">🛡️</span>
+        <h3>Владение и заимствование</h3>
+        <p><code>измен</code>, <code>перемещение</code>, <code>заимствовать</code>, <code>клонировать</code> — безопасная работа с ресурсами.</p>
+      </div>
+      <div class="kite-card">
+        <span class="kite-card-icon">🧩</span>
+        <h3>Мультипарадигменность</h3>
+        <p>Процедурный, ООП, функциональный и асинхронный стиль в одном языке.</p>
+      </div>
+      <div class="kite-card">
+        <span class="kite-card-icon">🦀</span>
+        <h3>Мост в Rust</h3>
+        <p>Блоки <code>РастВставкаНЦ … РастВставкаКЦ</code> для скорости и системных возможностей.</p>
+      </div>
+      <div class="kite-card">
+        <span class="kite-card-icon">⚙️</span>
+        <h3>Интерпретатор + компилятор</h3>
+        <p>Быстрый запуск через интерпретатор и компиляция в Rust / IR / WASM.</p>
+      </div>
+      <div class="kite-card">
+        <span class="kite-card-icon">📦</span>
+        <h3>Библиотеки и окружения</h3>
+        <p>Пользовательские библиотеки, <code>kumir.toml</code>, виртуальные окружения и резолвер зависимостей.</p>
+      </div>
+      <div class="kite-card">
+        <span class="kite-card-icon">🔢</span>
+        <h3>Богатые числа</h3>
+        <p>Целые и вещественные 8…128 бит, включая <code>вещ_128</code> высокой точности.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="kite-section" id="paradigmy">
+    <h2>6. Парадигмы</h2>
+    <ul>
+      <li><strong>Процедурная:</strong> алгоритмы, аргументы <code>арг</code>/<code>рез</code>/<code>аргрез</code>, циклы <code>нц…кц</code>.</li>
+      <li><strong>ООП:</strong> <code>класс</code>, <code>структура</code>, <code>интерфейс</code>, <code>свойство</code> (trait), <code>реализация</code>, видимость, наследование.</li>
+      <li><strong>Функциональная:</strong> <code>лямбда</code>, <code>совпадение</code> (match), охранные выражения <code>когда</code>, конвейер <code>|&gt;</code>.</li>
+      <li><strong>Асинхронная:</strong> <code>асинх</code>/<code>ждать</code>, <code>запустить</code>, <code>уступить</code>, каналы.</li>
+    </ul>
+  </section>
+
+  <!-- 7 -->
+  <section class="kite-section" id="instrumenty">
+    <h2>7. Инструменты</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Инструмент</th><th>Назначение</th></tr></thead>
+        <tbody>
+          <tr><td><code>interpreter-cli</code></td><td>Запуск <code>.kum</code>-программ.</td></tr>
+          <tr><td><code>interpreter-tui</code></td><td>Текстовый интерактивный интерфейс.</td></tr>
+          <tr><td><code>kumir3-compiler</code></td><td>Компиляция в Rust / IR / WASM с уровнями оптимизации.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Предложенные инструменты</h3>
+    <p>Чтобы из языка вырос профессиональный экосистемный проект, стандарт предлагает (пока <span class="kite-badge is-proposed">📋&nbsp;Предложено</span>):</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Инструмент</th><th>Назначение</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td><code>кумпак</code> (kpm)</td><td>Пакетный менеджер: установка, публикация и версии библиотек.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>кум-лсп</code> (LSP)</td><td>Языковой сервер: автодополнение, переходы, диагностика в IDE.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>кумфмт</code></td><td>Автоформаттер кода по единому стилю.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>кумлинт</code></td><td>Линтер: подсказки и проверки качества кода.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>кумрепл</code></td><td>Интерактивная оболочка (REPL) для быстрых проб.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Песочница</td><td>Веб-площадка для запуска Кумира прямо в браузере (через WASM).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>кумдок</code></td><td>Генератор документации из исходников (и KITE-страниц).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Отладчик</td><td>Пошаговая отладка с точками останова и инспекцией значений.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="kite-section" id="sovmestimost">
+    <h2>8. Совместимость с КуМир 2</h2>
+    <p>
+      Классический синтаксис КуМир 2 поддерживается: типы <code>цел</code>, <code>вещ</code>,
+      <code>лог</code>, <code>сим</code>, <code>лит</code>, <code>таб</code>; структура
+      <code>алг…нач…кон</code>; <code>дано</code>/<code>надо</code>; ввод/вывод. Старые учебные
+      программы продолжают работать, а новые возможности подключаются по мере необходимости.
+    </p>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Плавный переход</span>
+      Можно начать с чистого КуМир 2 и постепенно добавлять типы, ООП и функциональные приёмы —
+      без переписывания с нуля.
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section class="kite-section" id="primer">
+    <h2>9. Пример программы</h2>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>| Числа Фибоначчи — классический КуМир-стиль
+алг цел Фиб(цел n)
+нач
+  если n &lt;= 1 то
+    знач := n
+  иначе
+    знач := Фиб(n - 1) + Фиб(n - 2)
+  все
+кон
+
+алг Главный
+нач
+  цел i
+  нц для i от 0 до 10
+    вывод Фиб(i), " "
+  кц
+кон</code></pre>
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="kite-section" id="roadmap">
+    <h2>10. Дорожная карта</h2>
+    <ol>
+      <li>✅ Стабильное ядро (лексер, парсер, AST/IR, интерпретатор, компилятор).</li>
+      <li>📦 Пакетный менеджер и реестр библиотек.</li>
+      <li>🛠 API для плагинов IDE.</li>
+      <li>📚 Полная база учебных материалов и задач.</li>
+      <li>📐 Стандартизация языка через серию KITE.</li>
+    </ol>
+  </section>
+
+  <footer class="kite-footer">
+    <span>KITE 1 · Обзор языка Kumir 3</span>
+    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>

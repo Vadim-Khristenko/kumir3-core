@@ -1,6 +1,6 @@
 [package]
 name = "shared"
-version = "0.1.0"
+version = "0.2.0-alpha.1"
 edition = "2024"
 authors = ["Vadim Khristenko <just@vai-prog.ru>"]
 license-file = "LICENSE"
@@ -27,3 +27,6 @@ crossterm = {workspace = true}
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[lints]
+workspace = true

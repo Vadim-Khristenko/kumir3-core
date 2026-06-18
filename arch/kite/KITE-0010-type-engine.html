@@ -1,0 +1,205 @@
+<link rel="stylesheet" href="./assets/kite.css">
+<!-- =============================================================================
+     KITE 10 — Архитектура движка типов
+     Источник истины: shared/src/typesys.rs (+ types/value.rs, types/registry.rs)
+============================================================================== -->
+<article class="kite" data-kite="0010" data-status="experimental" lang="ru">
+
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE 10 · Спецификация</span>
+    <h1>Архитектура движка типов</h1>
+    <dl class="kite-meta">
+      <dt>Номер</dt>            <dd>KITE 10</dd>
+      <dt>Название</dt>         <dd>Расширяемый движок системы типизации</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-experimental">Experimental</span></dd>
+      <dt>Тип</dt>              <dd>Спецификация</dd>
+      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Создан</dt>           <dd>2026-05-30</dd>
+      <dt>Версия документа</dt> <dd>0.1.0</dd>
+    </dl>
+  </header>
+
+  <nav class="kite-toc" aria-label="Содержание">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#motivaciya">Мотивация</a></li>
+      <li><a href="#sloi">Три слоя</a></li>
+      <li><a href="#conformance">Уровни совместимости</a></li>
+      <li><a href="#pravila">Правила (TypeRule)</a></li>
+      <li><a href="#vstroennye">Встроенные правила</a></li>
+      <li><a href="#unifikaciya">Унификация и общий тип</a></li>
+      <li><a href="#operacii">Типизация операций</a></li>
+      <li><a href="#rasshirenie">Расширяемость</a></li>
+      <li><a href="#ispolzovanie">Использование в интерпретаторе и компиляторе</a></li>
+      <li><a href="#plan">План интеграции</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section class="kite-section" id="motivaciya">
+    <h2>1. Мотивация</h2>
+    <p>
+      Раньше отношения типов (совместимость, общий тип) были «зашиты» в большие <code>match</code>
+      прямо на <code>TypeKind</code> и не были связаны с реестром номинальных типов. Добавить новый
+      тип или правило означало править закрытые функции. Новый движок (<code>shared/src/typesys.rs</code>)
+      делает систему <strong>расширяемой через регистрацию правил</strong> и единой для интерпретатора
+      и компилятора.
+    </p>
+  </section>
+
+  <!-- 2 -->
+  <section class="kite-section" id="sloi">
+    <h2>2. Три слоя</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Слой</th><th>Что описывает</th><th>Где</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Структурный</strong> — <code>TypeKind</code></td><td>Форма типа: числа, коллекции, обёртки, функции (см. <a href="./KITE-0002-type-system.html">KITE 2</a>).</td><td><code>types/value.rs</code></td></tr>
+          <tr><td><strong>Номинальный</strong> — <code>TypeRegistry</code></td><td>Именованные типы, поля, методы, наследование.</td><td><code>types/registry.rs</code></td></tr>
+          <tr><td><strong>Движок</strong> — <code>TypeSystem</code></td><td>Отношения между типами: совместимость, унификация, операции.</td><td><code>typesys.rs</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Движок чист (без зависимостей от интерпретатора) и связывает первые два слоя.</p>
+    <p>Код разбит для чистоты: <code>typesys/mod.rs</code> — движок и базовые типы (<code>Conformance</code>, <code>TypeError</code>, <code>TypeOp</code>, <code>Coercion</code>), <code>typesys/rules.rs</code> — правила, <code>typesys/tests.rs</code> — тесты.</p>
+  </section>
+
+  <!-- 3 -->
+  <section class="kite-section" id="conformance">
+    <h2>3. Уровни совместимости</h2>
+    <p>Запрос «подходит ли источник для цели» возвращает один из уровней (<code>Conformance</code>):</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Уровень</th><th>Смысл</th><th>Неявно?</th></tr></thead>
+        <tbody>
+          <tr><td><code>Exact</code></td><td>Идентичные типы.</td><td>да</td></tr>
+          <tr><td><code>Widening</code></td><td>Безопасное расширение (<code>цел_16</code>→<code>цел_64</code>, <code>T</code>→<code>T?</code>).</td><td>да</td></tr>
+          <tr><td><code>Coercible</code></td><td>Нужно явное/контролируемое приведение (сужение, <code>любой</code>→<code>цел</code>).</td><td>нет</td></tr>
+          <tr><td><code>Incompatible</code></td><td>Нет отношения.</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="kite-section" id="pravila">
+    <h2>4. Правила (TypeRule)</h2>
+    <p>Каждое отношение — это правило с двумя необязательными методами: совместимость и унификация. Правила опрашиваются по порядку; первое решительное мнение побеждает.</p>
+    <div class="kite-code" data-lang="rust">
+<pre><code>pub trait TypeRule: Send + Sync {
+    fn name(&self) -&gt; &amp;'static str;
+    fn assignable(&amp;self, ts: &amp;TypeSystem, target: &amp;TypeKind, source: &amp;TypeKind)
+        -&gt; Option&lt;Conformance&gt; { None }
+    fn unify(&amp;self, ts: &amp;TypeSystem, a: &amp;TypeKind, b: &amp;TypeKind)
+        -&gt; Option&lt;TypeKind&gt; { None }
+}</code></pre>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="kite-section" id="vstroennye">
+    <h2>5. Встроенные правила</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Правило</th><th>Что покрывает</th></tr></thead>
+        <tbody>
+          <tr><td><code>identity</code></td><td>Одинаковые типы → <code>Exact</code>.</td></tr>
+          <tr><td><code>top-bottom</code></td><td><code>любой</code>/<code>авто</code> (вершина) и <code>никогда</code> (низ).</td></tr>
+          <tr><td><code>null-option</code></td><td><code>пусто</code>→<code>T?</code> и авто-обёртка <code>T</code>→<code>T?</code>.</td></tr>
+          <tr><td><code>numeric</code></td><td>Числовая решётка: расширение/сужение по размеру и знаку.</td></tr>
+          <tr><td><code>collection</code></td><td>Структурная рекурсия (ковариантно): массивы, множества, словари, кортежи, <code>Option</code>/<code>Result</code>, ссылки, generics.</td></tr>
+          <tr><td><code>nominal</code></td><td>Наследование через <code>TypeRegistry</code> (<code>Кот</code>→<code>Животное</code>).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="kite-section" id="unifikaciya">
+    <h2>6. Унификация и общий тип</h2>
+    <p>Для ветвлений и бинарных операций движок ищет «наименьший общий супертип» (<code>unify</code> / <code>common_type</code>): числа → больший по размеру/точности, коллекции — рекурсивно, <code>пусто</code> с <code>T</code> → <code>T?</code>.</p>
+    <div class="kite-code" data-lang="rust">
+<pre><code>ts.unify(&amp;Int16, &amp;Int64)        // Some(Int64)
+ts.unify(&amp;Int32, &amp;Float64)      // Some(Float64)
+ts.unify(&amp;Array(Int16), &amp;Array(Int64)) // Some(Array(Int64))</code></pre>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="kite-section" id="operacii">
+    <h2>7. Типизация операций</h2>
+    <p><code>result_of_binop(op, left, right)</code> даёт тип результата:</p>
+    <ul>
+      <li>Арифметика двух чисел → их общий тип; <code>+</code> со строкой → строка (конкатенация).</li>
+      <li>Сравнения (<code>=</code>, <code>&lt;</code>, …) совместимых типов → <code>лог</code>.</li>
+      <li>Логические (<code>и</code>, <code>или</code>) над <code>лог</code> → <code>лог</code>; иначе — ошибка типа.</li>
+    </ul>
+  </section>
+
+  <!-- 8 -->
+  <section class="kite-section" id="rasshirenie">
+    <h2>8. Расширяемость</h2>
+    <p>Новый тип или отношение добавляется <strong>регистрацией правила</strong>, без правки закрытых функций:</p>
+    <div class="kite-code" data-lang="rust">
+<pre><code>let mut ts = TypeSystem::new();
+ts.register_rule(Arc::new(МоёПравило));   // и оно сразу участвует в выводе</code></pre>
+    </div>
+    <p>Это и есть «умный детектор» вместо одного гигантского перечисления, о котором говорил <a href="./KITE-0002-type-system.html">KITE 2</a>. Правило можно добавить и в начало (<code>register_rule_front</code>) — оно получит приоритет.</p>
+
+    <h3>Делегированные задачи</h3>
+    <p>Движку переданы и смежные задачи, чтобы интерпретатор и компилятор не дублировали логику:</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Метод</th><th>Что делает</th></tr></thead>
+        <tbody>
+          <tr><td><code>coercion(target, source)</code></td><td>План приведения: <code>Identity</code> / <code>Widen</code> / <code>Wrap</code> (в <code>T?</code>) / <code>Cast</code> / <code>Forbidden</code> — что именно вставить в коде/рантайме.</td></tr>
+          <tr><td><code>default_value(type)</code></td><td>Естественное значение по умолчанию типа (0 / пусто / Ничего) для инициализации переменных.</td></tr>
+          <tr><td><code>is_subtype(sub, sup)</code></td><td>Единая проверка подтипа (структурная + номинальная).</td></tr>
+          <tr><td><code>result_of_binop(op, a, b)</code></td><td>Тип результата операции.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section class="kite-section" id="ispolzovanie">
+    <h2>9. Использование в интерпретаторе и компиляторе</h2>
+    <ul>
+      <li><strong>Интерпретатор:</strong> проверка присваиваний, выбор перегрузки, типизация выражений во время выполнения.</li>
+      <li><strong>Компилятор:</strong> статическая проверка типов и решения кодогенерации (общий тип ветвей, результат операции).</li>
+    </ul>
+    <p>Поскольку движок живёт в <code>shared</code> и не зависит от рантайма, оба крейта используют один и тот же источник правды.</p>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Единый источник</span>
+      Есть общий процессный движок <code>typesys::default_engine()</code> (стандартные правила).
+      Легаси-помощники <code>TypeKind::is_assignable_from</code> и <code>common_type</code> теперь —
+      тонкие фасады над ним: дублирующей логики типов больше нет, движок единственный.
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="kite-section" id="plan">
+    <h2>10. План интеграции</h2>
+    <ol>
+      <li>✅ Движок и набор правил с тестами в модуле <code>shared/src/typesys/</code>.</li>
+      <li>✅ Делегированы движку: приведение (<code>coercion</code>), значения по умолчанию, проверка подтипа.</li>
+      <li>Перевести проверки присваивания/операций интерпретатора на <code>TypeSystem</code>.</li>
+      <li>Добавить статический проход проверки типов в компиляторе.</li>
+      <li>Связать <code>TypeKind</code> ↔ <code>TypeRegistry</code> для номинальных типов из пользовательского кода.</li>
+      <li>✅ Старые <code>is_assignable_from</code>/<code>common_type</code> делегируют движку — дубля логики нет.</li>
+      <li>Добавить вывод типов (<code>авто</code>) и обобщённые ограничения (<code>где</code>).</li>
+    </ol>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Принцип</span>
+      Заменяем движок поэтапно за стабильным фасадом — текущий функционал сохраняется, а система
+      типов становится мощнее и расширяемее.
+    </div>
+  </section>
+
+  <footer class="kite-footer">
+    <span>KITE 10 · Архитектура движка типов</span>
+    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>

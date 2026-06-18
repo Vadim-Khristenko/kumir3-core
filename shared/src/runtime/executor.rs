@@ -14,9 +14,9 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
-use tokio::sync::{RwLock, Notify};
+use tokio::sync::{Notify, RwLock};
 use tokio::task::JoinHandle;
 
 use crate::types::Value;
@@ -72,7 +72,10 @@ pub enum TaskState {
 
 impl TaskState {
     pub fn is_finished(&self) -> bool {
-        matches!(self, TaskState::Completed | TaskState::Cancelled | TaskState::Failed)
+        matches!(
+            self,
+            TaskState::Completed | TaskState::Cancelled | TaskState::Failed
+        )
     }
 
     pub fn is_active(&self) -> bool {
@@ -392,15 +395,18 @@ impl TaskExecutor {
     {
         let task = Task::new(name);
         let id = task.id();
-        
+
         // Регистрируем задачу
         {
             let mut tasks = self.tasks.write().await;
-            tasks.insert(id, TaskInfo {
-                metadata: task.metadata().clone(),
-                state: Arc::clone(&task.state),
-                cancel_flag: Arc::clone(&task.cancel_flag),
-            });
+            tasks.insert(
+                id,
+                TaskInfo {
+                    metadata: task.metadata().clone(),
+                    state: Arc::clone(&task.state),
+                    cancel_flag: Arc::clone(&task.cancel_flag),
+                },
+            );
         }
 
         self.active_count.fetch_add(1, Ordering::SeqCst);
@@ -436,11 +442,14 @@ impl TaskExecutor {
 
         {
             let mut tasks = self.tasks.write().await;
-            tasks.insert(id, TaskInfo {
-                metadata: task.metadata().clone(),
-                state: Arc::clone(&task.state),
-                cancel_flag: Arc::clone(&task.cancel_flag),
-            });
+            tasks.insert(
+                id,
+                TaskInfo {
+                    metadata: task.metadata().clone(),
+                    state: Arc::clone(&task.state),
+                    cancel_flag: Arc::clone(&task.cancel_flag),
+                },
+            );
         }
 
         self.active_count.fetch_add(1, Ordering::SeqCst);
@@ -491,7 +500,7 @@ impl TaskExecutor {
     pub async fn cleanup_finished(&self) {
         let mut tasks = self.tasks.write().await;
         let mut to_remove = Vec::new();
-        
+
         for (id, info) in tasks.iter() {
             let state = *info.state.read().await;
             if state.is_finished() {
@@ -547,14 +556,17 @@ impl Scheduler {
     {
         let name = name.into();
         let mut tasks = self.tasks.write().await;
-        
-        tasks.insert(name.clone(), ScheduledTask {
-            name,
-            interval: None,
-            next_run: Instant::now() + delay,
-            task_fn: Box::new(move || Box::pin(task())),
-            enabled: AtomicBool::new(true),
-        });
+
+        tasks.insert(
+            name.clone(),
+            ScheduledTask {
+                name,
+                interval: None,
+                next_run: Instant::now() + delay,
+                task_fn: Box::new(move || Box::pin(task())),
+                enabled: AtomicBool::new(true),
+            },
+        );
     }
 
     /// Добавляет периодическую задачу.
@@ -563,21 +575,23 @@ impl Scheduler {
         name: impl Into<String>,
         interval: Duration,
         task: F,
-    )
-    where
+    ) where
         F: Fn() -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
         let name = name.into();
         let mut tasks = self.tasks.write().await;
-        
-        tasks.insert(name.clone(), ScheduledTask {
-            name,
-            interval: Some(interval),
-            next_run: Instant::now() + interval,
-            task_fn: Box::new(move || Box::pin(task())),
-            enabled: AtomicBool::new(true),
-        });
+
+        tasks.insert(
+            name.clone(),
+            ScheduledTask {
+                name,
+                interval: Some(interval),
+                next_run: Instant::now() + interval,
+                task_fn: Box::new(move || Box::pin(task())),
+                enabled: AtomicBool::new(true),
+            },
+        );
     }
 
     /// Удаляет запланированную задачу.
@@ -626,7 +640,7 @@ impl Scheduler {
 
                     if now >= task.next_run {
                         to_run.push((name.clone(), (task.task_fn)()));
-                        
+
                         if let Some(interval) = task.interval {
                             task.next_run = now + interval;
                         } else {
@@ -687,7 +701,7 @@ mod tests {
     async fn test_task_spawn() {
         let task = Task::new("test_task");
         let id = task.id();
-        
+
         let handle = task.spawn(async {
             tokio::time::sleep(Duration::from_millis(10)).await;
             42
@@ -702,7 +716,7 @@ mod tests {
     async fn test_task_cancel() {
         let task = Task::new("cancellable");
         let check = Arc::clone(&task.cancel_flag);
-        
+
         let handle = task.spawn(async move {
             loop {
                 if check.load(Ordering::SeqCst) {
@@ -720,11 +734,13 @@ mod tests {
     #[tokio::test]
     async fn test_executor_spawn() {
         let executor = TaskExecutor::new();
-        
-        let handle = executor.spawn("test", async {
-            tokio::time::sleep(Duration::from_millis(5)).await;
-            "done"
-        }).await;
+
+        let handle = executor
+            .spawn("test", async {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+                "done"
+            })
+            .await;
 
         let result = handle.join().await;
         assert_eq!(result, Some("done"));
@@ -733,14 +749,18 @@ mod tests {
     #[tokio::test]
     async fn test_executor_list_tasks() {
         let executor = TaskExecutor::new();
-        
-        let _h1 = executor.spawn("task1", async {
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }).await;
-        
-        let _h2 = executor.spawn("task2", async {
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }).await;
+
+        let _h1 = executor
+            .spawn("task1", async {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            })
+            .await;
+
+        let _h2 = executor
+            .spawn("task2", async {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            })
+            .await;
 
         let tasks = executor.list_tasks().await;
         assert_eq!(tasks.len(), 2);

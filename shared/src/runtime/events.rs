@@ -14,8 +14,8 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
-use tokio::sync::{broadcast, RwLock};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use tokio::sync::{RwLock, broadcast};
 
 use crate::types::Value;
 
@@ -133,9 +133,8 @@ macro_rules! define_event {
 pub type SyncEventHandler = Arc<dyn Fn(&Event) + Send + Sync>;
 
 /// Асинхронный обработчик события.
-pub type AsyncEventHandler = Arc<
-    dyn Fn(Event) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync
->;
+pub type AsyncEventHandler =
+    Arc<dyn Fn(Event) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 
 /// Тип обработчика.
 enum HandlerType {
@@ -220,7 +219,8 @@ impl EventBus {
     where
         F: Fn(&Event) + Send + Sync + 'static,
     {
-        self.subscribe_sync(event_name, handler, false, priority).await
+        self.subscribe_sync(event_name, handler, false, priority)
+            .await
     }
 
     /// Подписывается на событие один раз.
@@ -232,7 +232,11 @@ impl EventBus {
     }
 
     /// Подписывается на событие (асинхронный обработчик).
-    pub async fn on_async<F, Fut>(&self, event_name: impl Into<String>, handler: F) -> SubscriptionId
+    pub async fn on_async<F, Fut>(
+        &self,
+        event_name: impl Into<String>,
+        handler: F,
+    ) -> SubscriptionId
     where
         F: Fn(Event) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
@@ -269,7 +273,7 @@ impl EventBus {
     {
         let id = SubscriptionId::new();
         let name = event_name.into();
-        
+
         let entry = HandlerEntry {
             id,
             handler: HandlerType::Sync(Arc::new(handler)),
@@ -280,7 +284,7 @@ impl EventBus {
         let mut handlers = self.handlers.write().await;
         let name_key = name.clone();
         handlers.entry(name).or_insert_with(Vec::new).push(entry);
-        
+
         // Сортируем по приоритету (выше = раньше)
         if let Some(list) = handlers.get_mut(&name_key) {
             list.sort_by(|a, b| b.priority.cmp(&a.priority));
@@ -303,7 +307,7 @@ impl EventBus {
     {
         let id = SubscriptionId::new();
         let name = event_name.into();
-        
+
         let wrapped: AsyncEventHandler = Arc::new(move |event| {
             Box::pin(handler(event)) as Pin<Box<dyn Future<Output = ()> + Send>>
         });
@@ -381,7 +385,7 @@ impl EventBus {
 
         // Обработчики конкретного события
         let mut to_remove: Vec<SubscriptionId> = Vec::new();
-        
+
         {
             let handlers = self.handlers.read().await;
             if let Some(list) = handlers.get(&event.name) {
@@ -435,7 +439,9 @@ impl EventBus {
 
     /// Количество подписчиков на событие.
     pub async fn listener_count(&self, event_name: &str) -> usize {
-        self.handlers.read().await
+        self.handlers
+            .read()
+            .await
             .get(event_name)
             .map(|l| l.len())
             .unwrap_or(0)
@@ -482,10 +488,7 @@ impl EventEmitter {
 
     /// Создаёт эмиттер с существующей шиной.
     pub fn with_bus(bus: Arc<EventBus>) -> Self {
-        Self {
-            bus,
-            prefix: None,
-        }
+        Self { bus, prefix: None }
     }
 
     fn full_name(&self, name: &str) -> String {
@@ -548,15 +551,15 @@ pub mod system_events {
     pub const WARNING: &str = "system:warning";
     pub const INFO: &str = "system:info";
     pub const DEBUG: &str = "system:debug";
-    
+
     pub const PROGRAM_START: &str = "program:start";
     pub const PROGRAM_END: &str = "program:end";
     pub const PROGRAM_ERROR: &str = "program:error";
-    
+
     pub const VARIABLE_CHANGED: &str = "variable:changed";
     pub const FUNCTION_CALLED: &str = "function:called";
     pub const FUNCTION_RETURNED: &str = "function:returned";
-    
+
     // HTTP Server события
     pub const SERVER_STARTED: &str = "server:started";
     pub const SERVER_STOPPED: &str = "server:stopped";
@@ -583,7 +586,8 @@ mod tests {
 
         bus.on("test", move |_| {
             counter_clone.fetch_add(1, Ordering::SeqCst);
-        }).await;
+        })
+        .await;
 
         bus.emit_simple("test", Value::Null).await;
         bus.emit_simple("test", Value::Null).await;
@@ -599,7 +603,8 @@ mod tests {
 
         bus.once("once_test", move |_| {
             counter_clone.fetch_add(1, Ordering::SeqCst);
-        }).await;
+        })
+        .await;
 
         bus.emit_simple("once_test", Value::Null).await;
         bus.emit_simple("once_test", Value::Null).await;
@@ -615,16 +620,18 @@ mod tests {
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = Arc::clone(&counter);
 
-        let id = bus.on("off_test", move |_| {
-            counter_clone.fetch_add(1, Ordering::SeqCst);
-        }).await;
+        let id = bus
+            .on("off_test", move |_| {
+                counter_clone.fetch_add(1, Ordering::SeqCst);
+            })
+            .await;
 
         bus.emit_simple("off_test", Value::Null).await;
         assert_eq!(counter.load(Ordering::SeqCst), 1);
 
         bus.off(id).await;
         bus.emit_simple("off_test", Value::Null).await;
-        
+
         // Не должно измениться
         assert_eq!(counter.load(Ordering::SeqCst), 1);
     }
@@ -632,7 +639,7 @@ mod tests {
     #[tokio::test]
     async fn test_event_cancelable() {
         let event = Event::new("cancel_test", Value::Null).cancelable();
-        
+
         assert!(!event.is_cancelled());
         assert!(event.cancel());
         assert!(event.is_cancelled());
@@ -644,12 +651,14 @@ mod tests {
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = Arc::clone(&counter);
 
-        emitter.on("action", move |_| {
-            counter_clone.fetch_add(1, Ordering::SeqCst);
-        }).await;
+        emitter
+            .on("action", move |_| {
+                counter_clone.fetch_add(1, Ordering::SeqCst);
+            })
+            .await;
 
         emitter.emit("action", Value::Number(42.into())).await;
-        
+
         assert_eq!(counter.load(Ordering::SeqCst), 1);
     }
 
@@ -670,7 +679,7 @@ mod tests {
     #[tokio::test]
     async fn test_priority() {
         use std::sync::Mutex as StdMutex;
-        
+
         let bus = EventBus::new();
         let order = Arc::new(StdMutex::new(Vec::new()));
 
@@ -678,19 +687,22 @@ mod tests {
         bus.on_with_priority("priority_test", 1, move |_| {
             let mut o = order1.lock().unwrap();
             o.push(1);
-        }).await;
+        })
+        .await;
 
         let order2 = Arc::clone(&order);
         bus.on_with_priority("priority_test", 10, move |_| {
             let mut o = order2.lock().unwrap();
             o.push(10);
-        }).await;
+        })
+        .await;
 
         let order3 = Arc::clone(&order);
         bus.on_with_priority("priority_test", 5, move |_| {
             let mut o = order3.lock().unwrap();
             o.push(5);
-        }).await;
+        })
+        .await;
 
         bus.emit_simple("priority_test", Value::Null).await;
 

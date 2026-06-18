@@ -14,7 +14,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, oneshot};
 use tokio::time::{interval, timeout};
@@ -221,10 +221,10 @@ impl HandleManager {
     pub fn register(&mut self, handle: Handle) -> HandleId {
         let id = handle.id();
         let resource_type = handle.resource_type();
-        
+
         self.handles.insert(id, handle);
-        self.by_type.entry(resource_type).or_insert_with(Vec::new).push(id);
-        
+        self.by_type.entry(resource_type).or_default().push(id);
+
         id
     }
 
@@ -274,7 +274,10 @@ impl HandleManager {
 
     /// Получает все хэндлы определённого типа.
     pub fn get_by_type(&self, resource_type: ResourceType) -> Vec<HandleId> {
-        self.by_type.get(&resource_type).cloned().unwrap_or_default()
+        self.by_type
+            .get(&resource_type)
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Закрывает все хэндлы определённого типа.
@@ -295,12 +298,13 @@ impl HandleManager {
 
     /// Очищает закрытые хэндлы.
     pub fn cleanup(&mut self) {
-        let closed: Vec<_> = self.handles
+        let closed: Vec<_> = self
+            .handles
             .iter()
             .filter(|(_, h)| h.is_closed())
             .map(|(id, _)| *id)
             .collect();
-        
+
         for id in closed {
             self.remove(id);
         }
@@ -465,7 +469,7 @@ impl Interval {
 
         tokio::spawn(async move {
             let mut interval = interval(period);
-            
+
             loop {
                 tokio::select! {
                     _ = interval.tick() => {
@@ -563,7 +567,7 @@ where
 
     pub async fn call(&self) {
         let mut pending = self.pending.lock().await;
-        
+
         // Отменяем предыдущий вызов
         if let Some(handle) = pending.take() {
             handle.abort();
@@ -571,7 +575,7 @@ where
 
         let delay = self.delay;
         let callback = Arc::clone(&self.callback);
-        
+
         *pending = Some(tokio::spawn(async move {
             tokio::time::sleep(delay).await;
             callback().await;
@@ -609,10 +613,10 @@ where
         let mut last = self.last_call.lock().await;
         let now = Instant::now();
 
-        if let Some(last_time) = *last {
-            if now.duration_since(last_time) < self.interval {
-                return false;
-            }
+        if let Some(last_time) = *last
+            && now.duration_since(last_time) < self.interval
+        {
+            return false;
         }
 
         *last = Some(now);
@@ -647,7 +651,7 @@ mod tests {
     #[tokio::test]
     async fn test_handle_manager() {
         let mut manager = HandleManager::new();
-        
+
         let id = manager.create("test_resource", ResourceType::Custom(1), "data".to_string());
         assert_eq!(manager.count(), 1);
 
@@ -663,7 +667,7 @@ mod tests {
     async fn test_timer() {
         let timer = Timer::new(Duration::from_millis(10));
         assert!(!timer.is_completed());
-        
+
         let completed = timer.wait().await;
         assert!(completed);
         assert!(timer.is_completed());
@@ -673,7 +677,7 @@ mod tests {
     async fn test_timer_cancel() {
         let timer = Timer::new(Duration::from_secs(10));
         timer.cancel();
-        
+
         let completed = timer.wait().await;
         assert!(!completed);
         assert!(timer.is_cancelled());
@@ -696,7 +700,7 @@ mod tests {
         interval.stop();
 
         let count = counter.load(Ordering::SeqCst);
-        assert!(count >= 4 && count <= 6); // ~5 тиков
+        assert!((4..=6).contains(&count)); // ~5 тиков
     }
 
     #[tokio::test]
@@ -704,7 +708,8 @@ mod tests {
         let result = with_timeout(Duration::from_secs(1), async {
             tokio::time::sleep(Duration::from_millis(10)).await;
             42
-        }).await;
+        })
+        .await;
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 42);
@@ -715,7 +720,8 @@ mod tests {
         let result = with_timeout(Duration::from_millis(10), async {
             tokio::time::sleep(Duration::from_secs(1)).await;
             42
-        }).await;
+        })
+        .await;
 
         assert!(result.is_err());
     }

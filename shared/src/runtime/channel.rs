@@ -11,7 +11,7 @@
 // ============================================================================
 
 use std::sync::Arc;
-use tokio::sync::{mpsc, broadcast, oneshot, Mutex};
+use tokio::sync::{Mutex, broadcast, mpsc, oneshot};
 
 use crate::types::Value;
 
@@ -94,17 +94,18 @@ pub struct MessageSender {
 impl MessageSender {
     /// Отправляет сообщение (async).
     pub async fn send(&self, msg: Message) -> Result<(), ChannelError> {
-        self.inner.send(msg).await
+        self.inner
+            .send(msg)
+            .await
             .map_err(|_| ChannelError::SendFailed)
     }
 
     /// Пытается отправить сообщение без ожидания.
     pub fn try_send(&self, msg: Message) -> Result<(), ChannelError> {
-        self.inner.try_send(msg)
-            .map_err(|e| match e {
-                mpsc::error::TrySendError::Full(_) => ChannelError::Full,
-                mpsc::error::TrySendError::Closed(_) => ChannelError::Closed,
-            })
+        self.inner.try_send(msg).map_err(|e| match e {
+            mpsc::error::TrySendError::Full(_) => ChannelError::Full,
+            mpsc::error::TrySendError::Closed(_) => ChannelError::Closed,
+        })
     }
 
     /// Отправляет простое сообщение.
@@ -126,11 +127,10 @@ impl MessageReceiver {
 
     /// Пытается получить сообщение без ожидания.
     pub fn try_recv(&mut self) -> Result<Message, ChannelError> {
-        self.inner.try_recv()
-            .map_err(|e| match e {
-                mpsc::error::TryRecvError::Empty => ChannelError::Empty,
-                mpsc::error::TryRecvError::Disconnected => ChannelError::Closed,
-            })
+        self.inner.try_recv().map_err(|e| match e {
+            mpsc::error::TryRecvError::Empty => ChannelError::Empty,
+            mpsc::error::TryRecvError::Disconnected => ChannelError::Closed,
+        })
     }
 
     /// Закрывает канал.
@@ -142,10 +142,7 @@ impl MessageReceiver {
 /// Создаёт MPSC канал для сообщений.
 pub fn message_channel(buffer: usize) -> (MessageSender, MessageReceiver) {
     let (tx, rx) = mpsc::channel(buffer);
-    (
-        MessageSender { inner: tx },
-        MessageReceiver { inner: rx },
-    )
+    (MessageSender { inner: tx }, MessageReceiver { inner: rx })
 }
 
 // ============================================================================
@@ -161,8 +158,7 @@ pub struct BroadcastSender {
 impl BroadcastSender {
     /// Отправляет сообщение всем подписчикам.
     pub fn send(&self, msg: Message) -> Result<usize, ChannelError> {
-        self.inner.send(msg)
-            .map_err(|_| ChannelError::NoReceivers)
+        self.inner.send(msg).map_err(|_| ChannelError::NoReceivers)
     }
 
     /// Создаёт нового получателя (подписку).
@@ -186,11 +182,10 @@ pub struct BroadcastReceiver {
 impl BroadcastReceiver {
     /// Получает сообщение.
     pub async fn recv(&mut self) -> Result<Message, ChannelError> {
-        self.inner.recv().await
-            .map_err(|e| match e {
-                broadcast::error::RecvError::Closed => ChannelError::Closed,
-                broadcast::error::RecvError::Lagged(n) => ChannelError::Lagged(n),
-            })
+        self.inner.recv().await.map_err(|e| match e {
+            broadcast::error::RecvError::Closed => ChannelError::Closed,
+            broadcast::error::RecvError::Lagged(n) => ChannelError::Lagged(n),
+        })
     }
 }
 
@@ -232,21 +227,17 @@ impl<T> OneshotReceiver<T> {
 
     /// Пытается получить значение без ожидания.
     pub fn try_recv(&mut self) -> Result<T, ChannelError> {
-        self.inner.try_recv()
-            .map_err(|e| match e {
-                oneshot::error::TryRecvError::Empty => ChannelError::Empty,
-                oneshot::error::TryRecvError::Closed => ChannelError::Closed,
-            })
+        self.inner.try_recv().map_err(|e| match e {
+            oneshot::error::TryRecvError::Empty => ChannelError::Empty,
+            oneshot::error::TryRecvError::Closed => ChannelError::Closed,
+        })
     }
 }
 
 /// Создаёт oneshot канал.
 pub fn oneshot_channel<T>() -> (OneshotSender<T>, OneshotReceiver<T>) {
     let (tx, rx) = oneshot::channel();
-    (
-        OneshotSender { inner: tx },
-        OneshotReceiver { inner: rx },
-    )
+    (OneshotSender { inner: tx }, OneshotReceiver { inner: rx })
 }
 
 // ============================================================================
@@ -271,7 +262,9 @@ impl ValueChannel {
 
     /// Отправляет значение.
     pub async fn send(&self, value: Value) -> Result<(), ChannelError> {
-        self.sender.send(value).await
+        self.sender
+            .send(value)
+            .await
             .map_err(|_| ChannelError::SendFailed)
     }
 
@@ -331,11 +324,14 @@ impl<Req: Send + 'static, Resp: Send + 'static> RequestChannel<Req, Resp> {
     /// Отправляет запрос и ожидает ответ.
     pub async fn request(&self, data: Req) -> Result<Resp, ChannelError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        
-        self.sender.send(Request {
-            data,
-            response_tx: resp_tx,
-        }).await.map_err(|_| ChannelError::SendFailed)?;
+
+        self.sender
+            .send(Request {
+                data,
+                response_tx: resp_tx,
+            })
+            .await
+            .map_err(|_| ChannelError::SendFailed)?;
 
         resp_rx.await.map_err(|_| ChannelError::Closed)
     }
@@ -408,8 +404,10 @@ mod tests {
     async fn test_message_channel() {
         let (tx, mut rx) = message_channel(10);
 
-        tx.emit("test", Value::String("hello".into())).await.unwrap();
-        
+        tx.emit("test", Value::String("hello".into()))
+            .await
+            .unwrap();
+
         let msg = rx.recv().await.unwrap();
         assert_eq!(msg.kind, "test");
         match msg.payload {
@@ -423,7 +421,8 @@ mod tests {
         let (tx, mut rx1) = broadcast_channel(10);
         let mut rx2 = tx.subscribe();
 
-        tx.send(Message::new("event", Value::Number(42.into()))).unwrap();
+        tx.send(Message::new("event", Value::Number(42.into())))
+            .unwrap();
 
         let msg1 = rx1.recv().await.unwrap();
         let msg2 = rx2.recv().await.unwrap();
@@ -434,10 +433,10 @@ mod tests {
     #[tokio::test]
     async fn test_oneshot_channel() {
         let (tx, rx) = oneshot_channel::<i32>();
-        
+
         tx.send(42).unwrap();
         let value = rx.recv().await.unwrap();
-        
+
         assert_eq!(value, 42);
     }
 
@@ -462,9 +461,9 @@ mod tests {
     #[tokio::test]
     async fn test_value_channel() {
         let channel = ValueChannel::new(10);
-        
+
         channel.send(Value::Boolean(true)).await.unwrap();
-        
+
         let value = channel.recv().await.unwrap();
         match value {
             Value::Boolean(b) => assert!(b),

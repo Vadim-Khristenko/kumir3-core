@@ -1,156 +1,186 @@
-//! Чтение и запись файлов
+//! Функции чтения/записи файлов
 
-use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::sync::Arc;
 
 use crate::types::library::{LibFunctionDef, LibParamDef};
-use crate::types::type_spec::TypeSpec;
-use crate::types::{Number, Value};
+use crate::types::{TypeKind, Value};
 
-fn expect_string(args: &[Value], idx: usize, name: &str) -> Result<String, String> {
-    let v = args
-        .get(idx)
-        .ok_or_else(|| format!("Не передан параметр: {}", name))?;
-    match v {
-        Value::String(s) => Ok(s.clone()),
-        Value::Number(n) => Ok(n.to_string()),
-        _ => Err(format!("Ожидается строка для параметра {}", name)),
-    }
-}
-
-fn bytes_to_value(bytes: Vec<u8>) -> Value {
-    let arr = bytes
-        .into_iter()
-        .map(|b| Value::Number(Number::U8(b)))
-        .collect();
-    Value::Array(arr)
-}
-
-fn expect_bytes_array(args: &[Value], idx: usize, name: &str) -> Result<Vec<u8>, String> {
-    let v = args
-        .get(idx)
-        .ok_or_else(|| format!("Не передан параметр: {}", name))?;
-    match v {
-        Value::Array(items) => {
-            let mut out = Vec::with_capacity(items.len());
-            for item in items {
-                match item {
-                    Value::Number(n) => {
-                        let i = n.to_i64().ok_or_else(|| format!("Ожидается байт в {}", name))?;
-                        if (0..=255).contains(&i) {
-                            out.push(i as u8);
-                        } else {
-                            return Err(format!("Байт вне диапазона 0..255 в {}", name));
-                        }
-                    }
-                    _ => return Err(format!("Ожидается массив байтов в {}", name)),
-                }
-            }
-            Ok(out)
-        }
-        _ => Err(format!("Ожидается массив байтов для {}", name)),
-    }
-}
-
-/// прочитать_текст(путь) -> лит
+/// чтение_текста(путь) → лит
 pub fn read_text_fn() -> LibFunctionDef {
-    LibFunctionDef::new("прочитать_текст")
-        .with_aliases(&["read_text", "read_file", "read"])
-        .with_description("Читает файл как UTF-8 строку")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .returns(TypeSpec::String)
+    LibFunctionDef::new("чтение_текста")
+        .with_aliases(vec![Arc::from("read_text"), Arc::from("прочитать_файл")])
+        .with_description("Читает текстовый файл целиком и возвращает строку")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::String)
         .with_handler(|args| {
-            let path = expect_string(args, 0, "путь")?;
-            fs::read_to_string(&path)
-                .map(Value::String)
-                .map_err(|e| format!("Не удалось прочитать файл: {}", e))
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let content = std::fs::read_to_string(path.as_str())
+                .map_err(|e| format!("Ошибка чтения файла '{}': {}", path, e))?;
+            Ok(Value::String(content))
         })
 }
 
-/// прочитать_строки(путь) -> массив лит
+/// чтение_строк(путь) → [лит]
 pub fn read_lines_fn() -> LibFunctionDef {
-    LibFunctionDef::new("прочитать_строки")
-        .with_aliases(&["read_lines", "readlines"])
-        .with_description("Читает файл и возвращает массив строк без разделителей строк")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .returns(TypeSpec::Array(Box::new(TypeSpec::String)))
+    LibFunctionDef::new("чтение_строк")
+        .with_aliases(vec![Arc::from("read_lines"), Arc::from("прочитать_строки")])
+        .with_description("Читает файл и возвращает массив строк")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::Array(Box::new(TypeKind::String)))
         .with_handler(|args| {
-            let path = expect_string(args, 0, "путь")?;
-            let text = fs::read_to_string(&path)
-                .map_err(|e| format!("Не удалось прочитать файл: {}", e))?;
-            let lines: Vec<Value> = text
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let content = std::fs::read_to_string(path.as_str())
+                .map_err(|e| format!("Ошибка чтения файла '{}': {}", path, e))?;
+            let lines: Vec<Value> = content
                 .lines()
-                .map(|s| Value::String(s.to_string()))
+                .map(|l| Value::String(l.to_string()))
                 .collect();
             Ok(Value::Array(lines))
         })
 }
 
-/// записать_текст(путь, данные)
+/// запись_текста(путь, содержимое)
 pub fn write_text_fn() -> LibFunctionDef {
-    LibFunctionDef::new("записать_текст")
-        .with_aliases(&["write_text", "write_file", "write"])
+    LibFunctionDef::new("запись_текста")
+        .with_aliases(vec![Arc::from("write_text"), Arc::from("записать_файл")])
         .with_description("Записывает строку в файл (перезаписывает)")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .with_param(LibParamDef::value("данные", TypeSpec::String))
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .with_param(LibParamDef::value("содержимое", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
-            let path = expect_string(args, 0, "путь")?;
-            let data = expect_string(args, 1, "данные")?;
-            fs::write(&path, data).map_err(|e| format!("Не удалось записать файл: {}", e))?;
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let content = args
+                .get(1)
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'содержимое'".to_string())?;
+            std::fs::write(path.as_str(), content.as_bytes())
+                .map_err(|e| format!("Ошибка записи файла '{}': {}", path, e))?;
             Ok(Value::Null)
         })
 }
 
-/// дописать_текст(путь, данные)
+/// дозапись_текста(путь, содержимое)
 pub fn append_text_fn() -> LibFunctionDef {
-    LibFunctionDef::new("дописать_текст")
-        .with_aliases(&["append_text", "append"])
-        .with_description("Дописивает строку в конец файла")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .with_param(LibParamDef::value("данные", TypeSpec::String))
+    use std::io::Write;
+    LibFunctionDef::new("дозапись_текста")
+        .with_aliases(vec![Arc::from("append_text"), Arc::from("дописать_файл")])
+        .with_description("Дозаписывает строку в конец файла")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .with_param(LibParamDef::value("содержимое", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
-            let path = expect_string(args, 0, "путь")?;
-            let data = expect_string(args, 1, "данные")?;
-            let mut f = OpenOptions::new()
-                .create(true)
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let content = args
+                .get(1)
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'содержимое'".to_string())?;
+            let mut file = std::fs::OpenOptions::new()
                 .append(true)
-                .open(&path)
-                .map_err(|e| format!("Не удалось открыть файл для дописи: {}", e))?;
-            f.write_all(data.as_bytes())
-                .map_err(|e| format!("Не удалось записать данные: {}", e))?;
+                .create(true)
+                .open(path.as_str())
+                .map_err(|e| format!("Ошибка открытия '{}': {}", path, e))?;
+            file.write_all(content.as_bytes())
+                .map_err(|e| format!("Ошибка дозаписи в '{}': {}", path, e))?;
             Ok(Value::Null)
         })
 }
 
-/// прочитать_байты(путь) -> массив нат_8
+/// чтение_байтов(путь) → [цел]
 pub fn read_bytes_fn() -> LibFunctionDef {
-    LibFunctionDef::new("прочитать_байты")
-        .with_aliases(&["read_bytes", "readbin"])
+    LibFunctionDef::new("чтение_байтов")
+        .with_aliases(vec![Arc::from("read_bytes"), Arc::from("прочитать_байты")])
         .with_description("Читает файл как массив байтов")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .returns(TypeSpec::Array(Box::new(TypeSpec::UInt8)))
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::Array(Box::new(TypeKind::Int64)))
         .with_handler(|args| {
-            let path = expect_string(args, 0, "путь")?;
-            let data = fs::read(&path)
-                .map_err(|e| format!("Не удалось прочитать файл: {}", e))?;
-            Ok(bytes_to_value(data))
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let bytes = std::fs::read(path.as_str())
+                .map_err(|e| format!("Ошибка чтения файла '{}': {}", path, e))?;
+            let values: Vec<Value> = bytes
+                .iter()
+                .map(|&b| Value::Number(crate::types::Number::I64(b as i64)))
+                .collect();
+            Ok(Value::Array(values))
         })
 }
 
-/// записать_байты(путь, байты)
+/// запись_байтов(путь, байты)
 pub fn write_bytes_fn() -> LibFunctionDef {
-    LibFunctionDef::new("записать_байты")
-        .with_aliases(&["write_bytes", "writebin"])
+    LibFunctionDef::new("запись_байтов")
+        .with_aliases(vec![Arc::from("write_bytes"), Arc::from("записать_байты")])
         .with_description("Записывает массив байтов в файл")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .with_param(LibParamDef::value("байты", TypeSpec::Array(Box::new(TypeSpec::UInt8))))
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .with_param(LibParamDef::value(
+            "байты",
+            TypeKind::Array(Box::new(TypeKind::Int64)),
+        ))
         .as_procedure()
         .with_handler(|args| {
-            let path = expect_string(args, 0, "путь")?;
-            let data = expect_bytes_array(args, 1, "байты")?;
-            fs::write(&path, data).map_err(|e| format!("Не удалось записать файл: {}", e))?;
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let arr = args
+                .get(1)
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| "Ожидается массив байтов".to_string())?;
+            let bytes: Vec<u8> = arr
+                .iter()
+                .map(|v| {
+                    v.as_number()
+                        .and_then(|n| n.to_i64())
+                        .map(|n| n as u8)
+                        .unwrap_or(0)
+                })
+                .collect();
+            std::fs::write(path.as_str(), &bytes)
+                .map_err(|e| format!("Ошибка записи файла '{}': {}", path, e))?;
+            Ok(Value::Null)
+        })
+}
+
+/// запись_строк(путь, строки)
+pub fn write_lines_fn() -> LibFunctionDef {
+    LibFunctionDef::new("запись_строк")
+        .with_aliases(vec![Arc::from("write_lines"), Arc::from("записать_строки")])
+        .with_description("Записывает массив строк в файл (каждая строка на новой строке)")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .with_param(LibParamDef::value(
+            "строки",
+            TypeKind::Array(Box::new(TypeKind::String)),
+        ))
+        .as_procedure()
+        .with_handler(|args| {
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let arr = args
+                .get(1)
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| "Ожидается массив строк".to_string())?;
+            let lines: Vec<String> = arr
+                .iter()
+                .map(|v| v.as_string().map(|s| s.to_string()).unwrap_or_default())
+                .collect();
+            let content = lines.join("\n");
+            std::fs::write(path.as_str(), content.as_bytes())
+                .map_err(|e| format!("Ошибка записи файла '{}': {}", path, e))?;
             Ok(Value::Null)
         })
 }

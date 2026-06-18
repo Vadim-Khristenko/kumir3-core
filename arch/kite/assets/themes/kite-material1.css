@@ -1,0 +1,234 @@
+/* =============================================================================
+ * KITE THEME: Material Design 1 (Classic Paper) · Dark Edition
+ * ========================================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap");
+
+:root {
+    /* Канонические тени MD1 (z-depth от 1dp до 5dp) */
+    --md1-shadow-1dp:
+        0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    --md1-shadow-2dp:
+        0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+    --md1-shadow-3dp:
+        0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+    --md1-shadow-4dp:
+        0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+}
+
+.kite {
+    /* Базовая палитра M1 Dark Grey */
+    --kite-bg: #212121; /* Grey 900 — Фон */
+    --kite-surface: #303030; /* Grey 850 — Лист (1dp) */
+    --kite-surface-2: #424242; /* Grey 800 — Всплывающие элементы (4dp) */
+    --kite-border: rgba(255, 255, 255, 0.12);
+
+    /* Текст по стандартам MD1 Dark */
+    --kite-text: rgba(255, 255, 255, 0.87);
+    --kite-text-dim: rgba(255, 255, 255, 0.54);
+    --kite-heading: #ffffff;
+
+    /* Смягченные цвета для темной темы (Индексы 400 вместо 500) */
+    --kite-accent: #ff7043; /* Deep Orange 400 — Основной, не режет глаз */
+    --kite-accent-2: #ffca28; /* Amber 400 — Вторичный */
+    --kite-pink: #ec407a; /* Pink 400 */
+    --kite-green: #66bb6a; /* Green 400 */
+    --kite-yellow: #ffee58; /* Yellow 400 */
+    --kite-orange: #ffa726; /* Orange 400 */
+    --kite-red: #ef5350; /* Red 400 */
+
+    /* Скругления M1 — строго 2px */
+    --kite-radius: 2px;
+    --kite-radius-sm: 2px;
+
+    --kite-font: "Roboto", system-ui, sans-serif;
+    --kite-font-sans: "Roboto", system-ui, sans-serif;
+    --kite-mono: "Roboto Mono", monospace;
+}
+
+html:has(> body > .kite),
+body:has(> .kite) {
+    background: #212121;
+}
+
+.kite h1,
+.kite h2,
+.kite h3,
+.kite h4 {
+    font-family: var(--kite-font-sans);
+    font-weight: 500;
+}
+.kite h1 {
+    font-size: 1.8rem;
+    font-weight: 400;
+    color: var(--kite-heading);
+}
+.kite h2 {
+    font-size: 1.4rem;
+    border-bottom: 1px solid var(--kite-border);
+    padding-bottom: 0.5rem;
+}
+.kite h2::after {
+    background: var(--kite-accent);
+    height: 2px;
+    border-radius: 0;
+    width: 3rem;
+    bottom: -1px;
+}
+.kite h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--kite-accent-2);
+}
+
+/* Шапка: Deep Orange 600 — плотный, но не кислотный */
+.kite-header {
+    background: #f4511e;
+    border: none;
+    border-radius: var(--kite-radius);
+    box-shadow: var(--md1-shadow-2dp);
+}
+.kite-header::before,
+.kite-header::after {
+    display: none;
+}
+.kite-header h1 {
+    color: #ffffff;
+}
+.kite-header .kite-eyebrow {
+    color: rgba(255, 255, 255, 0.8);
+}
+.kite-header .kite-meta dt {
+    color: rgba(255, 255, 255, 0.7);
+}
+.kite-header .kite-meta dd {
+    color: #ffffff;
+}
+
+/* Компоненты */
+.kite-toc {
+    background: var(--kite-surface);
+    border: none;
+    box-shadow: var(--md1-shadow-1dp);
+}
+.kite-toc::before {
+    background: var(--kite-accent);
+    width: 3px;
+}
+.kite-toc a {
+    font-size: 0.85rem;
+    transition: color 0.2s;
+}
+.kite-toc a:hover {
+    color: var(--kite-accent);
+    padding-left: 0;
+}
+.kite-toc a.is-active {
+    color: var(--kite-accent-2);
+    font-weight: 700;
+}
+
+.kite-card {
+    background: var(--kite-surface);
+    border: none;
+    box-shadow: var(--md1-shadow-1dp);
+    transition:
+        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.kite-card::before {
+    display: none;
+}
+.kite-card:hover {
+    box-shadow: var(--md1-shadow-3dp);
+    transform: translateY(-1px);
+}
+
+.kite-callout {
+    border-left-width: 4px;
+    border-radius: var(--kite-radius);
+    background: var(--kite-surface);
+    box-shadow: var(--md1-shadow-1dp);
+}
+.kite-callout.is-note {
+    border-left-color: var(--kite-accent-2);
+}
+.kite-callout.is-tip {
+    border-left-color: var(--kite-green);
+}
+.kite-callout.is-warning {
+    border-left-color: var(--kite-orange);
+}
+.kite-callout.is-important {
+    border-left-color: var(--kite-red);
+}
+
+/* Код */
+.kite code {
+    background: #1a1a1a;
+    border: none;
+    color: var(--kite-accent-2);
+}
+.kite-code {
+    background: #1a1a1a;
+    border: none;
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.kite-code[data-lang]::before {
+    background: var(--kite-surface);
+    color: var(--kite-accent);
+    border: none;
+}
+.kite-table thead th {
+    border-bottom: 2px solid var(--kite-accent);
+    color: var(--kite-text-dim);
+}
+
+.kite-status {
+    border-radius: 2px;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+}
+.kite-status::before {
+    display: none;
+}
+
+/* Ссылки */
+.kite a {
+    color: var(--kite-accent-2);
+    border-bottom: 1px dashed rgba(255, 202, 40, 0.4);
+}
+.kite a:hover {
+    color: var(--kite-accent);
+    border-bottom-color: var(--kite-accent);
+}
+
+/* Панель тем */
+.kite-theme-bar {
+    background-color: var(--kite-surface);
+    border: none;
+    box-shadow: var(--md1-shadow-2dp);
+    border-radius: 2px;
+}
+.kite-theme-panel {
+    background: var(--kite-surface);
+    border: none;
+    box-shadow: var(--md1-shadow-4dp);
+    border-radius: 2px;
+}
+.kite-theme-panel input[type="url"] {
+    background: #212121;
+    border: 1px solid var(--kite-border);
+    color: #fff;
+}
+.kite-theme-panel-apply {
+    background: var(--kite-accent);
+    color: #fff;
+    border-radius: 2px;
+}
+.kite-theme-panel-clear {
+    background: var(--kite-surface-2);
+    border: none;
+    color: var(--kite-text-dim);
+    border-radius: 2px;
+}

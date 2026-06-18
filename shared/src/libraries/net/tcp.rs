@@ -1,492 +1,146 @@
-// ============================================================================
-//                    TCP ТРАНСПОРТ
-// ============================================================================
-//
-// Асинхронный TCP listener и connection поверх tokio::net.
-//
-// ============================================================================
+//! TCP-операции: подключение, отправка, приём, прослушивание
 
-use std::net::SocketAddr;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::sync::Arc;
+use std::time::Duration;
 
-use tokio::net::{TcpListener as TokioListener, TcpStream};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use crate::types::library::{LibFunctionDef, LibParamDef};
+use crate::types::value::{TypeKind, Value};
 
-use super::core::{ConnectionId, ConnectionState, ShutdownSignal};
-use super::{NetError, NetResult, NetworkConfig};
+/// tcp_подключение(адрес) → лит
+pub fn tcp_connect_fn() -> LibFunctionDef {
+    LibFunctionDef::new("tcp_подключение")
+        .with_aliases(vec![Arc::from("tcp_connect")])
+        .with_description("Подключается к TCP-серверу и возвращает дескриптор соединения")
+        .with_param(LibParamDef::value("адрес", TypeKind::String))
+        .returns(TypeKind::String)
+        .with_handler(|args| {
+            let addr = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'адрес' (host:port)".to_string())?;
+            // Проверяем соединение (с таймаутом 10 сек)
+            let stream = TcpStream::connect_timeout(
+                &addr
+                    .parse()
+                    .map_err(|e| format!("Неверный адрес '{}': {}", addr, e))?,
+                Duration::from_secs(10),
+            )
+            .map_err(|e| format!("Ошибка подключения к '{}': {}", addr, e))?;
 
-// ============================================================================
-//                    КОНФИГУРАЦИЯ
-// ============================================================================
+            let local = stream
+                .local_addr()
+                .map(|a| a.to_string())
+                .unwrap_or_default();
+            let peer = stream
+                .peer_addr()
+                .map(|a| a.to_string())
+                .unwrap_or_default();
 
-/// Конфигурация TCP.
-#[derive(Debug, Clone)]
-pub struct TcpConfig {
-    /// Включить TCP_NODELAY
-    pub nodelay: bool,
-    /// Включить SO_REUSEADDR
-    pub reuse_addr: bool,
-    /// Backlog для listener
-    pub backlog: u32,
-    /// Размер буфера чтения
-    pub read_buffer_size: usize,
-    /// Размер буфера записи
-    pub write_buffer_size: usize,
-    /// Keep-alive интервал (None = отключено)
-    pub keepalive: Option<std::time::Duration>,
-}
-
-impl Default for TcpConfig {
-    fn default() -> Self {
-        Self {
-            nodelay: true,
-            reuse_addr: true,
-            backlog: 1024,
-            read_buffer_size: 8192,
-            write_buffer_size: 8192,
-            keepalive: Some(std::time::Duration::from_secs(60)),
-        }
-    }
-}
-
-impl From<&NetworkConfig> for TcpConfig {
-    fn from(config: &NetworkConfig) -> Self {
-        Self {
-            nodelay: config.tcp_nodelay,
-            reuse_addr: config.reuse_addr,
-            backlog: config.backlog,
-            read_buffer_size: config.buffer_size,
-            write_buffer_size: config.buffer_size,
-            keepalive: Some(std::time::Duration::from_secs(60)),
-        }
-    }
-}
-
-// ============================================================================
-//                    TCP LISTENER
-// ============================================================================
-
-/// Асинхронный TCP listener.
-pub struct TcpListener {
-    /// Внутренний tokio listener
-    inner: TokioListener,
-    /// Конфигурация
-    config: TcpConfig,
-    /// Сигнал shutdown
-    shutdown: ShutdownSignal,
-    /// Флаг закрытия
-    closed: AtomicBool,
-}
-
-impl TcpListener {
-    /// Создаёт listener на указанном адресе.
-    pub async fn bind(addr: SocketAddr, config: TcpConfig) -> NetResult<Self> {
-        let socket = if addr.is_ipv6() {
-            tokio::net::TcpSocket::new_v6()?
-        } else {
-            tokio::net::TcpSocket::new_v4()?
-        };
-
-        if config.reuse_addr {
-            socket.set_reuseaddr(true)?;
-        }
-
-        socket.bind(addr)?;
-        let listener = socket.listen(config.backlog)?;
-
-        Ok(Self {
-            inner: listener,
-            config,
-            shutdown: ShutdownSignal::new(),
-            closed: AtomicBool::new(false),
+            // Закрываем (КуМир 3 не держит handle)
+            drop(stream);
+            Ok(Value::String(format!("{}→{}", local, peer)))
         })
-    }
-
-    /// Принимает новое соединение.
-    pub async fn accept(&self) -> NetResult<TcpConnection> {
-        if self.closed.load(Ordering::SeqCst) {
-            return Err(NetError::ConnectionClosed);
-        }
-
-        tokio::select! {
-            result = self.inner.accept() => {
-                let (stream, peer_addr) = result?;
-                
-                // Применяем конфигурацию
-                if self.config.nodelay {
-                    stream.set_nodelay(true)?;
-                }
-                
-                Ok(TcpConnection::from_stream(stream, peer_addr, self.config.clone()))
-            }
-            _ = self.shutdown.wait() => {
-                Err(NetError::ConnectionClosed)
-            }
-        }
-    }
-
-    /// Возвращает локальный адрес.
-    pub fn local_addr(&self) -> NetResult<SocketAddr> {
-        Ok(self.inner.local_addr()?)
-    }
-
-    /// Возвращает сигнал shutdown.
-    pub fn shutdown_signal(&self) -> ShutdownSignal {
-        self.shutdown.subscribe()
-    }
-
-    /// Закрывает listener.
-    pub async fn close(&self) -> NetResult<()> {
-        self.closed.store(true, Ordering::SeqCst);
-        self.shutdown.shutdown();
-        Ok(())
-    }
-
-    /// Проверяет, закрыт ли listener.
-    pub fn is_closed(&self) -> bool {
-        self.closed.load(Ordering::SeqCst)
-    }
-
-    /// Итератор по входящим соединениям.
-    pub fn incoming(&self) -> IncomingConnections<'_> {
-        IncomingConnections { listener: self }
-    }
 }
 
-/// Итератор входящих соединений.
-pub struct IncomingConnections<'a> {
-    listener: &'a TcpListener,
-}
+/// tcp_отправить(адрес, данные) → цел
+pub fn tcp_send_fn() -> LibFunctionDef {
+    LibFunctionDef::new("tcp_отправить")
+        .with_aliases(vec![Arc::from("tcp_send")])
+        .with_description("Отправляет данные по TCP и возвращает количество отправленных байтов")
+        .with_param(LibParamDef::value("адрес", TypeKind::String))
+        .with_param(LibParamDef::value("данные", TypeKind::String))
+        .returns(TypeKind::Int64)
+        .with_handler(|args| {
+            let addr = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'адрес'".to_string())?;
+            let data = args
+                .get(1)
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'данные'".to_string())?;
 
-impl<'a> IncomingConnections<'a> {
-    /// Получает следующее соединение.
-    pub async fn next(&self) -> Option<NetResult<TcpConnection>> {
-        if self.listener.is_closed() {
-            return None;
-        }
-        Some(self.listener.accept().await)
-    }
-}
+            let mut stream = TcpStream::connect(addr.as_str())
+                .map_err(|e| format!("Ошибка подключения: {}", e))?;
+            stream
+                .set_write_timeout(Some(Duration::from_secs(10)))
+                .map_err(|e| format!("Ошибка установки таймаута: {}", e))?;
 
-// ============================================================================
-//                    TCP CONNECTION
-// ============================================================================
+            let bytes_written = stream
+                .write(data.as_bytes())
+                .map_err(|e| format!("Ошибка отправки: {}", e))?;
+            stream.flush().map_err(|e| format!("Ошибка flush: {}", e))?;
 
-/// Асинхронное TCP соединение.
-pub struct TcpConnection {
-    /// Уникальный ID
-    id: ConnectionId,
-    /// Внутренний поток (Option для возможности take)
-    stream: Option<TcpStream>,
-    /// Адрес пира
-    peer_addr: SocketAddr,
-    /// Локальный адрес
-    local_addr: SocketAddr,
-    /// Конфигурация
-    config: TcpConfig,
-    /// Состояние
-    state: ConnectionState,
-}
-
-impl TcpConnection {
-    /// Создаёт соединение из существующего потока.
-    pub fn from_stream(stream: TcpStream, peer_addr: SocketAddr, config: TcpConfig) -> Self {
-        let local_addr = stream.local_addr().unwrap_or_else(|_| {
-            SocketAddr::from(([0, 0, 0, 0], 0))
-        });
-
-        Self {
-            id: ConnectionId::new(),
-            stream: Some(stream),
-            peer_addr,
-            local_addr,
-            config,
-            state: ConnectionState::Connected,
-        }
-    }
-
-    /// Подключается к удалённому адресу.
-    pub async fn connect(addr: SocketAddr, config: TcpConfig) -> NetResult<Self> {
-        let stream = TcpStream::connect(addr).await?;
-
-        if config.nodelay {
-            stream.set_nodelay(true)?;
-        }
-
-        let local_addr = stream.local_addr()?;
-
-        Ok(Self {
-            id: ConnectionId::new(),
-            stream: Some(stream),
-            peer_addr: addr,
-            local_addr,
-            config,
-            state: ConnectionState::Connected,
+            Ok(Value::Number(crate::types::Number::I64(
+                bytes_written as i64,
+            )))
         })
-    }
-
-    /// Возвращает ID соединения.
-    pub fn id(&self) -> ConnectionId {
-        self.id
-    }
-
-    /// Возвращает адрес пира.
-    pub fn peer_addr(&self) -> SocketAddr {
-        self.peer_addr
-    }
-
-    /// Возвращает локальный адрес.
-    pub fn local_addr(&self) -> SocketAddr {
-        self.local_addr
-    }
-
-    /// Возвращает состояние.
-    pub fn state(&self) -> ConnectionState {
-        self.state
-    }
-
-    /// Проверяет, открыто ли соединение.
-    pub fn is_open(&self) -> bool {
-        matches!(self.state, ConnectionState::Connected)
-    }
-
-    /// Читает данные в буфер.
-    pub async fn read(&mut self, buf: &mut [u8]) -> NetResult<usize> {
-        let stream = self.stream.as_mut()
-            .ok_or(NetError::ConnectionClosed)?;
-        
-        let n = stream.read(buf).await?;
-        if n == 0 {
-            self.state = ConnectionState::Closed;
-        }
-        Ok(n)
-    }
-
-    /// Читает точно указанное количество байт.
-    pub async fn read_exact(&mut self, buf: &mut [u8]) -> NetResult<()> {
-        let stream = self.stream.as_mut()
-            .ok_or(NetError::ConnectionClosed)?;
-        
-        stream.read_exact(buf).await?;
-        Ok(())
-    }
-
-    /// Читает до указанного разделителя.
-    pub async fn read_until(&mut self, delimiter: u8, buf: &mut Vec<u8>) -> NetResult<usize> {
-        let stream = self.stream.as_mut()
-            .ok_or(NetError::ConnectionClosed)?;
-        
-        let mut total = 0;
-        let mut byte = [0u8; 1];
-        
-        loop {
-            let n = stream.read(&mut byte).await?;
-            if n == 0 {
-                self.state = ConnectionState::Closed;
-                break;
-            }
-            buf.push(byte[0]);
-            total += 1;
-            if byte[0] == delimiter {
-                break;
-            }
-        }
-        
-        Ok(total)
-    }
-
-    /// Читает строку до \n.
-    pub async fn read_line(&mut self) -> NetResult<String> {
-        let mut buf = Vec::new();
-        self.read_until(b'\n', &mut buf).await?;
-        
-        // Убираем \r\n или \n
-        if buf.ends_with(&[b'\n']) {
-            buf.pop();
-        }
-        if buf.ends_with(&[b'\r']) {
-            buf.pop();
-        }
-        
-        String::from_utf8(buf)
-            .map_err(|e| NetError::Parse(e.to_string()))
-    }
-
-    /// Записывает данные.
-    pub async fn write(&mut self, buf: &[u8]) -> NetResult<usize> {
-        let stream = self.stream.as_mut()
-            .ok_or(NetError::ConnectionClosed)?;
-        
-        Ok(stream.write(buf).await?)
-    }
-
-    /// Записывает все данные.
-    pub async fn write_all(&mut self, buf: &[u8]) -> NetResult<()> {
-        let stream = self.stream.as_mut()
-            .ok_or(NetError::ConnectionClosed)?;
-        
-        stream.write_all(buf).await?;
-        Ok(())
-    }
-
-    /// Сбрасывает буферы.
-    pub async fn flush(&mut self) -> NetResult<()> {
-        let stream = self.stream.as_mut()
-            .ok_or(NetError::ConnectionClosed)?;
-        
-        stream.flush().await?;
-        Ok(())
-    }
-
-    /// Закрывает соединение.
-    pub async fn close(&mut self) -> NetResult<()> {
-        if let Some(mut stream) = self.stream.take() {
-            self.state = ConnectionState::Closing;
-            stream.shutdown().await?;
-            self.state = ConnectionState::Closed;
-        }
-        Ok(())
-    }
-
-    /// Разделяет на читающую и пишущую половины.
-    pub fn split(self) -> NetResult<(TcpReadHalf, TcpWriteHalf)> {
-        let stream = self.stream
-            .ok_or(NetError::ConnectionClosed)?;
-        
-        let (read, write) = stream.into_split();
-        
-        Ok((
-            TcpReadHalf { 
-                inner: read, 
-                id: self.id,
-                config: self.config.clone(),
-            },
-            TcpWriteHalf { 
-                inner: write, 
-                id: self.id,
-                config: self.config,
-            },
-        ))
-    }
-
-    /// Возвращает внутренний TcpStream (забирает ownership).
-    pub fn into_inner(mut self) -> Option<TcpStream> {
-        self.stream.take()
-    }
 }
 
-// ============================================================================
-//                    SPLIT HALVES
-// ============================================================================
+/// tcp_получить(адрес) → лит
+pub fn tcp_receive_fn() -> LibFunctionDef {
+    LibFunctionDef::new("tcp_получить")
+        .with_aliases(vec![Arc::from("tcp_receive"), Arc::from("tcp_recv")])
+        .with_description("Подключается к TCP-серверу и читает ответ")
+        .with_param(LibParamDef::value("адрес", TypeKind::String))
+        .returns(TypeKind::String)
+        .with_handler(|args| {
+            let addr = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'адрес'".to_string())?;
 
-/// Читающая половина TCP соединения.
-pub struct TcpReadHalf {
-    inner: tokio::net::tcp::OwnedReadHalf,
-    id: ConnectionId,
-    config: TcpConfig,
+            let mut stream = TcpStream::connect(addr.as_str())
+                .map_err(|e| format!("Ошибка подключения: {}", e))?;
+            stream
+                .set_read_timeout(Some(Duration::from_secs(10)))
+                .map_err(|e| format!("Ошибка установки таймаута: {}", e))?;
+
+            let mut buffer = vec![0u8; 65536];
+            let n = stream
+                .read(&mut buffer)
+                .map_err(|e| format!("Ошибка чтения: {}", e))?;
+
+            let response = String::from_utf8_lossy(&buffer[..n]).into_owned();
+            Ok(Value::String(response))
+        })
 }
 
-impl TcpReadHalf {
-    pub fn id(&self) -> ConnectionId {
-        self.id
-    }
+/// tcp_слушать(адрес) → лит
+pub fn tcp_listen_fn() -> LibFunctionDef {
+    LibFunctionDef::new("tcp_слушать")
+        .with_aliases(vec![Arc::from("tcp_listen")])
+        .with_description("Слушает TCP-порт, принимает одно соединение и читает данные")
+        .with_param(LibParamDef::value("адрес", TypeKind::String))
+        .returns(TypeKind::String)
+        .with_handler(|args| {
+            let addr = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'адрес' (host:port)".to_string())?;
 
-    pub async fn read(&mut self, buf: &mut [u8]) -> NetResult<usize> {
-        Ok(self.inner.read(buf).await?)
-    }
+            let listener = std::net::TcpListener::bind(addr.as_str())
+                .map_err(|e| format!("Ошибка привязки к '{}': {}", addr, e))?;
 
-    pub async fn read_exact(&mut self, buf: &mut [u8]) -> NetResult<()> {
-        self.inner.read_exact(buf).await?;
-        Ok(())
-    }
-}
+            // Принимаем одно соединение (с таймаутом неблокирующего accept)
+            listener
+                .set_nonblocking(false)
+                .map_err(|e| format!("Ошибка: {}", e))?;
 
-/// Пишущая половина TCP соединения.
-pub struct TcpWriteHalf {
-    inner: tokio::net::tcp::OwnedWriteHalf,
-    id: ConnectionId,
-    config: TcpConfig,
-}
+            let (mut stream, peer) = listener
+                .accept()
+                .map_err(|e| format!("Ошибка приёма соединения: {}", e))?;
 
-impl TcpWriteHalf {
-    pub fn id(&self) -> ConnectionId {
-        self.id
-    }
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .map_err(|e| format!("Ошибка таймаута: {}", e))?;
 
-    pub async fn write(&mut self, buf: &[u8]) -> NetResult<usize> {
-        Ok(self.inner.write(buf).await?)
-    }
+            let mut buffer = vec![0u8; 65536];
+            let n = stream.read(&mut buffer).unwrap_or(0);
+            let data = String::from_utf8_lossy(&buffer[..n]).to_string();
 
-    pub async fn write_all(&mut self, buf: &[u8]) -> NetResult<()> {
-        self.inner.write_all(buf).await?;
-        Ok(())
-    }
-
-    pub async fn flush(&mut self) -> NetResult<()> {
-        self.inner.flush().await?;
-        Ok(())
-    }
-
-    pub async fn shutdown(&mut self) -> NetResult<()> {
-        self.inner.shutdown().await?;
-        Ok(())
-    }
-}
-
-// ============================================================================
-//                    ТЕСТЫ
-// ============================================================================
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_tcp_listener_bind() {
-        let listener = TcpListener::bind(
-            "127.0.0.1:0".parse().unwrap(),
-            TcpConfig::default()
-        ).await.unwrap();
-
-        let addr = listener.local_addr().unwrap();
-        assert_ne!(addr.port(), 0);
-
-        listener.close().await.unwrap();
-        assert!(listener.is_closed());
-    }
-
-    #[tokio::test]
-    async fn test_tcp_connection() {
-        // Создаём listener
-        let listener = TcpListener::bind(
-            "127.0.0.1:0".parse().unwrap(),
-            TcpConfig::default()
-        ).await.unwrap();
-        let addr = listener.local_addr().unwrap();
-
-        // Спавним задачу для принятия соединения
-        let accept_task = tokio::spawn(async move {
-            listener.accept().await
-        });
-
-        // Подключаемся
-        let mut client = TcpConnection::connect(addr, TcpConfig::default()).await.unwrap();
-        assert!(client.is_open());
-
-        // Получаем серверное соединение
-        let mut server = accept_task.await.unwrap().unwrap();
-
-        // Отправляем данные
-        client.write_all(b"Hello").await.unwrap();
-        client.flush().await.unwrap();
-
-        // Читаем данные
-        let mut buf = [0u8; 5];
-        server.read_exact(&mut buf).await.unwrap();
-        assert_eq!(&buf, b"Hello");
-
-        // Закрываем
-        client.close().await.unwrap();
-        server.close().await.unwrap();
-    }
+            Ok(Value::String(format!("от {}: {}", peer, data)))
+        })
 }

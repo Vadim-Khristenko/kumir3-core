@@ -1,9 +1,8 @@
 //! Ошибки интерпретатора Кумир 3
 //!
 //! Модуль содержит типы ошибок, возникающих во время выполнения программы.
-//! Использует стандартные сообщения из `shared/constants/errors`.
 
-use shared::{codegen::RustCodeBlockError, constants::errors::errors};
+use shared::codegen::RustCodeBlockError;
 use std::fmt;
 
 /// Ошибка времени выполнения.
@@ -76,19 +75,19 @@ impl RuntimeError {
     // === Конструкторы для распространённых ошибок ===
 
     pub fn division_by_zero() -> Self {
-        Self::new(errors::DIVISION_BY_ZERO, RuntimeErrorKind::DivisionByZero)
+        Self::new("Деление на ноль", RuntimeErrorKind::DivisionByZero)
     }
 
     pub fn undefined_variable(name: &str) -> Self {
         Self::new(
-            format!("{}: '{}'", errors::UNDEFINED_VARIABLE, name),
+            format!("Переменная не определена: '{}'", name),
             RuntimeErrorKind::UndefinedVariable,
         )
     }
 
     pub fn undefined_algorithm(name: &str) -> Self {
         Self::new(
-            format!("{}: '{}'", errors::UNDEFINED_FUNCTION, name),
+            format!("Алгоритм не определён: '{}'", name),
             RuntimeErrorKind::UndefinedAlgorithm,
         )
     }
@@ -103,10 +102,8 @@ impl RuntimeError {
     pub fn type_mismatch(expected: &str, got: &str) -> Self {
         Self::new(
             format!(
-                "{}: ожидался {}, получен {}",
-                errors::TYPE_MISMATCH,
-                expected,
-                got
+                "Несоответствие типов: ожидался {}, получен {}",
+                expected, got
             ),
             RuntimeErrorKind::TypeMismatch,
         )
@@ -114,12 +111,7 @@ impl RuntimeError {
 
     pub fn index_out_of_bounds(index: i64, length: usize) -> Self {
         Self::new(
-            format!(
-                "{}: индекс {} при размере {}",
-                errors::INDEX_OUT_OF_BOUNDS,
-                index,
-                length
-            ),
+            format!("Индекс вне границ: индекс {} при размере {}", index, length),
             RuntimeErrorKind::IndexOutOfBounds,
         )
     }
@@ -127,11 +119,8 @@ impl RuntimeError {
     pub fn argument_count(name: &str, expected: usize, got: usize) -> Self {
         Self::new(
             format!(
-                "{} для '{}': ожидалось {}, получено {}",
-                errors::INVALID_ARGUMENT,
-                name,
-                expected,
-                got
+                "Неверное количество аргументов для '{}': ожидалось {}, получено {}",
+                name, expected, got
             ),
             RuntimeErrorKind::ArgumentCount,
         )
@@ -179,7 +168,7 @@ impl fmt::Display for RuntimeError {
 impl From<RustCodeBlockError> for RuntimeError {
     fn from(value: RustCodeBlockError) -> Self {
         Self::new(
-            &format!("[Rust-вставка] {}", value.message()),
+            format!("[Rust-вставка] {}", value.message()),
             RuntimeErrorKind::Other,
         )
     }

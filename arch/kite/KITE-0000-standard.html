@@ -1,0 +1,220 @@
+<link rel="stylesheet" href="./assets/kite.css">
+<!-- =============================================================================
+     KITE 0 — The KITE Standard (meta-document)
+     Fragment: embed into the docs page template, or open standalone (dark theme).
+============================================================================== -->
+<article class="kite" data-kite="0000" data-status="active" lang="ru">
+
+  <!-- ───────────────────────── HEADER ───────────────────────── -->
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE 0 · Мета-стандарт</span>
+    <h1>Стандарт KITE</h1>
+    <dl class="kite-meta">
+      <dt>Номер</dt>          <dd>KITE 0</dd>
+      <dt>Название</dt>       <dd>Что такое KITE и как он устроен</dd>
+      <dt>Статус</dt>         <dd><span class="kite-status is-stable">Active</span></dd>
+      <dt>Тип</dt>            <dd>Процесс / Мета</dd>
+      <dt>Автор</dt>          <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Создан</dt>         <dd>2026-05-30</dd>
+      <dt>Версия документа</dt> <dd>1.0.0</dd>
+    </dl>
+  </header>
+
+  <!-- ───────────────────────── TOC ───────────────────────── -->
+  <nav class="kite-toc" aria-label="Содержание">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#chto">Что такое KITE</a></li>
+      <li><a href="#zachem">Зачем нужен стандарт</a></li>
+      <li><a href="#tipy">Типы и нумерация документов</a></li>
+      <li><a href="#statusy">Жизненный цикл и статусы</a></li>
+      <li><a href="#format">Формат документа</a></li>
+      <li><a href="#slovar">Словарь классов <code>kite-*</code></a></li>
+      <li><a href="#process">Как предложить KITE</a></li>
+      <li><a href="#bdoc">Связь с BetterDoc</a></li>
+      <li><a href="#reestr">Реестр KITE</a></li>
+    </ol>
+  </nav>
+
+  <!-- ───────────────────────── 1 ───────────────────────── -->
+  <section class="kite-section" id="chto">
+    <h2>1. Что такое KITE</h2>
+    <p>
+      <strong>KITE</strong> (<em>Кумир: Инновации, Технологии, Эволюция</em>) — это серия
+      проектных документов, описывающих язык Kumir&nbsp;3: его философию, синтаксис, систему
+      типов, библиотеки, окружения и процессы развития. KITE для Кумира — это то же, чем
+      <code>PEP</code> является для Python: единый, цитируемый источник правды.
+    </p>
+    <p>
+      Каждый документ имеет номер, заголовок и статус. Документы пишутся как
+      HTML-фрагменты, готовые к встраиванию в страницу документации, и оформляются в
+      тёмной теме по умолчанию.
+    </p>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Принцип</span>
+      <em>Architecture as Art. Code as Narrative.</em> Стандарт описывает не только «как»,
+      но и «почему» — чтобы решения были осознанными, а не случайными.
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 2 ───────────────────────── -->
+  <section class="kite-section" id="zachem">
+    <h2>2. Зачем нужен стандарт</h2>
+    <ul>
+      <li><strong>Единый источник правды.</strong> Поведение языка фиксируется в KITE, а не в чьей-то голове.</li>
+      <li><strong>Осознанная эволюция.</strong> Изменения проходят через предложение, обсуждение и принятие.</li>
+      <li><strong>Чистый код.</strong> Стандарт отделяет <em>реализованное</em> от <em>предложенного</em>, чтобы документация не врала.</li>
+      <li><strong>Образование.</strong> Кумир — учебный язык; ясный стандарт помогает и ученикам, и преподавателям.</li>
+    </ul>
+  </section>
+
+  <!-- ───────────────────────── 3 ───────────────────────── -->
+  <section class="kite-section" id="tipy">
+    <h2>3. Типы и нумерация документов</h2>
+    <p>Номера выдаются последовательно и не переиспользуются. Ведущие нули — до четырёх знаков (<code>KITE-0000</code>).</p>
+    <div class="kite-table">
+      <table>
+        <thead>
+          <tr><th>Тип</th><th>Назначение</th><th>Примеры</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Мета / Процесс</strong></td><td>Описывают сам стандарт и процедуры.</td><td>KITE 0</td></tr>
+          <tr><td><strong>Информационный</strong></td><td>Обзоры, философия, позиционирование.</td><td>KITE 1 — обзор языка</td></tr>
+          <tr><td><strong>Спецификация</strong></td><td>Точное описание части языка.</td><td>KITE 2 — система типов</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 4 ───────────────────────── -->
+  <section class="kite-section" id="statusy">
+    <h2>4. Жизненный цикл и статусы</h2>
+    <p>Статус документа отражается пилюлей <code>kite-status</code> в шапке:</p>
+    <ul>
+      <li><span class="kite-status is-draft">Draft</span> — черновик, обсуждается, может сильно измениться.</li>
+      <li><span class="kite-status is-experimental">Experimental</span> — принят, но интерфейс ещё может меняться.</li>
+      <li><span class="kite-status is-stable">Active</span> — действующий, стабильный стандарт.</li>
+    </ul>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Реализовано ≠ Предложено</span>
+      Внутри спецификаций каждая возможность помечается бейджем доступности:
+      <span class="kite-badge is-available">✅&nbsp;Доступно</span>
+      <span class="kite-badge is-experimental">🧪&nbsp;Экспериментально</span>
+      <span class="kite-badge is-proposed">📋&nbsp;Предложено</span>
+      <span class="kite-badge is-deprecated">⚠&nbsp;Устарело</span>.
+      Бейдж <em>Предложено</em> означает: описано в стандарте, но ещё не реализовано в движке.
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 5 ───────────────────────── -->
+  <section class="kite-section" id="format">
+    <h2>5. Формат документа</h2>
+    <p>
+      KITE — это семантический HTML-фрагмент с корнем <code>&lt;article class="kite"&gt;</code>
+      и подключённым общим стилем <code>assets/kite.css</code>. Он встраивается в шаблон
+      страницы документации (там стиль уже подключён — повторный <code>&lt;link&gt;</code>
+      безвреден) и при этом автономно открывается в браузере в тёмной теме.
+    </p>
+    <div class="kite-code" data-lang="html">
+<pre><code>&lt;link rel="stylesheet" href="./assets/kite.css"&gt;
+&lt;article class="kite" data-kite="0001" data-status="active" lang="ru"&gt;
+  &lt;header class="kite-header"&gt;…&lt;/header&gt;
+  &lt;nav class="kite-toc"&gt;…&lt;/nav&gt;
+  &lt;section class="kite-section" id="…"&gt;…&lt;/section&gt;
+  &lt;footer class="kite-footer"&gt;…&lt;/footer&gt;
+&lt;/article&gt;</code></pre>
+    </div>
+    <p>Файлы именуются <code>KITE-NNNN-краткое-имя.html</code> и лежат в <code>arch/kite/</code>. Базовый язык — русский; переводы добавляются позже.</p>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Прогрессивное улучшение</span>
+      Необязательный <code>assets/kite.js</code> добавляет живой поиск по документу, генерацию
+      и подсветку оглавления (scrollspy) и фильтр на странице-оглавлении. Документы полностью
+      читаемы и без JavaScript — скрипт лишь улучшает навигацию.
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 6 ───────────────────────── -->
+  <section class="kite-section" id="slovar">
+    <h2>6. Словарь классов <code>kite-*</code></h2>
+    <p>Весь визуал живёт в <code>kite.css</code>; документы используют только семантические классы. Они scoped под <code>.kite</code> и не конфликтуют со страницей-носителем.</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Класс</th><th>Назначение</th></tr></thead>
+        <tbody>
+          <tr><td><code>kite</code></td><td>Корневой <code>&lt;article&gt;</code>.</td></tr>
+          <tr><td><code>kite-header</code> / <code>kite-meta</code></td><td>Шапка: номер, заголовок, статус, автор, версия, дата.</td></tr>
+          <tr><td><code>kite-status</code> <code>.is-stable/.is-experimental/.is-draft</code></td><td>Пилюля статуса документа.</td></tr>
+          <tr><td><code>kite-toc</code></td><td>Содержание.</td></tr>
+          <tr><td><code>kite-section</code></td><td>Смысловой раздел.</td></tr>
+          <tr><td><code>kite-callout</code> <code>.is-note/.is-tip/.is-warning/.is-important</code></td><td>Выноска-врезка.</td></tr>
+          <tr><td><code>kite-code</code> <code>[data-lang]</code></td><td>Блок кода с меткой языка.</td></tr>
+          <tr><td><code>kite-table</code></td><td>Таблица (обёртка для прокрутки).</td></tr>
+          <tr><td><code>kite-badge</code> <code>.is-available/.is-experimental/.is-proposed/.is-deprecated</code></td><td>Инлайн-бейдж доступности.</td></tr>
+          <tr><td><code>kite-grid</code> / <code>kite-card</code></td><td>Сетка карточек (преимущества, возможности).</td></tr>
+          <tr><td><code>kite-footer</code></td><td>Подвал документа.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 7 ───────────────────────── -->
+  <section class="kite-section" id="process">
+    <h2>7. Как предложить KITE</h2>
+    <ol>
+      <li>Возьми следующий свободный номер.</li>
+      <li>Создай <code>KITE-NNNN-имя.html</code> из шаблона (раздел&nbsp;5) со статусом <span class="kite-status is-draft">Draft</span>.</li>
+      <li>Опиши мотивацию, спецификацию и влияние на совместимость; помечай возможности бейджами доступности.</li>
+      <li>Обсуждение → принятие переводит статус в <span class="kite-status is-stable">Active</span>; запись добавляется в реестр.</li>
+    </ol>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Коммиты</span>
+      Изменения KITE коммитятся по <a href="https://www.conventionalcommits.org/">Conventional Commits</a>
+      (<code>docs(kite): …</code>), без упоминаний инструментов-ассистентов. За соблюдением следит
+      git-хук в <code>.githooks/</code>.
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 8 ───────────────────────── -->
+  <section class="kite-section" id="bdoc">
+    <h2>8. Связь с BetterDoc (BDoc)</h2>
+    <p>
+      KITE описывает <strong>язык</strong>; <a href="../ru/BetterDoc.md">BetterDoc</a> описывает,
+      как пишется <strong>исходный код ядра</strong> (секционирование, статус-теги, документация
+      сущностей). Бейджи доступности KITE намеренно перекликаются со статус-тегами BDoc
+      (<code>[STABLE]</code>, <code>[EXPERIMENTAL]</code>), чтобы термины были едины во всём проекте.
+    </p>
+  </section>
+
+  <!-- ───────────────────────── 9 ───────────────────────── -->
+  <section class="kite-section" id="reestr">
+    <h2>9. Реестр KITE</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>№</th><th>Название</th><th>Тип</th><th>Статус</th></tr></thead>
+        <tbody>
+          <tr><td>KITE 0</td><td>Стандарт KITE</td><td>Мета</td><td><span class="kite-status is-stable">Active</span></td></tr>
+          <tr><td>KITE 1</td><td>Kumir 3: язык, цели и преимущества</td><td>Информационный</td><td><span class="kite-status is-stable">Active</span></td></tr>
+          <tr><td>KITE 2</td><td>Система типов Kumir 3</td><td>Спецификация</td><td><span class="kite-status is-stable">Active</span></td></tr>
+          <tr><td>KITE 3</td><td>Асинхронность и среда исполнения</td><td>Спецификация</td><td><span class="kite-status is-experimental">Experimental</span></td></tr>
+          <tr><td>KITE 4</td><td>Окружения, область видимости и поиск переменных</td><td>Спецификация</td><td><span class="kite-status is-stable">Active</span></td></tr>
+          <tr><td>KITE 5</td><td>Библиотеки: встроенные и пользовательские</td><td>Спецификация</td><td><span class="kite-status is-stable">Active</span></td></tr>
+          <tr><td>KITE 6</td><td>Режим совместимости с КуМир 2</td><td>Спецификация / Дизайн</td><td><span class="kite-status is-draft">Draft</span></td></tr>
+          <tr><td>KITE 7</td><td>Базовая библиотека STDIO</td><td>Спецификация / Дизайн</td><td><span class="kite-status is-draft">Draft</span></td></tr>
+          <tr><td>KITE 8</td><td>Как лучше писать на Kumir 3 (гайдлайны)</td><td>Информационный</td><td><span class="kite-status is-stable">Active</span></td></tr>
+          <tr><td>KITE 9</td><td>Циклы разработки и отладка</td><td>Информационный</td><td><span class="kite-status is-stable">Active</span></td></tr>
+          <tr><td>KITE 10</td><td>Архитектура движка типов</td><td>Спецификация</td><td><span class="kite-status is-experimental">Experimental</span></td></tr>
+          <tr><td>KITE 11</td><td>Объектная модель (ООП)</td><td>Спецификация / Дизайн</td><td><span class="kite-status is-draft">Draft</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Все документы собраны на странице-оглавлении <a href="./index.html"><code>index.html</code></a> с живым поиском.</p>
+  </section>
+
+  <!-- ───────────────────────── FOOTER ───────────────────────── -->
+  <footer class="kite-footer">
+    <span>KITE 0 · Стандарт KITE</span>
+    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>

@@ -1,0 +1,172 @@
+<link rel="stylesheet" href="./assets/kite.css">
+<!-- =============================================================================
+     KITE 9 — Циклы разработки и отладка
+============================================================================== -->
+<article class="kite" data-kite="0009" data-status="active" lang="ru">
+
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE 9 · Информационный</span>
+    <h1>Циклы разработки и отладка</h1>
+    <dl class="kite-meta">
+      <dt>Номер</dt>            <dd>KITE 9</dd>
+      <dt>Название</dt>         <dd>Как разрабатывать, отлаживать и понимать, что не так</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
+      <dt>Тип</dt>              <dd>Информационный</dd>
+      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Создан</dt>           <dd>2026-05-30</dd>
+      <dt>Версия документа</dt> <dd>1.0.0</dd>
+    </dl>
+  </header>
+
+  <nav class="kite-toc" aria-label="Содержание">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#cikl">Цикл разработки</a></li>
+      <li><a href="#zapusk">Запуск</a></li>
+      <li><a href="#testy">Тестирование</a></li>
+      <li><a href="#oshibki">Чтение ошибок</a></li>
+      <li><a href="#otladka">Режим отладки</a></li>
+      <li><a href="#diagnostika">Диагностика «что не так»</a></li>
+      <li><a href="#instrumenty">Инструменты отладки</a></li>
+      <li><a href="#commit">Перед коммитом</a></li>
+      <li><a href="#vosproizvodimost">Воспроизводимость</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section class="kite-section" id="cikl">
+    <h2>1. Цикл разработки</h2>
+    <div class="kite-code" data-lang="цикл">
+<pre><code>написать → запустить → проверить → отладить → улучшить → закоммитить
+   ↑                                                          │
+   └──────────────────────────────────────────────────────────┘</code></pre>
+    </div>
+    <p>Короткие итерации лучше длинных: меняй малое, сразу проверяй, не копи непроверенный код.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="kite-section" id="zapusk">
+    <h2>2. Запуск</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Команда</th><th>Когда</th></tr></thead>
+        <tbody>
+          <tr><td><code>interpreter-cli программа.kum</code></td><td>Быстрый запуск и проверка.</td></tr>
+          <tr><td><code>interpreter-tui</code></td><td>Интерактивная работа в текстовом интерфейсе.</td></tr>
+          <tr><td><code>kumir3-compiler … --emit-rust</code></td><td>Компиляция в Rust / IR / WASM.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="kite-section" id="testy">
+    <h2>3. Тестирование</h2>
+    <ul>
+      <li><strong>Кейсы на Кумире</strong> (<code>.kum</code>): в комментарии указывай вход и ожидаемый вывод.</li>
+      <li><strong>Unit/интеграционные тесты</strong> ядра — по стандарту BetterDoc (<em>Arrange / Act / Assert</em>).</li>
+      <li><strong>Пиши тест до правки</strong> (TDD): сначала падающий тест, затем код, который его чинит.</li>
+    </ul>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>| КЕЙС: НОД(48, 36) → 12
+| ОЖИДАЕМЫЙ ВЫВОД: 12
+вывод наибольший_делитель(48, 36)</code></pre>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="kite-section" id="oshibki">
+    <h2>4. Чтение ошибок</h2>
+    <p>Типичные ошибки времени выполнения и что они означают:</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Ошибка</th><th>Что значит</th><th>Частая причина</th></tr></thead>
+        <tbody>
+          <tr><td>Переменная не определена</td><td>Имя не найдено ни в кадрах, ни в глобальных.</td><td>Опечатка; использование до объявления.</td></tr>
+          <tr><td>Алгоритм не определён</td><td>Вызван несуществующий алгоритм.</td><td>Опечатка в имени; забыт импорт.</td></tr>
+          <tr><td>Несовпадение типов</td><td>Ожидался один тип, получен другой.</td><td>Смешение <code>лит</code> и <code>цел</code>; забытое приведение.</td></tr>
+          <tr><td>Выход за границы</td><td>Индекс вне диапазона массива.</td><td>Счёт с 1 вместо 0; неверная длина.</td></tr>
+          <tr><td>Превышена глубина вызова (1000)</td><td>Слишком глубокая/бесконечная рекурсия.</td><td>Нет базового случая; неверное условие выхода.</td></tr>
+          <tr><td>Пользовательское исключение</td><td>Код сам возбудил ошибку (<code>бросить</code>).</td><td>Нарушено условие, заданное программой.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Коварная пара</span>
+      «Переменная не определена» часто соседствует с <em>неявным созданием</em> при опечатке
+      (см. <a href="./KITE-0004-environments-scope.html">KITE 4</a>): присваивание создаёт новую
+      переменную, а чтение правильного имени падает. Проверяй имена внимательно.
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="kite-section" id="otladka">
+    <h2>5. Режим отладки</h2>
+    <ul>
+      <li><strong>Режим отладки</strong> печатает вывод «вживую» по мере исполнения — видно, до какого места дошла программа.</li>
+      <li><code>утв</code> (assert) — быстрый способ проверить предположение: если ложно — понятная остановка.</li>
+      <li><code>пауза</code> — остановить исполнение в нужной точке.</li>
+      <li>Приём «печать-отладка»: временный <code>вывод</code> значений ключевых переменных.</li>
+    </ul>
+  </section>
+
+  <!-- 6 -->
+  <section class="kite-section" id="diagnostika">
+    <h2>6. Диагностика «что не так»</h2>
+    <p>Чеклист, когда результат не такой, как ждали:</p>
+    <ol>
+      <li>Прочитай сообщение об ошибке целиком — там тип ошибки и место.</li>
+      <li>Воспроизведи на минимальном примере.</li>
+      <li>Проверь имена переменных (опечатки → неявное создание).</li>
+      <li>Проверь типы на границах алгоритмов.</li>
+      <li>Для рекурсии — есть ли базовый случай и движется ли условие к нему.</li>
+      <li>Добавь <code>вывод</code>/<code>утв</code> в подозрительные места и сужай зону поиска.</li>
+    </ol>
+  </section>
+
+  <!-- 7 -->
+  <section class="kite-section" id="instrumenty">
+    <h2>7. Инструменты отладки</h2>
+    <p>Сейчас доступны режим отладки, <code>утв</code>, <code>пауза</code> и печать. Предлагается добавить:</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Инструмент</th><th>Что даёт</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td>Пошаговый отладчик</td><td>Точки останова, шаг, инспекция переменных и стека.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Watch-выражения</td><td>Наблюдение за значениями при изменении.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>кумрепл</code></td><td>Интерактивная проверка фрагментов.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>кумлинт</code></td><td>Раннее предупреждение об опечатках, затенении, неиспользуемом.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Трассировка стека вызовов</td><td>Цепочка вызовов в момент ошибки.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="kite-section" id="commit">
+    <h2>8. Перед коммитом</h2>
+    <ul>
+      <li>Прогони тесты — все должны проходить.</li>
+      <li>Сообщение коммита — по <strong>Conventional Commits</strong>, без упоминаний ИИ-ассистентов.</li>
+      <li>Меняешь версию — добавь запись в <code>CHANGELOG.md</code>.</li>
+      <li>Эти правила проверяет git-хук (<code>.githooks/</code>) автоматически.</li>
+    </ul>
+  </section>
+
+  <!-- 9 -->
+  <section class="kite-section" id="vosproizvodimost">
+    <h2>9. Воспроизводимость</h2>
+    <ul>
+      <li>Фиксируй версии библиотек (виртуальные окружения, будущий файл блокировки — см. <a href="./KITE-0005-libraries.html">KITE 5</a>).</li>
+      <li>Один и тот же код в одном окружении должен давать один и тот же результат.</li>
+      <li>Тесты-кейсы храни рядом с кодом — они и документация, и страховка от регрессий.</li>
+    </ul>
+  </section>
+
+  <footer class="kite-footer">
+    <span>KITE 9 · Циклы разработки и отладка</span>
+    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>

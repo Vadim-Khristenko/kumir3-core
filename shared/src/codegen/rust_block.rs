@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
+// Licensed under MIT OR Apache-2.0
+
 // ============================================================================
 //                    МОДУЛЬ RUST-ВСТАВОК
 // ============================================================================
@@ -16,7 +19,6 @@
 
 use std::collections::HashMap;
 use std::env;
-use std::error::Error;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
@@ -448,7 +450,7 @@ impl RustBlockExecutor {
     }
 
     /// Форматирует ошибку rustc, показывая только релевантные строки
-    fn format_rustc_error(&self, stderr: &str, original_code: &str) -> String {
+    fn format_rustc_error(&self, stderr: &str, _original_code: &str) -> String {
         // Упрощаем вывод ошибки
         let mut result = String::new();
         let lines: Vec<&str> = stderr.lines().collect();

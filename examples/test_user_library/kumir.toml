@@ -1,0 +1,39 @@
+# Тестовая пользовательская библиотека для Kumir 3
+
+[package]
+name = "тест_библиотека"
+version = "1.0.0"
+authors = ["Тестовый Пользователь <test@example.com>"]
+description = "Простая тестовая библиотека для демонстрации возможностей"
+license = "MIT"
+kumir_version = "3.0.0"
+edition = "2024"
+type = "library"
+main = "src/lib.kum"
+
+# Экспортируемые функции
+exports = [
+    "удвоить",
+    "утроить",
+    "сумма_чисел",
+    "факториал"
+]
+
+# Зависимости
+[dependencies]
+
+# Настройки сборки
+[build]
+main_file = "src/lib.kum"
+output_dir = "./build"
+optimization_level = 2
+debug_info = false
+bounds_check = true
+strict_mode = true
+
+# Метаданные библиотеки
+[library]
+category = "математика"
+tags = ["test", "math", "demo"]
+min_kumir_version = "3.0.0"
+stable = true

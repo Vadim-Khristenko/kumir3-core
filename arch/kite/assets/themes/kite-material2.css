@@ -1,0 +1,96 @@
+/* =============================================================================
+ * KITE THEME: Material Design 2 (Official Dark Baseline)
+ * ========================================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap");
+
+:root {
+    /* Канонические трехслойные тени MD2 (Umbra, Penumbra, Ambient) */
+    --md2-shadow-1dp:
+        0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14),
+        0 1px 3px 0 rgba(0, 0, 0, 0.12);
+    --md2-shadow-4dp:
+        0 2px 4px -1px rgba(0, 0, 0, 0.2), 0 4px 5px 0 rgba(0, 0, 0, 0.14),
+        0 1px 10px 0 rgba(0, 0, 0, 0.12);
+    --md2-shadow-8dp:
+        0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14),
+        0 3px 14px 2px rgba(0, 0, 0, 0.12);
+}
+
+.kite {
+    /* Система белых оверлеев поверх #121212 */
+    --kite-bg: #121212; /* База (0dp) */
+    --kite-surface: #1e1e1e; /* Карточки (1dp = 5% white) */
+    --kite-surface-2: #272727; /* Шапка (4dp = 9% white) */
+    --kite-border: rgba(255, 255, 255, 0.12); /* Официальный разделитель */
+
+    --kite-text: rgba(255, 255, 255, 0.87); /* High emphasis */
+    --kite-text-dim: rgba(255, 255, 255, 0.6); /* Medium emphasis */
+    --kite-heading: rgba(255, 255, 255, 0.87);
+
+    /* Для темной темы Primary цвет должен быть "200" (пастельный), а не "500" */
+    --kite-accent: #ffab91; /* Deep Orange 200 */
+    --kite-accent-2: #ffe082; /* Amber 200 */
+
+    --kite-radius: 4px;
+    --kite-font-sans: "Roboto", sans-serif;
+}
+
+html:has(> body > .kite),
+body:has(> .kite) {
+    background: #121212;
+}
+
+/* Шапка: 4dp поверхность, НИКАКОГО яркого цвета в темной теме */
+.kite-header {
+    background: var(--kite-surface-2);
+    border: none;
+    border-radius: var(--kite-radius);
+    box-shadow: var(--md2-shadow-4dp);
+}
+.kite-header::before {
+    background: var(--kite-accent);
+    height: 2px;
+}
+.kite-header::after {
+    display: none;
+}
+
+/* Карточки покоятся на 1dp и взлетают до 8dp */
+.kite-card {
+    background: var(--kite-surface);
+    border: none;
+    box-shadow: var(--md2-shadow-1dp);
+    transition:
+        box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.kite-card::before {
+    display: none;
+}
+.kite-card:hover {
+    background: #2d2d2d; /* 8dp surface = 12% white */
+    box-shadow: var(--md2-shadow-8dp);
+    transform: translateY(-2px);
+}
+
+.kite-toc {
+    background: var(--kite-surface);
+    border: none;
+    box-shadow: var(--md2-shadow-1dp);
+}
+.kite-toc::before {
+    background: var(--kite-accent);
+    width: 2px;
+}
+
+/* Кнопки и статусы MD2 */
+.kite-status {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    border-radius: 16px; /* Pill shape для чипов */
+    padding: 0.2rem 0.8rem;
+}
+.kite-status::before {
+    display: none;
+}

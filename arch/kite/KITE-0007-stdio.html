@@ -1,0 +1,180 @@
+<link rel="stylesheet" href="./assets/kite.css">
+<!-- =============================================================================
+     KITE 7 — Базовая библиотека STDIO (новая архитектура)
+     Текущее состояние: shared/src/iostream.rs + interpreter output_buffer.
+============================================================================== -->
+<article class="kite" data-kite="0007" data-status="draft" lang="ru">
+
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE 7 · Спецификация / Дизайн</span>
+    <h1>Базовая библиотека STDIO</h1>
+    <dl class="kite-meta">
+      <dt>Номер</dt>            <dd>KITE 7</dd>
+      <dt>Название</dt>         <dd>Стандартный ввод-вывод: новая архитектура</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
+      <dt>Тип</dt>              <dd>Спецификация / Дизайн</dd>
+      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Создан</dt>           <dd>2026-05-30</dd>
+      <dt>Версия документа</dt> <dd>0.1.0</dd>
+    </dl>
+  </header>
+
+  <nav class="kite-toc" aria-label="Содержание">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#sostoyanie">Текущее состояние</a></li>
+      <li><a href="#celi">Цели новой архитектуры</a></li>
+      <li><a href="#model">Модель потоков</a></li>
+      <li><a href="#standartnye">Стандартные потоки</a></li>
+      <li><a href="#vyvod">Вывод и форматирование</a></li>
+      <li><a href="#vvod">Ввод и разбор</a></li>
+      <li><a href="#kodirovki">Кодировки</a></li>
+      <li><a href="#perenapravlenie">Перенаправление и захват</a></li>
+      <li><a href="#svyazi">Связи с подсистемами</a></li>
+      <li><a href="#plan">План перехода</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section class="kite-section" id="sostoyanie">
+    <h2>1. Текущее состояние</h2>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Что есть сейчас (фрагментировано)</span>
+      В <code>shared</code> живёт обобщённый <code>IOStream&lt;R, W&gt;</code> (буфер, <code>write/writeln</code>,
+      <code>read_line/read_token/parse</code>) и <code>FileStream</code> (режимы Closed/Read/Write).
+      Но интерпретатор <strong>отдельно</strong> копит вывод в <code>output_buffer</code> (вектор строк),
+      а <code>ввод</code>/<code>вывод</code> завязаны на него, не на потоки. Файлы — через библиотеку
+      <code>файлы</code>. Единой STDIO-подсистемы нет. <span class="kite-badge is-experimental">🧪</span>
+    </div>
+    <p>KITE 7 предлагает <strong>полностью переработать</strong> подход: ввести единую потоковую модель, вокруг которой строятся консоль, файлы, память и сеть. Всё ниже — <span class="kite-badge is-proposed">📋&nbsp;Предложено</span>, если не указано иное.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="kite-section" id="celi">
+    <h2>2. Цели новой архитектуры</h2>
+    <ul>
+      <li><strong>Единая абстракция</strong> потоков вместо двух параллельных механизмов.</li>
+      <li><strong>Три стандартных потока</strong>: ввод, вывод и поток ошибок.</li>
+      <li><strong>Тестируемость</strong>: вывод легко перехватить (буфер/память) — то, ради чего сейчас и сделан <code>output_buffer</code>, но как часть общей модели.</li>
+      <li><strong>Кодировки</strong> как параметр потока (UTF-8 / CP-1251).</li>
+      <li><strong>Единый форматтер</strong> для чисел, строк и выравнивания.</li>
+      <li><strong>Готовность к async</strong>: те же интерфейсы для неблокирующего ввода-вывода.</li>
+    </ul>
+  </section>
+
+  <!-- 3 -->
+  <section class="kite-section" id="model">
+    <h2>3. Модель потоков</h2>
+    <p>Базовые понятия — трейты <strong>Читатель</strong> и <strong>Писатель</strong>; конкретные потоки реализуют их:</p>
+    <div class="kite-code" data-lang="схема">
+<pre><code>          Читатель (чтение)         Писатель (запись)
+                │                         │
+   ┌────────────┼─────────────┐  ┌────────┼───────────────┐
+ Консоль     Файл        Память   Консоль  Файл   Память  Сеть
+(стдввод)  (файлы)     (захват)  (стдвыв) (файлы)(буфер) (сокеты)</code></pre>
+    </div>
+    <ul>
+      <li><strong>Консольный</strong> — терминал (stdin/stdout/stderr ОС).</li>
+      <li><strong>Файловый</strong> — поверх библиотеки <code>файлы</code> (см. <a href="./KITE-0005-libraries.html">KITE 5</a>).</li>
+      <li><strong>Памяти</strong> — пишет/читает в строку/буфер (тесты, песочница).</li>
+      <li><strong>Сетевой</strong> — поверх <code>сеть</code> (TCP/UDP).</li>
+    </ul>
+  </section>
+
+  <!-- 4 -->
+  <section class="kite-section" id="standartnye">
+    <h2>4. Стандартные потоки</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Поток (ru)</th><th>En</th><th>Назначение</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td><code>стдввод</code></td><td>stdin</td><td>Стандартный ввод.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>стдвыв</code></td><td>stdout</td><td>Стандартный вывод.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>стдошибки</code></td><td>stderr</td><td>Поток ошибок (диагностика отдельно от данных).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Классические <code>ввод</code>/<code>вывод</code> остаются и направляются в <code>стдввод</code>/<code>стдвыв</code>; добавляется явный вывод в поток ошибок.</p>
+  </section>
+
+  <!-- 5 -->
+  <section class="kite-section" id="vyvod">
+    <h2>5. Вывод и форматирование</h2>
+    <ul>
+      <li>Единый форматтер: ширина/выравнивание, точность вещественных, системы счисления.</li>
+      <li>Интерполяция строк <code>"…{выражение}…"</code> (связь с сахаром из <a href="./KITE-0002-type-system.html">KITE 2</a>).</li>
+      <li>Любое значение приводится к строке по правилам отображения типов.</li>
+    </ul>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>вывод "Привет, {имя}!"          | интерполяция
+стдошибки.вывод "Ошибка: ", код  | диагностика — в поток ошибок</code></pre>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="kite-section" id="vvod">
+    <h2>6. Ввод и разбор</h2>
+    <ul>
+      <li>Чтение строки, токена (через пробелы) и всего потока.</li>
+      <li>Типизированный разбор: прочитать <code>цел</code>/<code>вещ</code>/<code>лог</code> напрямую.</li>
+      <li>Безопасный ввод: результат как <code>T!E</code> (ошибка вместо паники), корректная обработка конца ввода (EOF).</li>
+    </ul>
+  </section>
+
+  <!-- 7 -->
+  <section class="kite-section" id="kodirovki">
+    <h2>7. Кодировки</h2>
+    <p>Кодировка — свойство потока: <strong>UTF-8</strong> по умолчанию, <strong>CP-1251</strong> в режиме совместимости (см. <a href="./KITE-0006-kumir2-compatibility.html">KITE 6</a>). Преобразование выполняется на границе потока, логика программы работает с Unicode.</p>
+  </section>
+
+  <!-- 8 -->
+  <section class="kite-section" id="perenapravlenie">
+    <h2>8. Перенаправление и захват</h2>
+    <ul>
+      <li>Стандартные потоки можно подменить: в память (тесты), в файл, в виджет TUI, в песочницу.</li>
+      <li>Захват вывода — штатная операция, а не костыль: то, что сейчас делает <code>output_buffer</code>, становится «потоком памяти».</li>
+      <li>Буферизация: построчная, полная или без буфера; явный сброс (<code>сбросить</code>).</li>
+    </ul>
+  </section>
+
+  <!-- 9 -->
+  <section class="kite-section" id="svyazi">
+    <h2>9. Связи с подсистемами</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Подсистема</th><th>Связь</th></tr></thead>
+        <tbody>
+          <tr><td>Файлы (<a href="./KITE-0005-libraries.html">KITE 5</a>)</td><td>Файловые потоки реализуют те же трейты Читатель/Писатель.</td></tr>
+          <tr><td>Сеть</td><td>Сокеты — это потоки; одинаковый API чтения/записи.</td></tr>
+          <tr><td>Async (<a href="./KITE-0003-async-runtime.html">KITE 3</a>)</td><td>Неблокирующий ввод-вывод — те же интерфейсы с точками приостановки.</td></tr>
+          <tr><td>Совместимость (<a href="./KITE-0006-kumir2-compatibility.html">KITE 6</a>)</td><td>Семантика <code>ввод</code>/<code>вывод</code> и кодировка КуМир 2.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="kite-section" id="plan">
+    <h2>10. План перехода</h2>
+    <ol>
+      <li>Ввести трейты Читатель/Писатель и поток памяти; <code>output_buffer</code> перевести на поток памяти.</li>
+      <li>Подключить консольные <code>стдввод/стдвыв/стдошибки</code>.</li>
+      <li>Перевести <code>ввод</code>/<code>вывод</code> на стандартные потоки.</li>
+      <li>Объединить <code>IOStream</code>/<code>FileStream</code> и библиотеку <code>файлы</code> под общей моделью.</li>
+      <li>Добавить кодировки, форматтер и интерполяцию.</li>
+      <li>Асинхронные варианты потоков.</li>
+    </ol>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Принцип</span>
+      «Всё — поток»: консоль, файл, память и сеть говорят на одном языке чтения/записи. Это упрощает
+      тесты, песочницу и переход к асинхронности.
+    </div>
+  </section>
+
+  <footer class="kite-footer">
+    <span>KITE 7 · Базовая библиотека STDIO</span>
+    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# =============================================================================
+#         KITE :: PRE-COMMIT HOOK
+# =============================================================================
+# Enforces: a CHANGELOG.md entry is required whenever a crate version changes.
+#
+# Versions in kumir3-core live per-crate (compiler/ interpreter/ shared/ tests/);
+# the workspace root Cargo.toml carries no package version. We flag a bump when a
+# staged Cargo.toml adds a top-level `version = "..."` line.
+# =============================================================================
+
+set -uo pipefail
+
+STAGED="$(git diff --cached --name-only)"
+version_changed=0
+
+while IFS= read -r f; do
+    case "$f" in
+        Cargo.toml|*/Cargo.toml)
+            # Look at the added (+) lines of the staged diff for a package version.
+            if git diff --cached -U0 -- "$f" \
+                 | grep -qE '^\+[[:space:]]*version[[:space:]]*='; then
+                version_changed=1
+            fi
+            ;;
+    esac
+done <<< "$STAGED"
+
+if [[ "$version_changed" -eq 1 ]]; then
+    if ! printf '%s\n' "$STAGED" | grep -qx 'CHANGELOG.md'; then
+        cat >&2 <<'EOF'
+
+  ✖ Commit rejected — version changed but CHANGELOG.md was not updated.
+
+    A crate version bump must be accompanied by a CHANGELOG.md entry.
+    Add your changelog note and stage it:
+
+      git add CHANGELOG.md
+
+EOF
+        exit 1
+    fi
+fi
+
+exit 0

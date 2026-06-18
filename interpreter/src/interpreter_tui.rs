@@ -7,7 +7,7 @@
 //! - Проверка синтаксиса
 //! - Просмотр AST
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use crossterm::{
     ExecutableCommand,
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
@@ -133,18 +133,15 @@ fn run_info_tui() -> Result<(), String> {
 
 fn run_info_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<(), String> {
     loop {
-        terminal
-            .draw(|frame| draw_info(frame))
-            .map_err(|e| e.to_string())?;
+        terminal.draw(draw_info).map_err(|e| e.to_string())?;
 
-        if event::poll(Duration::from_millis(100)).map_err(|e| e.to_string())? {
-            if let Event::Key(key) = event::read().map_err(|e| e.to_string())? {
-                if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter => break,
-                        _ => {}
-                    }
-                }
+        if event::poll(Duration::from_millis(100)).map_err(|e| e.to_string())?
+            && let Event::Key(key) = event::read().map_err(|e| e.to_string())?
+            && key.kind == KeyEventKind::Press
+        {
+            match key.code {
+                KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter => break,
+                _ => {}
             }
         }
     }
@@ -377,30 +374,27 @@ fn run_file_loop(
             .draw(|frame| draw_file_runner(frame, app))
             .map_err(|e| e.to_string())?;
 
-        if event::poll(Duration::from_millis(50)).map_err(|e| e.to_string())? {
-            if let Event::Key(key) = event::read().map_err(|e| e.to_string())? {
-                if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter if app.finished => break,
-                        KeyCode::Up | KeyCode::Char('k') => {
-                            app.scroll = app.scroll.saturating_sub(1)
-                        }
-                        KeyCode::Down | KeyCode::Char('j') => {
-                            app.scroll = app
-                                .scroll
-                                .saturating_add(1)
-                                .min(app.output.len().saturating_sub(1))
-                        }
-                        KeyCode::PageUp => app.scroll = app.scroll.saturating_sub(10),
-                        KeyCode::PageDown => {
-                            app.scroll = app
-                                .scroll
-                                .saturating_add(10)
-                                .min(app.output.len().saturating_sub(1))
-                        }
-                        _ => {}
-                    }
+        if event::poll(Duration::from_millis(50)).map_err(|e| e.to_string())?
+            && let Event::Key(key) = event::read().map_err(|e| e.to_string())?
+            && key.kind == KeyEventKind::Press
+        {
+            match key.code {
+                KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter if app.finished => break,
+                KeyCode::Up | KeyCode::Char('k') => app.scroll = app.scroll.saturating_sub(1),
+                KeyCode::Down | KeyCode::Char('j') => {
+                    app.scroll = app
+                        .scroll
+                        .saturating_add(1)
+                        .min(app.output.len().saturating_sub(1))
                 }
+                KeyCode::PageUp => app.scroll = app.scroll.saturating_sub(10),
+                KeyCode::PageDown => {
+                    app.scroll = app
+                        .scroll
+                        .saturating_add(10)
+                        .min(app.output.len().saturating_sub(1))
+                }
+                _ => {}
             }
         }
     }
@@ -563,14 +557,13 @@ fn run_simple_viewer(
             })
             .map_err(|e| e.to_string())?;
 
-        if event::poll(Duration::from_millis(100)).map_err(|e| e.to_string())? {
-            if let Event::Key(key) = event::read().map_err(|e| e.to_string())? {
-                if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter => break,
-                        _ => {}
-                    }
-                }
+        if event::poll(Duration::from_millis(100)).map_err(|e| e.to_string())?
+            && let Event::Key(key) = event::read().map_err(|e| e.to_string())?
+            && key.kind == KeyEventKind::Press
+        {
+            match key.code {
+                KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter => break,
+                _ => {}
             }
         }
     }
@@ -614,7 +607,7 @@ fn run_ast_tui(path: &PathBuf) -> Result<(), String> {
             let params: Vec<String> = alg
                 .params
                 .iter()
-                .map(|p| format!("{}: {:?}", p.name, p.type_spec))
+                .map(|p| format!("{}: {:?}", p.name, p.type_kind))
                 .collect();
             let ret = alg
                 .return_type
@@ -692,24 +685,23 @@ fn run_ast_tui(path: &PathBuf) -> Result<(), String> {
             })
             .map_err(|e| e.to_string())?;
 
-        if event::poll(Duration::from_millis(50)).map_err(|e| e.to_string())? {
-            if let Event::Key(key) = event::read().map_err(|e| e.to_string())? {
-                if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => break,
-                        KeyCode::Up | KeyCode::Char('k') => scroll = scroll.saturating_sub(1),
-                        KeyCode::Down | KeyCode::Char('j') => {
-                            scroll = scroll.saturating_add(1).min(output.len().saturating_sub(1))
-                        }
-                        KeyCode::PageUp => scroll = scroll.saturating_sub(10),
-                        KeyCode::PageDown => {
-                            scroll = scroll
-                                .saturating_add(10)
-                                .min(output.len().saturating_sub(1))
-                        }
-                        _ => {}
-                    }
+        if event::poll(Duration::from_millis(50)).map_err(|e| e.to_string())?
+            && let Event::Key(key) = event::read().map_err(|e| e.to_string())?
+            && key.kind == KeyEventKind::Press
+        {
+            match key.code {
+                KeyCode::Char('q') | KeyCode::Esc => break,
+                KeyCode::Up | KeyCode::Char('k') => scroll = scroll.saturating_sub(1),
+                KeyCode::Down | KeyCode::Char('j') => {
+                    scroll = scroll.saturating_add(1).min(output.len().saturating_sub(1))
                 }
+                KeyCode::PageUp => scroll = scroll.saturating_sub(10),
+                KeyCode::PageDown => {
+                    scroll = scroll
+                        .saturating_add(10)
+                        .min(output.len().saturating_sub(1))
+                }
+                _ => {}
             }
         }
     }
@@ -1061,12 +1053,11 @@ fn run_repl_tui(debug: bool) -> Result<(), String> {
             .draw(|frame| draw_repl(frame, &app))
             .map_err(|e| e.to_string())?;
 
-        if event::poll(Duration::from_millis(50)).map_err(|e| e.to_string())? {
-            if let Event::Key(key) = event::read().map_err(|e| e.to_string())? {
-                if key.kind == KeyEventKind::Press {
-                    app.handle_key(key.code, key.modifiers);
-                }
-            }
+        if event::poll(Duration::from_millis(50)).map_err(|e| e.to_string())?
+            && let Event::Key(key) = event::read().map_err(|e| e.to_string())?
+            && key.kind == KeyEventKind::Press
+        {
+            app.handle_key(key.code, key.modifiers);
         }
 
         if app.should_quit {

@@ -10,11 +10,11 @@
 //
 // ============================================================================
 
-use std::collections::HashMap;
-use std::sync::Arc;
 use std::any::Any;
+use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::types::Value;
@@ -27,9 +27,8 @@ use crate::types::Value;
 pub type SyncCallback = Arc<dyn Fn(Vec<Value>) -> CallbackResult + Send + Sync>;
 
 /// Асинхронный коллбэк.
-pub type AsyncCallback = Arc<
-    dyn Fn(Vec<Value>) -> Pin<Box<dyn Future<Output = CallbackResult> + Send>> + Send + Sync
->;
+pub type AsyncCallback =
+    Arc<dyn Fn(Vec<Value>) -> Pin<Box<dyn Future<Output = CallbackResult> + Send>> + Send + Sync>;
 
 /// Сырой коллбэк с Any типами (для продвинутого использования).
 pub type RawCallback = Arc<dyn Fn(Box<dyn Any + Send>) -> Box<dyn Any + Send> + Send + Sync>;
@@ -160,18 +159,18 @@ struct CallbackEntry {
 // ============================================================================
 
 /// Реестр для управления коллбэками.
-/// 
+///
 /// # Пример использования
-/// 
+///
 /// ```ignore
 /// let mut registry = CallbackRegistry::new();
-/// 
+///
 /// // Регистрация синхронного коллбэка
 /// registry.register_sync("on_data", |args| {
 ///     println!("Получены данные: {:?}", args);
 ///     CallbackResult::Void
 /// });
-/// 
+///
 /// // Вызов коллбэка
 /// let result = registry.call_sync("on_data", vec![Value::String("test".into())]);
 /// ```
@@ -201,10 +200,13 @@ impl CallbackRegistry {
         F: Fn(Vec<Value>) -> CallbackResult + Send + Sync + 'static,
     {
         let name = name.into();
-        self.callbacks.insert(name.clone(), CallbackEntry {
-            def: CallbackDef::new(&name),
-            callback: StoredCallback::Sync(Arc::new(callback)),
-        });
+        self.callbacks.insert(
+            name.clone(),
+            CallbackEntry {
+                def: CallbackDef::new(&name),
+                callback: StoredCallback::Sync(Arc::new(callback)),
+            },
+        );
     }
 
     /// Регистрирует синхронный коллбэк с метаданными.
@@ -213,10 +215,13 @@ impl CallbackRegistry {
         F: Fn(Vec<Value>) -> CallbackResult + Send + Sync + 'static,
     {
         let name = def.name.clone();
-        self.callbacks.insert(name, CallbackEntry {
-            def,
-            callback: StoredCallback::Sync(Arc::new(callback)),
-        });
+        self.callbacks.insert(
+            name,
+            CallbackEntry {
+                def,
+                callback: StoredCallback::Sync(Arc::new(callback)),
+            },
+        );
     }
 
     /// Вызывает синхронный коллбэк.
@@ -224,20 +229,22 @@ impl CallbackRegistry {
         match self.callbacks.get(name) {
             Some(entry) => {
                 // Проверяем арность если указана
-                if let Some(arity) = entry.def.arity {
-                    if args.len() != arity {
-                        return CallbackResult::Error(format!(
-                            "Коллбэк '{}' ожидает {} аргументов, получено {}",
-                            name, arity, args.len()
-                        ));
-                    }
+                if let Some(arity) = entry.def.arity
+                    && args.len() != arity
+                {
+                    return CallbackResult::Error(format!(
+                        "Коллбэк '{}' ожидает {} аргументов, получено {}",
+                        name,
+                        arity,
+                        args.len()
+                    ));
                 }
-                
+
                 match &entry.callback {
                     StoredCallback::Sync(cb) => cb(args),
-                    _ => CallbackResult::Error(format!(
-                        "Коллбэк '{}' не является синхронным", name
-                    )),
+                    _ => {
+                        CallbackResult::Error(format!("Коллбэк '{}' не является синхронным", name))
+                    }
                 }
             }
             None => CallbackResult::Error(format!("Коллбэк '{}' не найден", name)),
@@ -260,25 +267,30 @@ impl CallbackRegistry {
         });
 
         let mut async_cbs = self.async_callbacks.lock().await;
-        async_cbs.insert(name.clone(), CallbackEntry {
-            def: CallbackDef::new(&name),
-            callback: StoredCallback::Async(wrapped),
-        });
+        async_cbs.insert(
+            name.clone(),
+            CallbackEntry {
+                def: CallbackDef::new(&name),
+                callback: StoredCallback::Async(wrapped),
+            },
+        );
     }
 
     /// Вызывает асинхронный коллбэк.
     pub async fn call_async(&self, name: &str, args: Vec<Value>) -> CallbackResult {
         let async_cbs = self.async_callbacks.lock().await;
-        
+
         match async_cbs.get(name) {
             Some(entry) => {
-                if let Some(arity) = entry.def.arity {
-                    if args.len() != arity {
-                        return CallbackResult::Error(format!(
-                            "Коллбэк '{}' ожидает {} аргументов, получено {}",
-                            name, arity, args.len()
-                        ));
-                    }
+                if let Some(arity) = entry.def.arity
+                    && args.len() != arity
+                {
+                    return CallbackResult::Error(format!(
+                        "Коллбэк '{}' ожидает {} аргументов, получено {}",
+                        name,
+                        arity,
+                        args.len()
+                    ));
                 }
 
                 match &entry.callback {
@@ -287,9 +299,9 @@ impl CallbackRegistry {
                         drop(async_cbs); // Освобождаем lock перед await
                         future.await
                     }
-                    _ => CallbackResult::Error(format!(
-                        "Коллбэк '{}' не является асинхронным", name
-                    )),
+                    _ => {
+                        CallbackResult::Error(format!("Коллбэк '{}' не является асинхронным", name))
+                    }
                 }
             }
             None => CallbackResult::Error(format!("Асинхронный коллбэк '{}' не найден", name)),
@@ -306,20 +318,23 @@ impl CallbackRegistry {
         F: Fn(Box<dyn Any + Send>) -> Box<dyn Any + Send> + Send + Sync + 'static,
     {
         let name = name.into();
-        self.callbacks.insert(name.clone(), CallbackEntry {
-            def: CallbackDef::new(&name),
-            callback: StoredCallback::Raw(Arc::new(callback)),
-        });
+        self.callbacks.insert(
+            name.clone(),
+            CallbackEntry {
+                def: CallbackDef::new(&name),
+                callback: StoredCallback::Raw(Arc::new(callback)),
+            },
+        );
     }
 
     /// Вызывает сырой коллбэк.
     pub fn call_raw(&self, name: &str, arg: Box<dyn Any + Send>) -> Option<Box<dyn Any + Send>> {
-        self.callbacks.get(name).and_then(|entry| {
-            match &entry.callback {
+        self.callbacks
+            .get(name)
+            .and_then(|entry| match &entry.callback {
                 StoredCallback::Raw(cb) => Some(cb(arg)),
                 _ => None,
-            }
-        })
+            })
     }
 
     // ========================================================================
@@ -428,7 +443,7 @@ macro_rules! callback {
             $crate::runtime::CallbackResult::Void
         }
     };
-    
+
     // Коллбэк с возвратом
     (|$args:ident| -> $ret:expr) => {
         |$args: Vec<$crate::types::Value>| -> $crate::runtime::CallbackResult {
@@ -448,7 +463,7 @@ mod tests {
     #[test]
     fn test_sync_callback() {
         let mut registry = CallbackRegistry::new();
-        
+
         registry.register_sync("test", |args| {
             if args.is_empty() {
                 CallbackResult::error("No args")
@@ -459,7 +474,7 @@ mod tests {
 
         let result = registry.call_sync("test", vec![Value::String("hello".into())]);
         assert!(result.is_ok());
-        
+
         match result {
             CallbackResult::Ok(Value::String(s)) => assert_eq!(s, "hello"),
             _ => panic!("Unexpected result"),
@@ -476,16 +491,15 @@ mod tests {
     #[test]
     fn test_arity_check() {
         let mut registry = CallbackRegistry::new();
-        
-        registry.register_sync_with_def(
-            CallbackDef::new("exact2").with_arity(2),
-            |_| CallbackResult::Void
-        );
+
+        registry.register_sync_with_def(CallbackDef::new("exact2").with_arity(2), |_| {
+            CallbackResult::Void
+        });
 
         // Неверное количество аргументов
         let result = registry.call_sync("exact2", vec![Value::Null]);
         assert!(result.is_error());
-        
+
         // Верное количество
         let result = registry.call_sync("exact2", vec![Value::Null, Value::Null]);
         assert!(result.is_ok());
@@ -494,17 +508,21 @@ mod tests {
     #[tokio::test]
     async fn test_async_callback() {
         let registry = CallbackRegistry::new();
-        
-        registry.register_async("async_test", |args| async move {
-            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
-            if args.is_empty() {
-                CallbackResult::error("No args")
-            } else {
-                CallbackResult::ok(args[0].clone())
-            }
-        }).await;
 
-        let result = registry.call_async("async_test", vec![Value::Number(42.into())]).await;
+        registry
+            .register_async("async_test", |args| async move {
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+                if args.is_empty() {
+                    CallbackResult::error("No args")
+                } else {
+                    CallbackResult::ok(args[0].clone())
+                }
+            })
+            .await;
+
+        let result = registry
+            .call_async("async_test", vec![Value::Number(42.into())])
+            .await;
         assert!(result.is_ok());
     }
 }

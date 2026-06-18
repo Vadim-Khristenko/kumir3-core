@@ -5,14 +5,13 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use shared::types::{
-    Value, Algorithm, ClassDef, Program,
-    TypeRegistry, OverloadedAlgorithm,
-    InterfaceDef, TraitDef, ImplDef,
-};
 use super::error::{RuntimeError, RuntimeResult};
 use super::library_bridge::LibraryManager;
 use shared::runtime::KumirRuntime;
+use shared::types::{
+    Algorithm, ClassDef, ImplDef, InterfaceDef, OverloadedAlgorithm, Program, TraitDef,
+    TypeRegistry, Value,
+};
 
 // =============================================================================
 //                           SCOPE (Область видимости)
@@ -48,7 +47,9 @@ impl Scope {
 
     /// Получает значение переменной.
     pub fn get(&self, name: &str) -> Option<&Value> {
-        self.variables.get(name).or_else(|| self.constants.get(name))
+        self.variables
+            .get(name)
+            .or_else(|| self.constants.get(name))
     }
 
     /// Получает изменяемую ссылку на переменную.
@@ -78,26 +79,34 @@ impl Default for Scope {
 // =============================================================================
 
 /// Кадр вызова алгоритма.
+///
+/// [KITE 4] Лексическая модель: кадр содержит **стек блочных областей**
+/// (`scopes`), а не одну область. Поиск имени идёт от внутренней области к
+/// внешней внутри этого кадра, затем — в глобальной области; кадры вызывающих
+/// **не** просматриваются (нет динамической утечки видимости).
 #[derive(Debug, Clone)]
 pub struct CallFrame {
     /// Имя алгоритма
     pub algorithm_name: String,
-    /// Локальные переменные
-    pub locals: Scope,
+    /// Стек лексических областей видимости (scopes[0] — параметры/верхний уровень)
+    scopes: Vec<Scope>,
     /// Возвращаемое значение (знач)
     pub result_value: Option<Value>,
     /// Текущий объект (для методов)
     pub this: Option<Value>,
+    /// [KITE 11] Класс, в котором определён исполняемый метод (для `предок`).
+    pub defining_class: Option<String>,
 }
 
 impl CallFrame {
-    /// Создаёт новый кадр вызова.
+    /// Создаёт новый кадр вызова с одной (верхней) областью.
     pub fn new(algorithm_name: impl Into<String>) -> Self {
         Self {
             algorithm_name: algorithm_name.into(),
-            locals: Scope::new(),
+            scopes: vec![Scope::new()],
             result_value: None,
             this: None,
+            defining_class: None,
         }
     }
 
@@ -105,10 +114,57 @@ impl CallFrame {
     pub fn with_this(algorithm_name: impl Into<String>, this: Value) -> Self {
         Self {
             algorithm_name: algorithm_name.into(),
-            locals: Scope::new(),
+            scopes: vec![Scope::new()],
             result_value: None,
             this: Some(this),
+            defining_class: None,
         }
+    }
+
+    /// Открывает вложенную блочную область видимости.
+    pub fn push_scope(&mut self) {
+        self.scopes.push(Scope::new());
+    }
+
+    /// Закрывает текущую блочную область (верхнюю не трогаем).
+    pub fn pop_scope(&mut self) {
+        if self.scopes.len() > 1 {
+            self.scopes.pop();
+        }
+    }
+
+    /// Определяет переменную во внутренней (текущей) области.
+    fn define(&mut self, name: String, value: Value) {
+        self.scopes
+            .last_mut()
+            .expect("frame has at least one scope")
+            .define(name, value);
+    }
+
+    /// Ищет значение от внутренней области к внешней.
+    fn get(&self, name: &str) -> Option<&Value> {
+        self.scopes.iter().rev().find_map(|s| s.get(name))
+    }
+
+    /// Есть ли имя в любой области кадра.
+    fn contains(&self, name: &str) -> bool {
+        self.scopes.iter().any(|s| s.contains(name))
+    }
+
+    /// Является ли имя константой в кадре.
+    fn is_const(&self, name: &str) -> bool {
+        self.scopes.iter().any(|s| s.is_const(name))
+    }
+
+    /// Присваивает значение существующей переменной (в области, где она объявлена).
+    fn assign(&mut self, name: &str, value: Value) -> bool {
+        for scope in self.scopes.iter_mut().rev() {
+            if let Some(var) = scope.get_mut(name) {
+                *var = value;
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -116,55 +172,59 @@ impl CallFrame {
 //                           ENVIRONMENT (Среда выполнения)
 // =============================================================================
 
+use super::file_importer::FileImporter;
 use shared::types::library::NativeFn;
 
 /// Среда выполнения программы.
 pub struct Environment {
     /// Глобальные переменные
     globals: Scope,
-    
+
     /// Стек кадров вызова
     call_stack: Vec<CallFrame>,
-    
+
     /// Определённые алгоритмы
     algorithms: HashMap<String, Algorithm>,
-    
+
     /// Перегруженные алгоритмы
     overloaded_algorithms: HashMap<String, OverloadedAlgorithm>,
-    
+
     /// Определённые классы
     classes: HashMap<String, ClassDef>,
-    
+
     /// Определённые интерфейсы
     interfaces: HashMap<String, InterfaceDef>,
-    
+
     /// Определённые типажи (trait)
     traits: HashMap<String, TraitDef>,
-    
+
     /// Реализации типажей (target_type -> trait_name -> ImplDef)
     impls: HashMap<String, HashMap<String, ImplDef>>,
-    
+
     /// Определённые перечисления (enum_name -> variants)
     enums: HashMap<String, Vec<String>>,
-    
+
     /// Нативные функции библиотек (имя -> обработчик)
     native_functions: HashMap<String, NativeFn>,
-    
+
     /// Реестр типов
     type_registry: Arc<RwLock<TypeRegistry>>,
-    
+
     /// Буфер вывода (для тестирования)
     output_buffer: Vec<String>,
-    
+
     /// Режим отладки
     debug_mode: bool,
-    
+
     /// Максимальная глубина вызова (защита от бесконечной рекурсии)
     max_call_depth: usize,
-    
+
     /// Менеджер библиотек (shared reference)
     library_manager: Option<Arc<RwLock<LibraryManager>>>,
-    
+
+    /// Импортер файлов .kum
+    file_importer: Option<Arc<RwLock<FileImporter>>>,
+
     /// Runtime для async операций
     kumir_runtime: Arc<KumirRuntime>,
 }
@@ -188,6 +248,7 @@ impl Environment {
             debug_mode: false,
             max_call_depth: 1000,
             library_manager: None,
+            file_importer: None,
             kumir_runtime: Arc::new(KumirRuntime::new()),
         }
     }
@@ -195,27 +256,28 @@ impl Environment {
     /// Создаёт среду из программы (загружает алгоритмы, классы и т.д.)
     pub fn from_program(program: &Program) -> RuntimeResult<Self> {
         let mut env = Self::new();
-        
+
         // Загружаем алгоритмы
         for alg in &program.algorithms {
             env.define_algorithm(alg.clone());
         }
-        
+
         // Загружаем перегруженные алгоритмы
         for overloaded in &program.overloaded_algorithms {
-            env.overloaded_algorithms.insert(overloaded.name.clone(), overloaded.clone());
+            env.overloaded_algorithms
+                .insert(overloaded.name.to_string(), overloaded.clone());
         }
-        
+
         // Загружаем классы
         for class in &program.classes {
             env.define_class(class.clone());
         }
-        
+
         // Загружаем главный алгоритм
         if let Some(main) = &program.main {
             env.define_algorithm(main.clone());
         }
-        
+
         Ok(env)
     }
 
@@ -228,49 +290,48 @@ impl Environment {
         self.globals.define(name, value);
     }
 
-    /// Определяет локальную переменную в текущей области видимости.
+    /// Определяет локальную переменную в текущей (внутренней) области видимости.
     pub fn define_local(&mut self, name: String, value: Value) {
         if let Some(frame) = self.call_stack.last_mut() {
-            frame.locals.define(name, value);
+            frame.define(name, value);
         } else {
             self.globals.define(name, value);
         }
     }
 
-    /// Получает значение переменной (сначала локальные, потом глобальные).
+    /// Получает значение переменной.
+    ///
+    /// [KITE 4] Лексический поиск: только текущий кадр (его стек областей) и
+    /// глобальная область. Кадры вызывающих не просматриваются.
     pub fn get_variable(&self, name: &str) -> RuntimeResult<&Value> {
-        // Ищем в локальных переменных (от верхнего кадра к нижнему)
-        for frame in self.call_stack.iter().rev() {
-            if let Some(value) = frame.locals.get(name) {
-                return Ok(value);
-            }
+        if let Some(frame) = self.call_stack.last()
+            && let Some(value) = frame.get(name)
+        {
+            return Ok(value);
         }
-        
-        // Ищем в глобальных
         self.globals
             .get(name)
             .ok_or_else(|| RuntimeError::undefined_variable(name))
     }
 
     /// Присваивает значение переменной.
+    ///
+    /// [KITE 4] Ищет имя в текущем кадре, затем в глобальных; если нигде нет —
+    /// создаёт локальную во внутренней области. Кадры вызывающих не трогаются.
     pub fn set_variable(&mut self, name: &str, value: Value) -> RuntimeResult<()> {
-        // Сначала ищем в локальных
-        for frame in self.call_stack.iter_mut().rev() {
-            if frame.locals.contains(name) {
-                if frame.locals.is_const(name) {
-                    return Err(RuntimeError::new(
-                        format!("Нельзя изменить константу '{}'", name),
-                        super::error::RuntimeErrorKind::Other,
-                    ));
-                }
-                if let Some(var) = frame.locals.get_mut(name) {
-                    *var = value;
-                    return Ok(());
-                }
+        if let Some(frame) = self.call_stack.last_mut()
+            && frame.contains(name)
+        {
+            if frame.is_const(name) {
+                return Err(RuntimeError::new(
+                    format!("Нельзя изменить константу '{}'", name),
+                    super::error::RuntimeErrorKind::Other,
+                ));
             }
+            frame.assign(name, value);
+            return Ok(());
         }
-        
-        // Ищем в глобальных
+
         if self.globals.contains(name) {
             if self.globals.is_const(name) {
                 return Err(RuntimeError::new(
@@ -283,20 +344,35 @@ impl Environment {
                 return Ok(());
             }
         }
-        
-        // Переменная не найдена - создаём локальную
+
+        // Переменная не найдена — создаём локальную в текущей области.
         self.define_local(name.to_string(), value);
         Ok(())
     }
 
     /// Проверяет, определена ли переменная.
     pub fn has_variable(&self, name: &str) -> bool {
-        for frame in self.call_stack.iter().rev() {
-            if frame.locals.contains(name) {
-                return true;
-            }
+        if let Some(frame) = self.call_stack.last()
+            && frame.contains(name)
+        {
+            return true;
         }
         self.globals.contains(name)
+    }
+
+    /// [KITE 4] Открывает вложенную блочную область видимости в текущем кадре
+    /// (для тел `нц`/`если` и т.п.). Без активного кадра — нет эффекта.
+    pub fn push_scope(&mut self) {
+        if let Some(frame) = self.call_stack.last_mut() {
+            frame.push_scope();
+        }
+    }
+
+    /// [KITE 4] Закрывает текущую блочную область видимости в текущем кадре.
+    pub fn pop_scope(&mut self) {
+        if let Some(frame) = self.call_stack.last_mut() {
+            frame.pop_scope();
+        }
     }
 
     // =========================================================================
@@ -305,7 +381,8 @@ impl Environment {
 
     /// Определяет алгоритм.
     pub fn define_algorithm(&mut self, algorithm: Algorithm) {
-        self.algorithms.insert(algorithm.name.clone(), algorithm);
+        self.algorithms
+            .insert(algorithm.name.to_string(), algorithm);
     }
 
     /// Определяет алгоритм с заданным именем (для импортов с префиксом модуля).
@@ -336,12 +413,45 @@ impl Environment {
 
     /// Определяет класс.
     pub fn define_class(&mut self, class: ClassDef) {
-        self.classes.insert(class.name.clone(), class);
+        let name = class.name.to_string();
+        self.register_class_identity(&name);
+        self.classes.insert(name, class);
     }
 
     /// Определяет класс с заданным именем (для импортов с префиксом модуля).
     pub fn define_class_with_name(&mut self, name: &str, class: ClassDef) {
+        self.register_class_identity(name);
         self.classes.insert(name.to_string(), class);
+    }
+
+    /// [KITE 11] Регистрирует класс в реестре типов для стабильной идентичности
+    /// объектов (`type_id ↔ имя класса`), если он ещё не зарегистрирован.
+    fn register_class_identity(&self, name: &str) {
+        if let Ok(reg) = self.type_registry.read()
+            && reg.get_type_id(name).is_none()
+        {
+            reg.register_type(shared::types::TypeDefBuilder::new(name).build());
+        }
+    }
+
+    /// [KITE 11] TypeId зарегистрированного класса (или `TypeId(0)`, если нет).
+    pub fn class_type_id(&self, name: &str) -> shared::types::TypeId {
+        self.type_registry
+            .read()
+            .ok()
+            .and_then(|r| r.get_type_id(name))
+            .unwrap_or(shared::types::TypeId(0))
+    }
+
+    /// [KITE 11] Имя класса по TypeId объекта (None для пустого/непользовательского).
+    pub fn class_name_by_type_id(&self, id: shared::types::TypeId) -> Option<String> {
+        if id.0 == 0 {
+            return None;
+        }
+        self.type_registry
+            .read()
+            .ok()
+            .and_then(|r| r.get_type_name(id))
     }
 
     /// Получает класс по имени.
@@ -367,7 +477,7 @@ impl Environment {
 
     /// Определяет интерфейс.
     pub fn define_interface(&mut self, iface: InterfaceDef) {
-        self.interfaces.insert(iface.name.clone(), iface);
+        self.interfaces.insert(iface.name.to_string(), iface);
     }
 
     /// Получает интерфейс по имени.
@@ -388,7 +498,7 @@ impl Environment {
 
     /// Определяет типаж (trait).
     pub fn define_trait(&mut self, trait_def: TraitDef) {
-        self.traits.insert(trait_def.name.clone(), trait_def);
+        self.traits.insert(trait_def.name.to_string(), trait_def);
     }
 
     /// Получает типаж по имени.
@@ -409,12 +519,16 @@ impl Environment {
 
     /// Регистрирует реализацию типажа для типа.
     pub fn define_impl(&mut self, impl_def: ImplDef) {
-        let trait_name = impl_def.trait_name.clone().unwrap_or_else(|| "Self".to_string());
-        let target_type = impl_def.target_type.clone();
-        
+        let trait_name = impl_def
+            .trait_name
+            .as_ref()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "Self".to_string());
+        let target_type = impl_def.target.to_string();
+
         self.impls
             .entry(target_type)
-            .or_insert_with(HashMap::new)
+            .or_default()
             .insert(trait_name, impl_def);
     }
 
@@ -433,9 +547,35 @@ impl Environment {
     }
 
     /// Получает метод из реализации типажа.
-    pub fn get_impl_method(&self, target_type: &str, trait_name: Option<&str>, method_name: &str) -> Option<&shared::types::Method> {
+    pub fn get_impl_method(
+        &self,
+        target_type: &str,
+        trait_name: Option<&str>,
+        method_name: &str,
+    ) -> Option<&shared::types::Method> {
         let impl_def = self.get_impl(target_type, trait_name)?;
-        impl_def.methods.iter().find(|m| m.name == method_name)
+        impl_def
+            .methods
+            .iter()
+            .find(|m| m.algorithm.name.as_ref() == method_name)
+    }
+
+    /// [KITE 11, шаг 4] Ищет метод в любом impl-блоке типа (по всем типажам).
+    /// Возвращает копию метода, чтобы не удерживать заимствование среды.
+    pub fn find_impl_method(
+        &self,
+        target_type: &str,
+        method_name: &str,
+    ) -> Option<shared::types::Method> {
+        self.impls.get(target_type).and_then(|by_trait| {
+            by_trait.values().find_map(|impl_def| {
+                impl_def
+                    .methods
+                    .iter()
+                    .find(|m| m.algorithm.name.as_ref() == method_name)
+                    .cloned()
+            })
+        })
     }
 
     // =========================================================================
@@ -495,6 +635,20 @@ impl Environment {
     /// Удаляет верхний кадр вызова.
     pub fn pop_frame(&mut self) -> Option<CallFrame> {
         self.call_stack.pop()
+    }
+
+    /// [KITE 11] Запоминает класс, в котором определён исполняемый метод (для `предок`).
+    pub fn set_current_defining_class(&mut self, class_name: impl Into<String>) {
+        if let Some(frame) = self.call_stack.last_mut() {
+            frame.defining_class = Some(class_name.into());
+        }
+    }
+
+    /// [KITE 11] Класс текущего исполняемого метода (для разрешения `предок`).
+    pub fn current_defining_class(&self) -> Option<String> {
+        self.call_stack
+            .last()
+            .and_then(|f| f.defining_class.clone())
     }
 
     /// Получает текущий кадр вызова.
@@ -583,6 +737,14 @@ impl Environment {
         &self.type_registry
     }
 
+    /// Строит движок системы типов (KITE 10), связанный с реестром этой среды.
+    ///
+    /// Единый источник правды для проверки совместимости, унификации и
+    /// типизации операций — те же правила, что использует компилятор.
+    pub fn type_system(&self) -> shared::typesys::TypeSystem {
+        shared::typesys::TypeSystem::new().with_registry(Arc::clone(&self.type_registry))
+    }
+
     // =========================================================================
     //                    НАТИВНЫЕ ФУНКЦИИ (БИБЛИОТЕКИ)
     // =========================================================================
@@ -606,9 +768,7 @@ impl Environment {
             )
         })?;
 
-        handler(args).map_err(|e| {
-            RuntimeError::new(e, super::error::RuntimeErrorKind::Other)
-        })
+        handler(args).map_err(|e| RuntimeError::new(e, super::error::RuntimeErrorKind::Other))
     }
 
     /// Получает нативную функцию (опционально).
@@ -628,6 +788,16 @@ impl Environment {
     /// Получает менеджер библиотек.
     pub fn library_manager(&self) -> Option<&Arc<RwLock<LibraryManager>>> {
         self.library_manager.as_ref()
+    }
+
+    /// Устанавливает импортер файлов.
+    pub fn set_file_importer(&mut self, importer: Arc<RwLock<FileImporter>>) {
+        self.file_importer = Some(importer);
+    }
+
+    /// Получает импортер файлов.
+    pub fn file_importer(&self) -> Option<&Arc<RwLock<FileImporter>>> {
+        self.file_importer.as_ref()
     }
 
     // =========================================================================
@@ -660,20 +830,20 @@ impl Environment {
         func_name: &str,
         args: &[Value],
     ) -> RuntimeResult<Option<Value>> {
-        let manager = self.library_manager
-            .as_ref()
-            .ok_or_else(|| RuntimeError::new(
+        let manager = self.library_manager.as_ref().ok_or_else(|| {
+            RuntimeError::new(
                 "Менеджер библиотек не инициализирован",
                 super::error::RuntimeErrorKind::Other,
-            ))?;
-        
+            )
+        })?;
+
         let manager = manager.read().map_err(|_| {
             RuntimeError::new(
                 "Не удалось получить доступ к менеджеру библиотек",
                 super::error::RuntimeErrorKind::Other,
             )
         })?;
-        
+
         manager.call_qualified_function(lib_name, func_name, args)
     }
 }
@@ -702,6 +872,7 @@ impl Clone for Environment {
             debug_mode: self.debug_mode,
             max_call_depth: self.max_call_depth,
             library_manager: self.library_manager.clone(),
+            file_importer: self.file_importer.clone(),
             kumir_runtime: Arc::clone(&self.kumir_runtime),
         }
     }

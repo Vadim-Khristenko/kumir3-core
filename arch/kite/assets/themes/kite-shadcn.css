@@ -1,0 +1,224 @@
+/* =============================================================================
+ * KITE THEME: shadcn/ui (Zinc Ultra-Minimalist Edition)
+ * =============================================================================
+ * Инструкция: Подключать строго ПОСЛЕ основного файла kite.css.
+ * Эстетика абсолютного контроля: жесткие рамки, плоский интерфейс, ноль шума.
+ * ========================================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+/* ── Глубокое переопределение переменных палитры Zinc ────────────────────── */
+.kite {
+    --kite-bg: #09090b; /* Каноничный черный фоновый Zinc */
+    --kite-surface: #09090b; /* Поверхности сливаются с фоном */
+    --kite-surface-2: #18181b; /* Выделенные поля ввода и инлайновый код */
+    --kite-border: #27272a; /* Идеально выверенная тонкая серая рамка */
+    --kite-text: #e4e4e7; /* Основной контрастный текст */
+    --kite-text-dim: #a1a1aa; /* Приглушенный текст */
+    --kite-heading: #fafafa; /* Чистый белый для заголовков */
+
+    /* Монохромные акценты */
+    --kite-accent: #fafafa;
+    --kite-accent-2: #fafafa;
+    --kite-pink: #71717a;
+
+    /* Системные цвета по спецификации shadcn */
+    --kite-green: #22c55e;
+    --kite-yellow: #eab308;
+    --kite-orange: #f97316;
+    --kite-red: #ef4444;
+
+    /* Строгая геометрия */
+    --kite-radius: 6px;
+    --kite-radius-sm: 4px;
+
+    /* Радикальная смена шрифтового стека — уничтожаем засечки */
+    --kite-font: "Inter", system-ui, -apple-system, sans-serif;
+    --kite-font-sans: "Inter", system-ui, -apple-system, sans-serif;
+    --kite-mono: "JetBrains Mono", monospace;
+
+    font-family: var(--kite-font-sans);
+    letter-spacing: -0.01em;
+}
+
+/* ── Standalone background sync ─────────────────────────────────────────── */
+html:has(> body > .kite),
+body:has(> .kite) {
+  background: #09090b;
+}
+
+/* ── Тотальная зачистка оригинального декора KITE ───────────────────────── */
+
+/* Заголовки: убираем цветные плашки и засечки */
+.kite h1,
+.kite h2,
+.kite h3,
+.kite h4 {
+    font-family: var(--kite-font-sans) !important;
+    letter-spacing: -0.02em;
+}
+.kite h2 {
+    border-bottom: 1px solid var(--kite-border) !important;
+    padding-bottom: 0.5rem;
+}
+.kite h2::after {
+    display: none !important; /* Удаляем терракотовую полоску */
+}
+.kite h3 {
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    color: var(--kite-text-dim);
+}
+
+/* Ссылки: чистый стиль shadcn/ui — без нижних рамок, подчеркивание при ховере */
+.kite a {
+    color: var(--kite-heading) !important;
+    text-decoration: none;
+    border-bottom: 1px solid var(--kite-border) !important;
+    transition:
+        color 0.15s ease,
+        border-color 0.15s ease;
+}
+.kite a:hover {
+    color: var(--kite-text-dim) !important;
+    border-bottom-color: var(--kite-text-dim) !important;
+}
+
+/* Разделители: плоская строгая линия */
+.kite hr {
+    background: var(--kite-border) !important;
+    height: 1px !important;
+    margin: 2rem 0;
+}
+
+/* Шапка: убираем верхний градиент и угловое радиальное свечение */
+.kite-header {
+    background: var(--kite-surface) !important;
+    border: 1px solid var(--kite-border) !important;
+    box-shadow: none !important;
+    padding: 3rem 2rem !important;
+}
+.kite-header::before,
+.kite-header::after {
+    display: none !important; /* Полное уничтожение градиентов */
+}
+.kite-eyebrow {
+    color: var(--kite-text-dim) !important;
+    font-size: 0.75rem;
+}
+.kite-eyebrow::before {
+    display: none !important;
+}
+
+/* Оглавление (TOC): убираем левую цветную вертикальную линию */
+.kite-toc {
+    background: var(--kite-surface-2) !important;
+    border: 1px solid var(--kite-border) !important;
+    box-shadow: none !important;
+    padding: 1.5rem !important;
+}
+.kite-toc::before {
+    display: none !important;
+}
+.kite-toc a {
+    border-bottom: none !important;
+    color: var(--kite-text-dim) !important;
+}
+.kite-toc a:hover,
+.kite-toc a.is-active {
+    color: var(--kite-heading) !important;
+    transform: none !important; /* Никаких физических сдвигов */
+}
+
+/* Каллауты: убираем фоновое окрашивание, оставляя строгий левый маркер */
+.kite-callout {
+    background: var(--kite-surface-2) !important;
+    border-left: 2px solid var(--kite-border) !important;
+    box-shadow: none !important;
+}
+.kite-callout.is-note {
+    border-left-color: var(--kite-text-dim) !important;
+}
+.kite-callout.is-tip {
+    border-left-color: var(--kite-green) !important;
+}
+.kite-callout.is-warning {
+    border-left-color: var(--kite-orange) !important;
+}
+.kite-callout.is-important {
+    border-left-color: var(--kite-red) !important;
+}
+.kite-callout-title {
+    color: var(--kite-heading) !important;
+}
+
+/* Блоки кода */
+.kite-code {
+    background: var(--kite-surface-2) !important;
+    border: 1px solid var(--kite-border) !important;
+    box-shadow: none !important;
+}
+.kite-code[data-lang]::before {
+    background: var(--kite-border) !important;
+    color: var(--kite-text-dim) !important;
+    border: none !important;
+}
+
+/* Таблицы */
+.kite-table thead th {
+    border-bottom: 1px solid var(--kite-border) !important;
+    color: var(--kite-heading) !important;
+}
+.kite-table tbody tr:hover {
+    background: var(--kite-surface-2) !important;
+}
+
+/* Карточки: убираем верхний скрытый градиент и подпрыгивание */
+.kite-card {
+    background: var(--kite-surface) !important;
+    border: 1px solid var(--kite-border) !important;
+    box-shadow: none !important;
+}
+.kite-card::before {
+    display: none !important;
+}
+.kite-card:hover {
+    transform: none !important;
+    border-color: var(--kite-text-dim) !important;
+    box-shadow: none !important;
+}
+.kite-card .kite-card-num {
+    color: var(--kite-text-dim) !important;
+}
+
+/* Поиск: имитация фокусного кольца (ring focus) */
+.kite-search input {
+    background: var(--kite-surface-2) !important;
+    border: 1px solid var(--kite-border) !important;
+}
+.kite-search input:focus {
+    border-color: #52525b !important;
+    box-shadow:
+        0 0 0 2px #09090b,
+        0 0 0 4px #a1a1aa !important;
+}
+
+/* Слияние панелей управления kite.js с темой */
+.kite-theme-bar,
+.kite-theme-panel {
+    background-color: #09090b !important;
+    border-color: #27272a !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+.kite-theme-panel input[type="url"] {
+    background: #18181b !important;
+    border-color: #27272a !important;
+}
+.kite-theme-panel-clear {
+    background: #18181b !important;
+    border-color: #27272a !important;
+}
+.kite-theme-panel-apply {
+    background: #fafafa !important;
+    color: #09090b !important;
+}

@@ -1,17 +1,17 @@
-use shared::iostream::{FileStream, StreamError, IOStream};
+use shared::iostream::{FileStream, IOStream, StreamError};
 use std::fs;
 use std::path::Path;
 
 #[test]
 fn test_file_write_read() {
     let path = "test_io.txt";
-    
+
     if Path::new(path).exists() {
         fs::remove_file(path).unwrap();
     }
 
     let mut stream = FileStream::new(path);
-    
+
     assert!(stream.open_write(false).is_ok());
     assert!(stream.write("Hello, World!\n").is_ok());
     assert!(stream.write("Second Line").is_ok());
@@ -34,7 +34,7 @@ fn test_file_append() {
     }
 
     let mut stream = FileStream::new(path);
-    
+
     // Write initial
     stream.open_write(false).unwrap();
     stream.write("Line 1\n").unwrap();
@@ -67,18 +67,17 @@ fn test_file_not_found() {
 
 #[test]
 fn test_console_stream_creation() {
-    use std::io::BufReader;
     use std::io;
+    use std::io::BufReader;
     let mut _stream = IOStream::new(BufReader::new(io::stdin()), io::stdout());
-    // We just verify it compiles and initializes. 
+    // We just verify it compiles and initializes.
     assert!(true);
 }
 
-
 #[test]
 fn test_terminal_stream_read_line_and_write() {
-    use std::io::Cursor;
     use std::io::BufReader;
+    use std::io::Cursor;
 
     let input_bytes = b"Alpha\nBeta\n".to_vec();
     let reader = BufReader::new(Cursor::new(input_bytes));
@@ -99,11 +98,10 @@ fn test_terminal_stream_read_line_and_write() {
     assert_eq!(out_str, "Echoed\n");
 }
 
-
 #[test]
 fn test_terminal_stream_read_all() {
-    use std::io::Cursor;
     use std::io::BufReader;
+    use std::io::Cursor;
 
     let input_bytes = b"All in one go".to_vec();
     let reader = BufReader::new(Cursor::new(input_bytes));
@@ -114,11 +112,10 @@ fn test_terminal_stream_read_all() {
     assert_eq!(all, "All in one go");
 }
 
-
 #[test]
 fn test_terminal_stream_echo_line() {
-    use std::io::Cursor;
     use std::io::BufReader;
+    use std::io::Cursor;
 
     let input_bytes = b"Echo me\n".to_vec();
     let reader = BufReader::new(Cursor::new(input_bytes));

@@ -1,6 +1,9 @@
 <h1 align="center">📜 Kumir 3 | CoreLibrary — Kumir3 House Edition 🐾</h1>
 
 <div align="center">
+  <a href="https://github.com/Vadim-Khristenko/kumir3-core/actions/workflows/build.yml">
+    <img src="https://github.com/Vadim-Khristenko/kumir3-core/actions/workflows/build.yml/badge.svg" alt="Build & Release" />
+  </a>
   <img src="https://img.shields.io/badge/Rust-built-orange?style=for-the-badge&logo=rust" alt="Rust built" />
   <img src="https://img.shields.io/badge/Powered%20by-Monster%20Energy-green?style=for-the-badge" alt="Powered by Monster Energy" />
   <img src="https://img.shields.io/badge/Mascot-Astolfo-pink?style=for-the-badge" alt="Mascot Astolfo" />
@@ -37,6 +40,84 @@
 
 Раньше КуМир был на `C` и выглядел... ну, как софт из нулевых. Когда я за него взялся, сработал инстинкт: **«Напиши это на Rust!»**.
 Сначала это был тяжеловесный монолит (настоящий *багище*), но сейчас мы строим **Kumir3 House** — модульное, быстрое и элегантное ядро, которое мурчит при компиляции.
+
+---
+
+## 📥 Скачать и запустить
+
+Готовые бинарники собираются автоматически через **GitHub Actions** под Windows, macOS и Linux:
+
+* **Релизы (по тегам):** [Releases](https://github.com/Vadim-Khristenko/kumir3-core/releases) — стабильные архивы `kumir3-<ос>-<арх>`.
+* **Свежие сборки (каждый коммит):** [Actions → Build & Release](https://github.com/Vadim-Khristenko/kumir3-core/actions/workflows/build.yml) → артефакты внизу страницы запуска.
+
+В архиве три инструмента:
+
+| Бинарник | Что делает |
+| --- | --- |
+| `interpreter-cli` | Запуск `.kum`-программ в консоли. |
+| `interpreter-tui` | Интерактивный текстовый интерфейс. |
+| `kumir3-compiler` | Компиляция в Rust / IR / WASM. |
+
+```bash
+# Запустить программу
+interpreter-cli программа.kum
+```
+
+---
+
+## 🛠 Сборка из исходников
+
+Нужен [Rust](https://rustup.rs/) (stable). На Windows для сетевой библиотеки также понадобится [NASM](https://www.nasm.us/).
+
+```bash
+git clone https://github.com/Vadim-Khristenko/kumir3-core.git
+cd kumir3-core
+cargo build --release            # бинарники в target/release/
+cargo test --workspace           # прогнать тесты
+```
+
+---
+
+## ⚡ Быстрый старт
+
+```kumir
+| hello.kum
+алг Главный
+нач
+    вывод "Привет, Kumir 3!"
+кон
+```
+
+**Кастомные библиотеки** — подключай свой `.kum` или папку-проект с `kumir.toml`:
+
+```kumir
+использовать "моя_библиотека.kum"      | соседний файл
+| или: использовать "папка_проекта"    | директория с kumir.toml
+
+алг Главный
+нач
+    вывод удвоить(21)   | 42
+кон
+```
+
+**Новые типы** — например, диапазоны (`1..10`, `1..=10`) с перебором:
+
+```kumir
+алг Главный
+нач
+    цел сумма := 0
+    нц для к в 1..=5
+        сумма := сумма + к
+    кц
+    вывод сумма          | 15
+кон
+```
+
+---
+
+## 📐 Стандарты языка (KITE)
+
+Язык развивается по серии документов **KITE** (*Кумир: Инновации, Технологии, Эволюция*) — аналог Python PEP. Открой оглавление: [`arch/kite/index.html`](arch/kite/index.html) (тёмная тема, живой поиск). Там — обзор языка, система типов, окружения, асинхронность, библиотеки, ООП и режим совместимости с КуМир 2.
 
 ---
 
@@ -106,5 +187,5 @@ Kumir3 House — это не про скучные лекции. Это про:
 <div align="center">
 <small><b>Kumir3 House: Пишем код, мурчим в терминале.</b></small>
 
-<small>Обновлено: 2026-01-31 | Сделано с ❤️ и 🦀</small>
+<small>Обновлено: 2026-06-18 | Сделано с ❤️ и 🦀</small>
 </div>

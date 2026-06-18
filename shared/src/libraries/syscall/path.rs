@@ -1,10 +1,10 @@
 //! Функции работы с путями и директориями
 
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::types::library::{LibFunctionDef, LibParamDef};
-use crate::types::type_spec::TypeSpec;
-use crate::types::Value;
+use crate::types::{TypeKind, Value};
 
 fn expect_string(args: &[Value], idx: usize, name: &str) -> Result<String, String> {
     let v = args
@@ -17,12 +17,15 @@ fn expect_string(args: &[Value], idx: usize, name: &str) -> Result<String, Strin
     }
 }
 
-/// текущая_директория() -> лит
 pub fn cwd_fn() -> LibFunctionDef {
     LibFunctionDef::new("текущая_директория")
-        .with_aliases(&["cwd", "getcwd", "pwd", "рабочая_директория"])
+        .with_aliases(vec![
+            Arc::from("cwd"),
+            Arc::from("getcwd"),
+            Arc::from("pwd"),
+        ])
         .with_description("Возвращает текущую рабочую директорию")
-        .returns(TypeSpec::String)
+        .returns(TypeKind::String)
         .with_handler(|_args| {
             std::env::current_dir()
                 .map(|p| Value::String(p.to_string_lossy().to_string()))
@@ -30,12 +33,15 @@ pub fn cwd_fn() -> LibFunctionDef {
         })
 }
 
-/// сменить_директорию(путь)
 pub fn chdir_fn() -> LibFunctionDef {
     LibFunctionDef::new("сменить_директорию")
-        .with_aliases(&["chdir", "cd", "set_cwd"])
+        .with_aliases(vec![
+            Arc::from("chdir"),
+            Arc::from("cd"),
+            Arc::from("set_cwd"),
+        ])
         .with_description("Изменяет текущую рабочую директорию")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
+        .with_param(LibParamDef::value("путь", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
             let path = expect_string(args, 0, "путь")?;
@@ -45,14 +51,16 @@ pub fn chdir_fn() -> LibFunctionDef {
         })
 }
 
-/// домашняя_директория() -> лит
 pub fn home_dir_fn() -> LibFunctionDef {
     LibFunctionDef::new("домашняя_директория")
-        .with_aliases(&["home_dir", "homedir", "home"])
+        .with_aliases(vec![
+            Arc::from("home_dir"),
+            Arc::from("homedir"),
+            Arc::from("home"),
+        ])
         .with_description("Возвращает домашнюю директорию пользователя")
-        .returns(TypeSpec::String)
+        .returns(TypeKind::String)
         .with_handler(|_args| {
-            // Используем переменные окружения для кроссплатформенности
             let home = if cfg!(windows) {
                 std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME"))
             } else {
@@ -65,12 +73,15 @@ pub fn home_dir_fn() -> LibFunctionDef {
         })
 }
 
-/// временная_директория() -> лит
 pub fn temp_dir_fn() -> LibFunctionDef {
     LibFunctionDef::new("временная_директория")
-        .with_aliases(&["temp_dir", "tmpdir", "tmp"])
+        .with_aliases(vec![
+            Arc::from("temp_dir"),
+            Arc::from("tmpdir"),
+            Arc::from("tmp"),
+        ])
         .with_description("Возвращает директорию для временных файлов")
-        .returns(TypeSpec::String)
+        .returns(TypeKind::String)
         .with_handler(|_args| {
             Ok(Value::String(
                 std::env::temp_dir().to_string_lossy().to_string(),
@@ -78,52 +89,52 @@ pub fn temp_dir_fn() -> LibFunctionDef {
         })
 }
 
-/// путь_существует(путь) -> лог
 pub fn path_exists_fn() -> LibFunctionDef {
     LibFunctionDef::new("путь_существует")
-        .with_aliases(&["path_exists", "exists"])
+        .with_aliases(vec![Arc::from("path_exists"), Arc::from("exists")])
         .with_description("Проверяет существование пути (файл или директория)")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .returns(TypeSpec::Bool)
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::Bool)
         .with_handler(|args| {
             let path = expect_string(args, 0, "путь")?;
             Ok(Value::Boolean(Path::new(&path).exists()))
         })
 }
 
-/// это_файл(путь) -> лог
 pub fn is_file_fn() -> LibFunctionDef {
     LibFunctionDef::new("это_файл")
-        .with_aliases(&["is_file", "isfile"])
+        .with_aliases(vec![Arc::from("is_file"), Arc::from("isfile")])
         .with_description("Проверяет, является ли путь файлом")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .returns(TypeSpec::Bool)
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::Bool)
         .with_handler(|args| {
             let path = expect_string(args, 0, "путь")?;
             Ok(Value::Boolean(Path::new(&path).is_file()))
         })
 }
 
-/// это_директория(путь) -> лог
 pub fn is_dir_fn() -> LibFunctionDef {
     LibFunctionDef::new("это_директория")
-        .with_aliases(&["is_dir", "isdir"])
+        .with_aliases(vec![Arc::from("is_dir"), Arc::from("isdir")])
         .with_description("Проверяет, является ли путь директорией")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .returns(TypeSpec::Bool)
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::Bool)
         .with_handler(|args| {
             let path = expect_string(args, 0, "путь")?;
             Ok(Value::Boolean(Path::new(&path).is_dir()))
         })
 }
 
-/// абсолютный_путь(путь) -> лит
 pub fn abs_path_fn() -> LibFunctionDef {
     LibFunctionDef::new("абсолютный_путь")
-        .with_aliases(&["abs_path", "abspath", "realpath"])
+        .with_aliases(vec![
+            Arc::from("abs_path"),
+            Arc::from("abspath"),
+            Arc::from("realpath"),
+        ])
         .with_description("Возвращает абсолютный путь")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .returns(TypeSpec::String)
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::String)
         .with_handler(|args| {
             let path = expect_string(args, 0, "путь")?;
             std::fs::canonicalize(&path)
@@ -132,13 +143,13 @@ pub fn abs_path_fn() -> LibFunctionDef {
         })
 }
 
-/// имя_файла(путь) -> лит
 pub fn basename_fn() -> LibFunctionDef {
     LibFunctionDef::new("имя_файла")
-        .with_aliases(&["basename", "filename"])
+        .with_aliases(vec![Arc::from("basename"), Arc::from("filename")])
         .with_description("Возвращает имя файла из пути")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .returns(TypeSpec::String)
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::String)
+        .as_pure()
         .with_handler(|args| {
             let path = expect_string(args, 0, "путь")?;
             let name = Path::new(&path)
@@ -149,13 +160,13 @@ pub fn basename_fn() -> LibFunctionDef {
         })
 }
 
-/// директория_файла(путь) -> лит
 pub fn dirname_fn() -> LibFunctionDef {
     LibFunctionDef::new("директория_файла")
-        .with_aliases(&["dirname", "parent_dir"])
+        .with_aliases(vec![Arc::from("dirname"), Arc::from("parent_dir")])
         .with_description("Возвращает директорию из пути")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .returns(TypeSpec::String)
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::String)
+        .as_pure()
         .with_handler(|args| {
             let path = expect_string(args, 0, "путь")?;
             let dir = Path::new(&path)
@@ -166,13 +177,17 @@ pub fn dirname_fn() -> LibFunctionDef {
         })
 }
 
-/// расширение_файла(путь) -> лит
 pub fn extension_fn() -> LibFunctionDef {
     LibFunctionDef::new("расширение_файла")
-        .with_aliases(&["extension", "ext", "file_ext"])
+        .with_aliases(vec![
+            Arc::from("extension"),
+            Arc::from("ext"),
+            Arc::from("file_ext"),
+        ])
         .with_description("Возвращает расширение файла")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
-        .returns(TypeSpec::String)
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::String)
+        .as_pure()
         .with_handler(|args| {
             let path = expect_string(args, 0, "путь")?;
             let ext = Path::new(&path)
@@ -183,18 +198,36 @@ pub fn extension_fn() -> LibFunctionDef {
         })
 }
 
-/// соединить_пути(путь1, путь2) -> лит
 pub fn join_path_fn() -> LibFunctionDef {
     LibFunctionDef::new("соединить_пути")
-        .with_aliases(&["join_path", "path_join"])
+        .with_aliases(vec![Arc::from("join_path"), Arc::from("path_join")])
         .with_description("Соединяет два пути")
-        .with_param(LibParamDef::value("путь1", TypeSpec::String))
-        .with_param(LibParamDef::value("путь2", TypeSpec::String))
-        .returns(TypeSpec::String)
+        .with_param(LibParamDef::value("путь1", TypeKind::String))
+        .with_param(LibParamDef::value("путь2", TypeKind::String))
+        .returns(TypeKind::String)
+        .as_pure()
         .with_handler(|args| {
             let p1 = expect_string(args, 0, "путь1")?;
             let p2 = expect_string(args, 1, "путь2")?;
             let joined = Path::new(&p1).join(&p2);
             Ok(Value::String(joined.to_string_lossy().to_string()))
+        })
+}
+
+/// без_расширения(путь) -> лит
+pub fn stem_fn() -> LibFunctionDef {
+    LibFunctionDef::new("без_расширения")
+        .with_aliases(vec![Arc::from("stem"), Arc::from("file_stem")])
+        .with_description("Возвращает имя файла без расширения")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
+        .returns(TypeKind::String)
+        .as_pure()
+        .with_handler(|args| {
+            let path = expect_string(args, 0, "путь")?;
+            let stem = Path::new(&path)
+                .file_stem()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_default();
+            Ok(Value::String(stem))
         })
 }

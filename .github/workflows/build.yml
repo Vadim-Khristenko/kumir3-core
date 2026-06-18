@@ -1,0 +1,152 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [dev, main]
+    tags: ['v*']
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+    inputs:
+      force_clean:
+        description: 'Force clean build (skip cache)'
+        required: false
+        default: false
+        type: boolean
+      rebuild_only:
+        description: 'Only rebuild (skip tests)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_RELEASE_LTO: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ───────────────────────────── Тесты + проверки ─────────────────────────────
+  test:
+    name: Тесты
+    if: ${{ !inputs.rebuild_only }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ runner.os }}-rust
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace
+
+      - name: Job Summary
+        if: always()
+        run: |
+          echo "## ✅ Тесты и проверки пройдены" >> $GITHUB_STEP_SUMMARY
+          echo "- fmt + clippy + tests" >> $GITHUB_STEP_SUMMARY
+
+  # ─────────────────────── Сборка бинарников ───────────────────────
+  build:
+    name: Сборка (${{ matrix.os }})
+    needs: [test]
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: kumir3-linux-x86_64.tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: kumir3-windows-x86_64.zip
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            archive: kumir3-macos-arm64.tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ runner.os }}-rust
+        if: ${{ !inputs.force_clean }}
+
+      - name: Install NASM (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/setup-nasm@v1
+
+      - name: Build release
+        run: cargo build --release --workspace --target ${{ matrix.target }}
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/interpreter-cli" dist/
+          cp "target/${{ matrix.target }}/release/interpreter-tui" dist/
+          cp "target/${{ matrix.target }}/release/kumir3-compiler" dist/
+          cp README.md LICENSE-MIT LICENSE-APACHE dist/ 2>/dev/null || true
+          tar -czf "${{ matrix.archive }}" -C dist .
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/interpreter-cli.exe" dist/
+          Copy-Item "target/${{ matrix.target }}/release/interpreter-tui.exe" dist/
+          Copy-Item "target/${{ matrix.target }}/release/kumir3-compiler.exe" dist/
+          Copy-Item README.md,LICENSE-MIT,LICENSE-APACHE dist/ -ErrorAction SilentlyContinue
+          Compress-Archive -Path dist/* -DestinationPath "${{ matrix.archive }}"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error
+
+      - name: Job Summary (Build)
+        if: always()
+        run: echo "## 📦 Сборка ${{ matrix.os }} завершена" >> $GITHUB_STEP_SUMMARY
+
+  # ───────────────── Релиз (по тегу vX.Y.Z) ─────────────────
+  release:
+    name: Релиз
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true

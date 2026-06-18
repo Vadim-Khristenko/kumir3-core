@@ -1,52 +1,56 @@
-//! Операции над файлами и директориями
+//! Операции с файлами: копирование, перемещение, удаление
 
-use std::fs::{self, OpenOptions};
+use std::sync::Arc;
 
 use crate::types::library::{LibFunctionDef, LibParamDef};
-use crate::types::type_spec::TypeSpec;
-use crate::types::{Number, Value};
+use crate::types::value::{TypeKind, Value};
 
-fn expect_string(args: &[Value], idx: usize, name: &str) -> Result<String, String> {
-    let v = args
-        .get(idx)
-        .ok_or_else(|| format!("Не передан параметр: {}", name))?;
-    match v {
-        Value::String(s) => Ok(s.clone()),
-        Value::Number(n) => Ok(n.to_string()),
-        _ => Err(format!("Ожидается строка для параметра {}", name)),
-    }
-}
-
-/// копировать(откуда, куда) -> нат_64 (байты)
-pub fn copy_fn() -> LibFunctionDef {
-    LibFunctionDef::new("копировать")
-        .with_aliases(&["copy", "cp"])
-        .with_description("Копирует файл и возвращает число записанных байт")
-        .with_param(LibParamDef::value("откуда", TypeSpec::String))
-        .with_param(LibParamDef::value("куда", TypeSpec::String))
-        .returns(TypeSpec::UInt64)
+/// копировать_файл(источник, назначение)
+pub fn copy_file_fn() -> LibFunctionDef {
+    LibFunctionDef::new("копировать_файл")
+        .with_aliases(vec![Arc::from("copy_file"), Arc::from("copy")])
+        .with_description("Копирует файл из источника в назначение")
+        .with_param(LibParamDef::value("источник", TypeKind::String))
+        .with_param(LibParamDef::value("назначение", TypeKind::String))
+        .returns(TypeKind::Int64)
         .with_handler(|args| {
-            let src = expect_string(args, 0, "откуда")?;
-            let dst = expect_string(args, 1, "куда")?;
-            let bytes = fs::copy(&src, &dst)
-                .map_err(|e| format!("Не удалось копировать файл: {}", e))?;
-            Ok(Value::Number(Number::U64(bytes)))
+            let src = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'источник'".to_string())?;
+            let dst = args
+                .get(1)
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'назначение'".to_string())?;
+            let bytes = std::fs::copy(src.as_str(), dst.as_str())
+                .map_err(|e| format!("Ошибка копирования '{}' → '{}': {}", src, dst, e))?;
+            Ok(Value::Number(crate::types::Number::I64(bytes as i64)))
         })
 }
 
-/// переместить(откуда, куда)
-pub fn move_fn() -> LibFunctionDef {
-    LibFunctionDef::new("переместить")
-        .with_aliases(&["move", "mv", "rename"])
-        .with_description("Перемещает или переименовывает файл/директорию")
-        .with_param(LibParamDef::value("откуда", TypeSpec::String))
-        .with_param(LibParamDef::value("куда", TypeSpec::String))
+/// переместить_файл(источник, назначение)
+pub fn move_file_fn() -> LibFunctionDef {
+    LibFunctionDef::new("переместить_файл")
+        .with_aliases(vec![
+            Arc::from("move_file"),
+            Arc::from("rename"),
+            Arc::from("переименовать"),
+        ])
+        .with_description("Перемещает (переименовывает) файл или директорию")
+        .with_param(LibParamDef::value("источник", TypeKind::String))
+        .with_param(LibParamDef::value("назначение", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
-            let src = expect_string(args, 0, "откуда")?;
-            let dst = expect_string(args, 1, "куда")?;
-            fs::rename(&src, &dst)
-                .map_err(|e| format!("Не удалось переместить: {}", e))?;
+            let src = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'источник'".to_string())?;
+            let dst = args
+                .get(1)
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'назначение'".to_string())?;
+            std::fs::rename(src.as_str(), dst.as_str())
+                .map_err(|e| format!("Ошибка перемещения '{}' → '{}': {}", src, dst, e))?;
             Ok(Value::Null)
         })
 }
@@ -54,14 +58,17 @@ pub fn move_fn() -> LibFunctionDef {
 /// удалить_файл(путь)
 pub fn remove_file_fn() -> LibFunctionDef {
     LibFunctionDef::new("удалить_файл")
-        .with_aliases(&["remove_file", "rm"])
+        .with_aliases(vec![Arc::from("remove_file"), Arc::from("delete_file")])
         .with_description("Удаляет файл")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
+        .with_param(LibParamDef::value("путь", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
-            let path = expect_string(args, 0, "путь")?;
-            fs::remove_file(&path)
-                .map_err(|e| format!("Не удалось удалить файл: {}", e))?;
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            std::fs::remove_file(path.as_str())
+                .map_err(|e| format!("Ошибка удаления файла '{}': {}", path, e))?;
             Ok(Value::Null)
         })
 }
@@ -69,47 +76,96 @@ pub fn remove_file_fn() -> LibFunctionDef {
 /// удалить_директорию(путь)
 pub fn remove_dir_fn() -> LibFunctionDef {
     LibFunctionDef::new("удалить_директорию")
-        .with_aliases(&["remove_dir", "rmdir"])
+        .with_aliases(vec![Arc::from("remove_dir"), Arc::from("rmdir")])
         .with_description("Удаляет пустую директорию")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
+        .with_param(LibParamDef::value("путь", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
-            let path = expect_string(args, 0, "путь")?;
-            fs::remove_dir(&path)
-                .map_err(|e| format!("Не удалось удалить директорию: {}", e))?;
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            std::fs::remove_dir(path.as_str())
+                .map_err(|e| format!("Ошибка удаления директории '{}': {}", path, e))?;
             Ok(Value::Null)
         })
 }
 
-/// удалить_все(путь)
+/// удалить_директорию_рекурсивно(путь)
 pub fn remove_dir_all_fn() -> LibFunctionDef {
-    LibFunctionDef::new("удалить_все")
-        .with_aliases(&["remove_all", "rm_rf", "rmtree"])
-        .with_description("Рекурсивно удаляет директорию вместе с содержимым")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
+    LibFunctionDef::new("удалить_директорию_рекурсивно")
+        .with_aliases(vec![Arc::from("remove_dir_all"), Arc::from("rm_rf")])
+        .with_description("Удаляет директорию со всем содержимым рекурсивно")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
-            let path = expect_string(args, 0, "путь")?;
-            fs::remove_dir_all(&path)
-                .map_err(|e| format!("Не удалось удалить: {}", e))?;
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            std::fs::remove_dir_all(path.as_str())
+                .map_err(|e| format!("Ошибка рекурсивного удаления '{}': {}", path, e))?;
             Ok(Value::Null)
         })
 }
 
-/// коснуться(путь)
+/// создать_файл(путь)
 pub fn touch_fn() -> LibFunctionDef {
-    LibFunctionDef::new("коснуться")
-        .with_aliases(&["touch", "create_empty"])
-        .with_description("Создаёт файл, если нет, иначе обновляет время модификации")
-        .with_param(LibParamDef::value("путь", TypeSpec::String))
+    LibFunctionDef::new("создать_файл")
+        .with_aliases(vec![Arc::from("touch"), Arc::from("create_file")])
+        .with_description("Создаёт пустой файл (или обновляет время изменения)")
+        .with_param(LibParamDef::value("путь", TypeKind::String))
         .as_procedure()
         .with_handler(|args| {
-            let path = expect_string(args, 0, "путь")?;
-            let _ = OpenOptions::new()
-                .create(true)
-                .write(true)
-                .open(&path)
-                .map_err(|e| format!("Не удалось открыть файл: {}", e))?;
+            let path = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'путь'".to_string())?;
+            let p = std::path::Path::new(path.as_str());
+            if p.exists() {
+                // Обновляем metadata, если файл существует
+                let _ = std::fs::OpenOptions::new().write(true).open(p);
+            } else {
+                std::fs::File::create(p)
+                    .map_err(|e| format!("Ошибка создания файла '{}': {}", path, e))?;
+            }
+            Ok(Value::Null)
+        })
+}
+
+/// символическая_ссылка(цель, ссылка)
+pub fn symlink_fn() -> LibFunctionDef {
+    LibFunctionDef::new("символическая_ссылка")
+        .with_aliases(vec![Arc::from("symlink"), Arc::from("create_symlink")])
+        .with_description("Создаёт символическую ссылку")
+        .with_param(LibParamDef::value("цель", TypeKind::String))
+        .with_param(LibParamDef::value("ссылка", TypeKind::String))
+        .as_procedure()
+        .with_handler(|args| {
+            let target = args
+                .first()
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'цель'".to_string())?;
+            let link = args
+                .get(1)
+                .and_then(|v| v.as_string())
+                .ok_or_else(|| "Ожидается строковый аргумент 'ссылка'".to_string())?;
+            #[cfg(unix)]
+            {
+                std::os::unix::fs::symlink(target.as_str(), link.as_str())
+                    .map_err(|e| format!("Ошибка создания символической ссылки: {}", e))?;
+            }
+            #[cfg(windows)]
+            {
+                let target_path = std::path::Path::new(target.as_str());
+                if target_path.is_dir() {
+                    std::os::windows::fs::symlink_dir(target.as_str(), link.as_str())
+                        .map_err(|e| format!("Ошибка создания символической ссылки: {}", e))?;
+                } else {
+                    std::os::windows::fs::symlink_file(target.as_str(), link.as_str())
+                        .map_err(|e| format!("Ошибка создания символической ссылки: {}", e))?;
+                }
+            }
             Ok(Value::Null)
         })
 }

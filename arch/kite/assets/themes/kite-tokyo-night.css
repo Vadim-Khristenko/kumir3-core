@@ -1,0 +1,221 @@
+/* =============================================================================
+ *  KITE THEME: Tokyo Night
+ * =============================================================================
+ *  Based on the canonical Tokyo Night VS Code theme by enkia.
+ *  Signature palette: deep navy backgrounds, lavender text, blue + purple
+ *  accent pair, soft neon syntax highlighting.
+ *
+ *  Canonical colors (tokyo-night-color-theme.json):
+ *    Editor bg:         #1a1b26   deep navy
+ *    Sidebar bg:        #16161e   near-black navy
+ *    Panel/elevated:    #1e2030   lifted surface
+ *    Card/highlight:    #24283b   line highlight
+ *    Selection:         #3d59a1   active tab / rich blue
+ *    Border:            #3b4261   inactive selection
+ *    Foreground:        #a9b1d6   lavender body text
+ *    Variables:         #c0caf5   bright lavender (headings)
+ *    Comments:          #51597d   muted blue-grey
+ *    Functions:         #7aa2f7   blue     → --kite-accent
+ *    Keywords:          #bb9af7   purple   → --kite-accent-2
+ *    Strings:           #9ece6a   green    → --kite-green
+ *    Numbers:           #ff9e64   orange   → --kite-orange
+ *    Params/gold:       #e0af68            → --kite-yellow
+ *    Error/pink:        #f7768e            → --kite-red
+ * ========================================================================= */
+
+/* No new font imports — Fraunces serif headings contrast beautifully
+ * against the code-editor-inspired navy palette. */
+
+/* ── Standalone background ──────────────────────────────────────────────── */
+html:has(> body > .kite),
+body:has(> .kite) {
+  background: #1a1b26;
+}
+
+/* ── Palette ─────────────────────────────────────────────────────────────── */
+.kite {
+  --kite-bg:        #1a1b26;
+  --kite-surface:   #1e2030;
+  --kite-surface-2: #24283b;
+  --kite-border:    #3b4261;
+
+  --kite-text:      #a9b1d6;
+  --kite-text-dim:  #51597d;
+  --kite-heading:   #c0caf5;
+
+  --kite-accent:    #7aa2f7;   /* functions — blue  */
+  --kite-accent-2:  #bb9af7;   /* keywords  — purple */
+  --kite-pink:      #f7768e;
+
+  --kite-green:     #9ece6a;
+  --kite-yellow:    #e0af68;
+  --kite-orange:    #ff9e64;
+  --kite-red:       #f7768e;
+
+  --kite-radius:    6px;
+  --kite-radius-sm: 4px;
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+.kite h1, .kite h2, .kite h3, .kite h4 { color: var(--kite-heading); }
+
+.kite h2::after {
+  background: linear-gradient(90deg, #7aa2f7, #bb9af7);
+  width: 2.5rem;
+  height: 2px;
+  border-radius: 2px;
+}
+.kite h3  { color: #bb9af7; }  /* keywords purple */
+.kite hr  {
+  background: linear-gradient(90deg, #7aa2f7 0%, #bb9af7 45%, #3b4261 100%);
+}
+.kite a {
+  color: #7aa2f7;
+  border-bottom-color: rgba(122, 162, 247, 0.3);
+}
+.kite a:hover { color: #b4c6fb; border-bottom-color: #7aa2f7; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.kite-header {
+  background: linear-gradient(140deg, #1e2030 0%, #1a1b26 100%);
+  border: 1px solid #3b4261;
+  border-radius: 6px;
+}
+.kite-header::before {
+  background: linear-gradient(90deg, #7aa2f7 0%, #bb9af7 60%, transparent 100%);
+  height: 2px;
+}
+.kite-header::after {
+  background: radial-gradient(circle at bottom right, #bb9af7 0%, transparent 65%);
+  opacity: 0.07;
+}
+
+/* ── TOC ─────────────────────────────────────────────────────────────────── */
+.kite-toc {
+  background: #1e2030;
+  border: 1px solid #3b4261;
+  border-radius: 6px;
+}
+.kite-toc::before {
+  background: linear-gradient(to bottom, #7aa2f7, #bb9af7);
+  width: 2px;
+}
+.kite-toc a               { color: #a9b1d6; border-bottom: none; }
+.kite-toc a:hover         { color: #7aa2f7; padding-left: 0.25rem; }
+.kite-toc a.is-active     { color: #7aa2f7; font-weight: 600; }
+
+/* ── Callouts ────────────────────────────────────────────────────────────── */
+.kite-callout { background: #1e2030; border-radius: 0 6px 6px 0; }
+.kite-callout.is-note {
+  border-left-color: #7aa2f7;
+  background: color-mix(in srgb, #7aa2f7 5%, #1e2030);
+}
+.kite-callout.is-note .kite-callout-title     { color: #7aa2f7; }
+.kite-callout.is-tip {
+  border-left-color: #9ece6a;
+  background: color-mix(in srgb, #9ece6a 5%, #1e2030);
+}
+.kite-callout.is-tip .kite-callout-title      { color: #9ece6a; }
+.kite-callout.is-warning {
+  border-left-color: #e0af68;
+  background: color-mix(in srgb, #e0af68 5%, #1e2030);
+}
+.kite-callout.is-warning .kite-callout-title  { color: #e0af68; }
+.kite-callout.is-important {
+  border-left-color: #f7768e;
+  background: color-mix(in srgb, #f7768e 5%, #1e2030);
+}
+.kite-callout.is-important .kite-callout-title { color: #f7768e; }
+
+/* ── Code — actual VS Code editor bg ─────────────────────────────────────── */
+.kite code {
+  background: #16161e;
+  border-color: #3b4261;
+  color: #bb9af7;        /* keywords purple for inline */
+  border-radius: 4px;
+}
+.kite-code {
+  background: #16161e;   /* matches the actual Tokyo Night editor pane */
+  border-color: #3b4261;
+  border-radius: 6px;
+}
+.kite-code[data-lang]::before {
+  background: #24283b;
+  color: #7aa2f7;
+  border-color: #3b4261;
+  border-radius: 0 6px 0 4px;
+  font-weight: 500;
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+.kite-table thead th {
+  border-bottom-color: #3d59a1;   /* active tab blue */
+}
+.kite-table tbody tr:hover { background: rgba(122, 162, 247, 0.05); }
+
+/* ── Cards — navy with blue glow hover ───────────────────────────────────── */
+.kite-card {
+  background: #1e2030;
+  border-color: #3b4261;
+  border-radius: 6px;
+}
+.kite-card::before {
+  background: linear-gradient(90deg, #7aa2f7, #bb9af7);
+}
+.kite-card:hover {
+  box-shadow: 0 4px 20px rgba(122, 162, 247, 0.18),
+              0 8px 28px rgba(0, 0, 0, 0.45);
+  border-color: #515c7e;
+}
+
+/* ── Status / badges ─────────────────────────────────────────────────────── */
+.kite-status.is-stable       { color: #9ece6a; }
+.kite-status.is-experimental { color: #e0af68; }
+.kite-status.is-draft        { color: #ff9e64; }
+.kite-badge.is-available     { color: #9ece6a; }
+.kite-badge.is-experimental  { color: #e0af68; }
+.kite-badge.is-proposed      { color: #ff9e64; }
+.kite-badge.is-deprecated    { color: #f7768e; }
+
+/* ── Search ──────────────────────────────────────────────────────────────── */
+.kite-search input {
+  background: #16161e;
+  border-color: #3b4261;
+}
+.kite-search input:focus { border-color: #7aa2f7; }
+
+/* ── Hit highlight ───────────────────────────────────────────────────────── */
+.kite-hit {
+  background: rgba(61, 89, 161, 0.38);
+  color: #c0caf5;
+}
+
+/* ── Theme bar ───────────────────────────────────────────────────────────── */
+.kite-theme-bar {
+  background-color: #1e2030;
+  border-color: #3b4261;
+}
+.kite-theme-sep { background: #3b4261; }
+.kite-theme-panel {
+  background: #1e2030;
+  border-color: #3b4261;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+}
+.kite-theme-panel input[type="url"] {
+  background: #16161e;
+  border-color: #3b4261;
+  color: #a9b1d6;
+}
+.kite-theme-panel input[type="url"]:focus { border-color: #7aa2f7; }
+.kite-theme-panel-apply {
+  background: #7aa2f7;
+  color: #1a1b26;
+  font-weight: 600;
+  border-radius: 4px;
+}
+.kite-theme-panel-clear {
+  background: #24283b;
+  border-color: #3b4261;
+  color: #a9b1d6;
+  border-radius: 4px;
+}

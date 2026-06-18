@@ -11,7 +11,7 @@
 
 use std::path::PathBuf;
 
-use super::version::{VersionSpec, VersionParseError};
+use super::version::{VersionParseError, VersionSpec};
 
 // ============================================================================
 //                         ТИП ИМПОРТА
@@ -80,10 +80,7 @@ pub enum ImportSource {
     /// Библиотека по имени: `подключить Сокеты`
     Library(String),
     /// Библиотека с версией: `подключить из Сокеты:2.0.0`
-    VersionedLibrary {
-        name: String,
-        version: VersionSpec,
-    },
+    VersionedLibrary { name: String, version: VersionSpec },
     /// Относительный путь: `подключить из ./модуль`
     RelativePath(PathBuf),
     /// Абсолютный путь: `подключить из /путь/к/модулю`
@@ -135,7 +132,10 @@ impl ImportSource {
 
     /// Является ли источник локальным путём
     pub fn is_path(&self) -> bool {
-        matches!(self, ImportSource::RelativePath(_) | ImportSource::AbsolutePath(_))
+        matches!(
+            self,
+            ImportSource::RelativePath(_) | ImportSource::AbsolutePath(_)
+        )
     }
 }
 
@@ -186,11 +186,7 @@ impl ImportSpec {
     }
 
     /// Создаёт версионированный импорт
-    pub fn versioned(
-        name: impl Into<String>,
-        version: VersionSpec,
-        items: ImportItem,
-    ) -> Self {
+    pub fn versioned(name: impl Into<String>, version: VersionSpec, items: ImportItem) -> Self {
         Self {
             source: ImportSource::versioned(name, version),
             items,
@@ -207,13 +203,18 @@ impl ImportSpec {
 
     /// Добавляет позицию в коде
     pub fn at(mut self, line: usize, column: usize, offset: usize) -> Self {
-        self.location = Some(SourceLocation { line, column, offset });
+        self.location = Some(SourceLocation {
+            line,
+            column,
+            offset,
+        });
         self
     }
 
     /// Возвращает имя для использования (с учётом алиаса)
     pub fn effective_name(&self) -> Option<&str> {
-        self.library_alias.as_deref()
+        self.library_alias
+            .as_deref()
             .or_else(|| self.source.library_name())
     }
 }
@@ -231,7 +232,10 @@ pub struct ImportParseError {
 
 impl ImportParseError {
     pub fn new(msg: impl Into<String>) -> Self {
-        Self { message: msg.into(), position: None }
+        Self {
+            message: msg.into(),
+            position: None,
+        }
     }
 
     pub fn at(mut self, pos: usize) -> Self {
@@ -270,8 +274,11 @@ impl<'a> ImportParser<'a> {
         self.skip_whitespace();
 
         // Проверяем ключевое слово "подключить"
-        if !self.consume_keyword("подключить") && !self.consume_keyword("использовать") {
-            return Err(ImportParseError::new("Ожидалось 'подключить' или 'использовать'"));
+        if !self.consume_keyword("подключить") && !self.consume_keyword("использовать")
+        {
+            return Err(ImportParseError::new(
+                "Ожидалось 'подключить' или 'использовать'",
+            ));
         }
 
         self.skip_whitespace();
@@ -333,10 +340,10 @@ impl<'a> ImportParser<'a> {
         // Проверяем групповой импорт (в скобках)
         if self.consume_char('(') {
             let mut items = Vec::new();
-            
+
             loop {
                 self.skip_whitespace();
-                
+
                 if self.consume_char(')') {
                     break;
                 }
@@ -345,7 +352,7 @@ impl<'a> ImportParser<'a> {
                 items.push(item);
 
                 self.skip_whitespace();
-                
+
                 if !self.consume_char(',') {
                     if !self.consume_char(')') {
                         return Err(ImportParseError::new("Ожидалось ',' или ')'"));
@@ -380,10 +387,14 @@ impl<'a> ImportParser<'a> {
 
     fn parse_identifier(&mut self) -> Result<String, ImportParseError> {
         let start = self.pos;
-        
+
         while let Some(c) = self.peek_char() {
-            if c.is_alphanumeric() || c == '_' || c == 'ё' || c == 'Ё' 
-                || (c >= '\u{0400}' && c <= '\u{04FF}') // Кириллица
+            if c.is_alphanumeric()
+                || c == '_'
+                || c == 'ё'
+                || c == 'Ё'
+                || ('\u{0400}'..='\u{04FF}').contains(&c)
+            // Кириллица
             {
                 self.advance();
             } else {
@@ -400,7 +411,7 @@ impl<'a> ImportParser<'a> {
 
     fn parse_path(&mut self) -> Result<String, ImportParseError> {
         let start = self.pos;
-        
+
         while let Some(c) = self.peek_char() {
             if c.is_whitespace() || c == '(' || c == ')' {
                 break;
@@ -417,7 +428,7 @@ impl<'a> ImportParser<'a> {
 
     fn parse_until(&mut self, predicate: impl Fn(char) -> bool) -> String {
         let start = self.pos;
-        
+
         while let Some(c) = self.peek_char() {
             if predicate(c) {
                 break;
@@ -444,10 +455,10 @@ impl<'a> ImportParser<'a> {
             let after = self.pos + keyword.len();
             if after < self.input.len() {
                 let next_char = self.input[after..].chars().next();
-                if let Some(c) = next_char {
-                    if c.is_alphanumeric() || c == '_' {
-                        return false;
-                    }
+                if let Some(c) = next_char
+                    && (c.is_alphanumeric() || c == '_')
+                {
+                    return false;
                 }
             }
             self.pos += keyword.len();
@@ -488,8 +499,8 @@ pub fn parse_import(input: &str) -> Result<ImportSpec, ImportParseError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::version::Version;
+    use super::*;
 
     #[test]
     fn test_simple_import() {
@@ -502,7 +513,7 @@ mod tests {
     fn test_import_with_items() {
         let spec = parse_import("подключить из Сокеты (TCP_Сервер, UDP_Клиент)").unwrap();
         assert_eq!(spec.source.library_name(), Some("Сокеты"));
-        
+
         if let ImportItem::Group(items) = spec.items {
             assert_eq!(items.len(), 2);
         } else {
@@ -513,7 +524,7 @@ mod tests {
     #[test]
     fn test_versioned_import() {
         let spec = parse_import("подключить из Сокеты:2.0.0 (TCP_Сервер)").unwrap();
-        
+
         if let ImportSource::VersionedLibrary { name, version } = &spec.source {
             assert_eq!(name, "Сокеты");
             assert!(version.matches(&Version::new(2, 0, 0)));
@@ -531,7 +542,7 @@ mod tests {
     #[test]
     fn test_import_item_alias() {
         let spec = parse_import("подключить из Сокеты (TCP_Сервер как Сервер)").unwrap();
-        
+
         if let ImportItem::Group(items) = spec.items {
             if let ImportItem::Aliased { name, alias } = &items[0] {
                 assert_eq!(name, "TCP_Сервер");
@@ -551,7 +562,7 @@ mod tests {
     #[test]
     fn test_version_spec_import() {
         let spec = parse_import("подключить из Сокеты:^1.5 (TCP_Сервер)").unwrap();
-        
+
         if let ImportSource::VersionedLibrary { version, .. } = &spec.source {
             assert!(version.matches(&Version::new(1, 5, 0)));
             assert!(version.matches(&Version::new(1, 9, 9)));

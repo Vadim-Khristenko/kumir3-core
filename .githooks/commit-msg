@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# =============================================================================
+#         KITE :: COMMIT-MSG HOOK
+# =============================================================================
+# Enforces the Kumir3 commit standard (see arch/kite/KITE-0000-standard.html):
+#   1. NO AI MENTIONS  — lines referencing AI assistants are auto-stripped.
+#   2. CONVENTIONAL COMMITS — the subject line must follow the canonical form.
+#
+# Canonical subject:  type(scope)!: description
+#   type  : feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert
+#   scope : optional, ANY text in parentheses (e.g. "math.rs & 128.rs")
+#   !     : optional breaking-change marker (before OR after the scope)
+# =============================================================================
+
+set -uo pipefail
+
+MSG_FILE="$1"
+
+# -----------------------------------------------------------------------------
+#         STEP 1: AUTO-STRIP AI MENTIONS
+# -----------------------------------------------------------------------------
+# Whole lines containing any blacklisted token are removed (case-insensitive).
+# Co-Authored-By trailers are removed only when they point at an AI assistant;
+# human co-authors are preserved.
+AI_TOKENS='claude|anthropic|chatgpt|gpt-[0-9]|copilot|🤖|generated with|ai-generated|ии-сгенерировано|co-authored-by:.*(claude|anthropic|noreply@anthropic)'
+
+TMP_FILE="$MSG_FILE.kite.tmp"
+grep -ivE "$AI_TOKENS" "$MSG_FILE" > "$TMP_FILE" || true
+# Collapse 3+ consecutive blank lines left by stripping into a single blank line.
+awk 'NF{blank=0} !NF{blank++} blank<2' "$TMP_FILE" > "$MSG_FILE"
+rm -f "$TMP_FILE"
+
+# -----------------------------------------------------------------------------
+#         STEP 2: CONVENTIONAL COMMITS VALIDATION
+# -----------------------------------------------------------------------------
+# Subject = first non-empty, non-comment line.
+SUBJECT="$(grep -vE '^[[:space:]]*#' "$MSG_FILE" | grep -vE '^[[:space:]]*$' | head -n1)"
+
+# Allow auto-generated merge/revert subjects untouched.
+case "$SUBJECT" in
+    "Merge "*|"Revert "*) exit 0 ;;
+esac
+
+# `!?` appears on both sides so `feat!(scope):` and `feat(scope)!:` both pass.
+CONV_RE='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)!?(\([^)]*\))?!?: .+'
+
+if ! printf '%s' "$SUBJECT" | grep -qE "$CONV_RE"; then
+    cat >&2 <<'EOF'
+
+  ✖ Commit rejected — subject is not a Conventional Commit.
+
+    Canonical form:   type(scope)!: description
+    Allowed types:    feat fix docs style refactor perf test build ci chore revert
+    Scope:            optional, any text in parentheses
+    Breaking change:  optional "!" before or after the scope
+
+    Examples:
+      feat(types): добавить тип диапазон
+      fix(parser): корректная обработка пустого выражения
+      docs(kite): добавить KITE 0
+      chore(deps): обновить tokio
+
+EOF
+    exit 1
+fi
+
+exit 0

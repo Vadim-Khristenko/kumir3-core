@@ -3,16 +3,15 @@
 //! Реализация стандартных функций: математика, строки, массивы,
 //! ввод/вывод, работа с типами и т.д.
 
-use std::f64::consts::{PI, E};
+use std::f64::consts::{E, PI};
 
-use shared::types::{Value, Number, Expr};
 use shared::math::MathOperators;
 use shared::strings::StringOperations;
-use shared::f128::F128;
+use shared::types::{Expr, Number, Value};
 
 use super::environment::Environment;
+use super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 use super::evaluator::ExprEvaluator;
-use super::error::{RuntimeError, RuntimeResult, RuntimeErrorKind};
 
 /// Встроенные функции.
 pub struct Builtins;
@@ -27,7 +26,9 @@ impl Builtins {
     ) -> RuntimeResult<Option<Value>> {
         // Вычисляем аргументы
         let eval_args = |env: &mut Environment| -> RuntimeResult<Vec<Value>> {
-            args.iter().map(|e| ExprEvaluator::evaluate(e, env)).collect()
+            args.iter()
+                .map(|e| ExprEvaluator::evaluate(e, env))
+                .collect()
         };
 
         match name {
@@ -154,7 +155,9 @@ impl Builtins {
                 if vals.len() == 2 {
                     let digits = vals[1].as_int().unwrap_or(0);
                     let factor = 10_f64.powi(digits as i32);
-                    Ok(Some(Value::Number(Number::F64((x * factor).round() / factor))))
+                    Ok(Some(Value::Number(Number::F64(
+                        (x * factor).round() / factor,
+                    ))))
                 } else {
                     Ok(Some(Value::Number(Number::I64(x.round() as i64))))
                 }
@@ -194,17 +197,19 @@ impl Builtins {
                 let vals = eval_args(env)?;
                 Self::check_args(name, &vals, 1)?;
                 let x = Self::to_f64(&vals[0])?;
-                let sign = if x > 0.0 { 1 } else if x < 0.0 { -1 } else { 0 };
+                let sign = if x > 0.0 {
+                    1
+                } else if x < 0.0 {
+                    -1
+                } else {
+                    0
+                };
                 Ok(Some(Value::Number(Number::I64(sign))))
             }
 
-            "пи" | "pi" => {
-                Ok(Some(Value::Number(Number::F64(PI))))
-            }
+            "пи" | "pi" => Ok(Some(Value::Number(Number::F64(PI)))),
 
-            "е" | "e" => {
-                Ok(Some(Value::Number(Number::F64(E))))
-            }
+            "е" | "e" => Ok(Some(Value::Number(Number::F64(E)))),
 
             "случайное" | "random" | "rand" => {
                 let vals = eval_args(env)?;
@@ -214,20 +219,19 @@ impl Builtins {
                     Ok(Some(Value::Number(Number::F64(r))))
                 } else if vals.len() == 1 {
                     // случайное целое от 0 до n-1
-                    let n = vals[0].as_int().ok_or_else(|| {
-                        RuntimeError::type_mismatch("целое число", "не целое")
-                    })?;
+                    let n = vals[0]
+                        .as_int()
+                        .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))?;
                     let r = (Self::simple_random() * n as f64) as i64;
-                    Ok(Some(Value::Number(Number::I64(r)))
-)
+                    Ok(Some(Value::Number(Number::I64(r))))
                 } else if vals.len() == 2 {
                     // случайное целое от a до b
-                    let a = vals[0].as_int().ok_or_else(|| {
-                        RuntimeError::type_mismatch("целое число", "не целое")
-                    })?;
-                    let b = vals[1].as_int().ok_or_else(|| {
-                        RuntimeError::type_mismatch("целое число", "не целое")
-                    })?;
+                    let a = vals[0]
+                        .as_int()
+                        .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))?;
+                    let b = vals[1]
+                        .as_int()
+                        .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))?;
                     let r = a + (Self::simple_random() * (b - a + 1) as f64) as i64;
                     Ok(Some(Value::Number(Number::I64(r))))
                 } else {
@@ -240,18 +244,68 @@ impl Builtins {
                 let vals = eval_args(env)?;
                 Self::check_args(name, &vals, 1)?;
                 match &vals[0] {
-                    Value::String(s) => Ok(Some(Value::Number(Number::I64(s.chars().count() as i64)))),
+                    Value::String(s) => {
+                        Ok(Some(Value::Number(Number::I64(s.chars().count() as i64))))
+                    }
                     Value::Array(a) => Ok(Some(Value::Number(Number::I64(a.len() as i64)))),
-                    _ => Err(RuntimeError::type_mismatch("строка или массив", "другой тип")),
+                    Value::Bytes(b) => Ok(Some(Value::Number(Number::I64(b.len() as i64)))),
+                    other @ Value::Range { .. } => Ok(Some(Value::Number(Number::I64(
+                        other.len().unwrap_or(0) as i64,
+                    )))),
+                    _ => Err(RuntimeError::type_mismatch(
+                        "строка, массив, диапазон или байты",
+                        "другой тип",
+                    )),
+                }
+            }
+
+            // ===== БАЙТЫ (KITE 2) =====
+            "байты" | "bytes" => {
+                let vals = eval_args(env)?;
+                Self::check_args(name, &vals, 1)?;
+                match &vals[0] {
+                    Value::String(s) => Ok(Some(Value::Bytes(s.clone().into_bytes()))),
+                    Value::Bytes(b) => Ok(Some(Value::Bytes(b.clone()))),
+                    Value::Array(arr) => {
+                        let mut out = Vec::with_capacity(arr.len());
+                        for v in arr {
+                            let n = v.as_int().ok_or_else(|| {
+                                RuntimeError::type_mismatch("целое число (байт)", "не целое")
+                            })?;
+                            if !(0..=255).contains(&n) {
+                                return Err(RuntimeError::new(
+                                    format!("Значение байта вне диапазона 0..255: {}", n),
+                                    RuntimeErrorKind::Other,
+                                ));
+                            }
+                            out.push(n as u8);
+                        }
+                        Ok(Some(Value::Bytes(out)))
+                    }
+                    _ => Err(RuntimeError::type_mismatch(
+                        "строка или массив целых",
+                        "другой тип",
+                    )),
+                }
+            }
+
+            "строка_из_байт" | "байты_в_строку" | "bytes_to_string" => {
+                let vals = eval_args(env)?;
+                Self::check_args(name, &vals, 1)?;
+                match &vals[0] {
+                    Value::Bytes(b) => {
+                        Ok(Some(Value::String(String::from_utf8_lossy(b).into_owned())))
+                    }
+                    _ => Err(RuntimeError::type_mismatch("байты", "другой тип")),
                 }
             }
 
             "символ" | "chr" => {
                 let vals = eval_args(env)?;
                 Self::check_args(name, &vals, 1)?;
-                let code = vals[0].as_int().ok_or_else(|| {
-                    RuntimeError::type_mismatch("целое число", "не целое")
-                })?;
+                let code = vals[0]
+                    .as_int()
+                    .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))?;
                 let c = StringOperations::char_from_unicode(code)
                     .map_err(|e| RuntimeError::new(e.msg(), RuntimeErrorKind::Other))?;
                 Ok(Some(Value::Char(c)))
@@ -261,10 +315,14 @@ impl Builtins {
                 let vals = eval_args(env)?;
                 Self::check_args(name, &vals, 1)?;
                 match &vals[0] {
-                    Value::Char(c) => Ok(Some(Value::Number(Number::I64(StringOperations::code_unicode(*c))))),
+                    Value::Char(c) => Ok(Some(Value::Number(Number::I64(
+                        StringOperations::code_unicode(*c),
+                    )))),
                     Value::String(s) if s.len() == 1 => {
                         let c = s.chars().next().unwrap();
-                        Ok(Some(Value::Number(Number::I64(StringOperations::code_unicode(c)))))
+                        Ok(Some(Value::Number(Number::I64(
+                            StringOperations::code_unicode(c),
+                        ))))
                     }
                     _ => Err(RuntimeError::type_mismatch("символ", "не символ")),
                 }
@@ -279,23 +337,25 @@ impl Builtins {
                     Value::String(s) => s.clone(),
                     _ => return Err(RuntimeError::type_mismatch("строка", "не строка")),
                 };
-                let start = vals[1].as_int().ok_or_else(|| {
-                    RuntimeError::type_mismatch("целое число", "не целое")
-                })? as usize;
-                
+                let start = vals[1]
+                    .as_int()
+                    .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))?
+                    as usize;
+
                 let chars: Vec<char> = s.chars().collect();
                 let len = if vals.len() == 3 {
-                    vals[2].as_int().ok_or_else(|| {
-                        RuntimeError::type_mismatch("целое число", "не целое")
-                    })? as usize
+                    vals[2]
+                        .as_int()
+                        .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))?
+                        as usize
                 } else {
                     chars.len() - start + 1
                 };
-                
+
                 // Индексы в Кумире начинаются с 1
                 let start_idx = start.saturating_sub(1);
                 let end_idx = (start_idx + len).min(chars.len());
-                
+
                 let result: String = chars[start_idx..end_idx].iter().collect();
                 Ok(Some(Value::String(result)))
             }
@@ -311,12 +371,15 @@ impl Builtins {
                     Value::String(s) => s.clone(),
                     _ => return Err(RuntimeError::type_mismatch("строка", "не строка")),
                 };
-                
-                let pos = haystack.find(&needle).map(|p| {
-                    // Возвращаем позицию в символах (не байтах), начиная с 1
-                    haystack[..p].chars().count() as i64 + 1
-                }).unwrap_or(0);
-                
+
+                let pos = haystack
+                    .find(&needle)
+                    .map(|p| {
+                        // Возвращаем позицию в символах (не байтах), начиная с 1
+                        haystack[..p].chars().count() as i64 + 1
+                    })
+                    .unwrap_or(0);
+
                 Ok(Some(Value::Number(Number::I64(pos))))
             }
 
@@ -379,7 +442,8 @@ impl Builtins {
                     Value::String(s) => s.clone(),
                     _ => return Err(RuntimeError::type_mismatch("строка", "не строка")),
                 };
-                let parts: Vec<Value> = s.split(&delim)
+                let parts: Vec<Value> = s
+                    .split(&delim)
                     .map(|p| Value::String(p.to_string()))
                     .collect();
                 Ok(Some(Value::Array(parts)))
@@ -396,9 +460,7 @@ impl Builtins {
                     Value::String(s) => s.clone(),
                     _ => return Err(RuntimeError::type_mismatch("строка", "не строка")),
                 };
-                let parts: Vec<String> = arr.iter()
-                    .map(|v| v.to_string())
-                    .collect();
+                let parts: Vec<String> = arr.iter().map(|v| v.to_string()).collect();
                 Ok(Some(Value::String(parts.join(&delim))))
             }
 
@@ -501,10 +563,7 @@ impl Builtins {
                 match &vals[0] {
                     Value::Array(a) => {
                         if a.is_empty() {
-                            return Err(RuntimeError::new(
-                                "Массив пуст",
-                                RuntimeErrorKind::Other,
-                            ));
+                            return Err(RuntimeError::new("Массив пуст", RuntimeErrorKind::Other));
                         }
                         let mut sum = 0.0_f64;
                         for v in a {
@@ -529,7 +588,10 @@ impl Builtins {
                         let reversed: String = s.chars().rev().collect();
                         Ok(Some(Value::String(reversed)))
                     }
-                    _ => Err(RuntimeError::type_mismatch("массив или строка", "другой тип")),
+                    _ => Err(RuntimeError::type_mismatch(
+                        "массив или строка",
+                        "другой тип",
+                    )),
                 }
             }
 
@@ -539,7 +601,8 @@ impl Builtins {
                 match &vals[0] {
                     Value::Array(a) => {
                         let mut sorted = a.clone();
-                        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                        sorted
+                            .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
                         Ok(Some(Value::Array(sorted)))
                     }
                     _ => Err(RuntimeError::type_mismatch("массив", "не массив")),
@@ -558,7 +621,10 @@ impl Builtins {
                         };
                         Ok(Some(Value::Boolean(s.contains(&needle))))
                     }
-                    _ => Err(RuntimeError::type_mismatch("массив или строка", "другой тип")),
+                    _ => Err(RuntimeError::type_mismatch(
+                        "массив или строка",
+                        "другой тип",
+                    )),
                 }
             }
 
@@ -596,7 +662,9 @@ impl Builtins {
             "это_пусто" | "is_null" => {
                 let vals = eval_args(env)?;
                 Self::check_args(name, &vals, 1)?;
-                Ok(Some(Value::Boolean(vals[0].is_null() || vals[0].is_undefined())))
+                Ok(Some(Value::Boolean(
+                    vals[0].is_null() || vals[0].is_undefined(),
+                )))
             }
 
             "тип" | "type" | "typeof" => {
@@ -638,9 +706,7 @@ impl Builtins {
                 Ok(Some(Value::Option(Box::new(Some(vals[0].clone())))))
             }
 
-            "ничего" | "none" => {
-                Ok(Some(Value::Option(Box::new(None))))
-            }
+            "ничего" | "none" => Ok(Some(Value::Option(Box::new(None)))),
 
             "есть" | "is_some" => {
                 let vals = eval_args(env)?;
@@ -657,10 +723,13 @@ impl Builtins {
                 match &vals[0] {
                     Value::Option(opt) => {
                         let inner = opt.as_ref().as_ref().cloned().ok_or_else(|| {
-                            RuntimeError::new("Попытка извлечь значение из пустой опции", RuntimeErrorKind::Other)
+                            RuntimeError::new(
+                                "Попытка извлечь значение из пустой опции",
+                                RuntimeErrorKind::Other,
+                            )
                         })?;
                         Ok(Some(inner))
-                    },
+                    }
                     Value::Result(res) => match res.as_ref() {
                         Ok(v) => Ok(Some(v.clone())),
                         Err(e) => Err(RuntimeError::new(
@@ -668,7 +737,10 @@ impl Builtins {
                             RuntimeErrorKind::Other,
                         )),
                     },
-                    _ => Err(RuntimeError::type_mismatch("опция или результат", "другой тип")),
+                    _ => Err(RuntimeError::type_mismatch(
+                        "опция или результат",
+                        "другой тип",
+                    )),
                 }
             }
 
@@ -698,17 +770,15 @@ impl Builtins {
                 let duration = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap_or_default();
-                Ok(Some(Value::Number(Number::F64(
-                    duration.as_secs_f64()
-                ))))
+                Ok(Some(Value::Number(Number::F64(duration.as_secs_f64()))))
             }
 
             "пауза" | "sleep" | "ждать" => {
                 let vals = eval_args(env)?;
                 Self::check_args(name, &vals, 1)?;
-                let ms = vals[0].as_int().ok_or_else(|| {
-                    RuntimeError::type_mismatch("целое число", "не целое")
-                })?;
+                let ms = vals[0]
+                    .as_int()
+                    .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))?;
                 std::thread::sleep(std::time::Duration::from_millis(ms as u64));
                 Ok(Some(Value::Null))
             }
@@ -732,24 +802,24 @@ impl Builtins {
 
     fn to_f64(value: &Value) -> RuntimeResult<f64> {
         match value {
-            Value::Number(n) => n.to_f64().ok_or_else(|| {
-                RuntimeError::type_mismatch("число", "не число")
-            }),
-            Value::String(s) => s.parse::<f64>().map_err(|_| {
-                RuntimeError::type_mismatch("число", "строка")
-            }),
+            Value::Number(n) => n
+                .to_f64()
+                .ok_or_else(|| RuntimeError::type_mismatch("число", "не число")),
+            Value::String(s) => s
+                .parse::<f64>()
+                .map_err(|_| RuntimeError::type_mismatch("число", "строка")),
             _ => Err(RuntimeError::type_mismatch("число", "другой тип")),
         }
     }
 
     fn to_int(value: &Value) -> RuntimeResult<i64> {
         match value {
-            Value::Number(n) => n.to_i64().ok_or_else(|| {
-                RuntimeError::type_mismatch("целое", "не целое")
-            }),
-            Value::String(s) => s.parse::<i64>().map_err(|_| {
-                RuntimeError::type_mismatch("целое", "строка")
-            }),
+            Value::Number(n) => n
+                .to_i64()
+                .ok_or_else(|| RuntimeError::type_mismatch("целое", "не целое")),
+            Value::String(s) => s
+                .parse::<i64>()
+                .map_err(|_| RuntimeError::type_mismatch("целое", "строка")),
             Value::Boolean(b) => Ok(if *b { 1 } else { 0 }),
             _ => Err(RuntimeError::type_mismatch("целое", "другой тип")),
         }
@@ -794,9 +864,7 @@ impl Builtins {
                 let fb = nb.to_f64().unwrap_or(0.0);
                 Ok(fa.partial_cmp(&fb).map(|o| o as i32).unwrap_or(0))
             }
-            (Value::String(sa), Value::String(sb)) => {
-                Ok(sa.cmp(sb) as i32)
-            }
+            (Value::String(sa), Value::String(sb)) => Ok(sa.cmp(sb) as i32),
             _ => Err(RuntimeError::type_mismatch("сравнимые типы", "несравнимые")),
         }
     }
@@ -810,6 +878,8 @@ impl Builtins {
             Value::Boolean(_) => "лог".to_string(),
             Value::Char(_) => "сим".to_string(),
             Value::Array(_) => "таб".to_string(),
+            Value::Range { .. } => "диапазон".to_string(),
+            Value::Bytes(_) => "байты".to_string(),
             Value::Pair(_, _) => "пара".to_string(),
             Value::Triple(_, _, _) => "тройка".to_string(),
             Value::Tuple(_) => "кортеж".to_string(),
@@ -822,6 +892,13 @@ impl Builtins {
             Value::Object { .. } => "объект".to_string(),
             Value::NativeObject { type_name, .. } => type_name.clone(),
             Value::Promise { .. } => "промис".to_string(),
+            Value::Reference { .. } => "ссылка".to_string(),
+            Value::Lambda(_) => "лямбда".to_string(),
+            Value::PartialApp { .. } => "частичное_применение".to_string(),
+            Value::Generator { .. } => "генератор".to_string(),
+            Value::Channel { .. } => "канал".to_string(),
+            Value::Error { .. } => "ошибка".to_string(),
+            Value::Type(_) => "тип".to_string(),
             Value::Null => "пусто".to_string(),
             Value::Undefined => "неопределено".to_string(),
         }
@@ -829,9 +906,9 @@ impl Builtins {
 
     // Простой генератор псевдослучайных чисел
     fn simple_random() -> f64 {
-        use std::time::{SystemTime, UNIX_EPOCH};
         use std::cell::Cell;
-        
+        use std::time::{SystemTime, UNIX_EPOCH};
+
         thread_local! {
             static SEED: Cell<u64> = Cell::new(
                 SystemTime::now()
@@ -840,7 +917,7 @@ impl Builtins {
                     .as_nanos() as u64
             );
         }
-        
+
         SEED.with(|seed| {
             let mut s = seed.get();
             s ^= s << 13;

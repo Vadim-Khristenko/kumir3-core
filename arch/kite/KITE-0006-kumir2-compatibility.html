@@ -1,0 +1,209 @@
+<link rel="stylesheet" href="./assets/kite.css">
+<!-- =============================================================================
+     KITE 6 — Режим совместимости с КуМир 2
+     Согласованный черновик (Draft). Реализации пока нет — это проект «как будет».
+============================================================================== -->
+<article class="kite" data-kite="0006" data-status="draft" lang="ru">
+
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE 6 · Спецификация / Дизайн</span>
+    <h1>Режим совместимости с КуМир 2</h1>
+    <dl class="kite-meta">
+      <dt>Номер</dt>            <dd>KITE 6</dd>
+      <dt>Название</dt>         <dd>Режим совместимости с КуМир 2 и как он работает</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
+      <dt>Тип</dt>              <dd>Спецификация / Дизайн</dd>
+      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Создан</dt>           <dd>2026-05-30</dd>
+      <dt>Версия документа</dt> <dd>0.1.0</dd>
+    </dl>
+  </header>
+
+  <nav class="kite-toc" aria-label="Содержание">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#cel">Цель и принципы</a></li>
+      <li><a href="#aktivaciya">Активация и приоритет</a></li>
+      <li><a href="#granulyarnost">Гранулярность и смешивание</a></li>
+      <li><a href="#pereklyuchateli">Что переключается</a></li>
+      <li><a href="#ispolniteli">Исполнители</a></li>
+      <li><a href="#mehanika">Как это работает внутри</a></li>
+      <li><a href="#migraciya">Миграция</a></li>
+      <li><a href="#voprosy">Открытые вопросы</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section class="kite-section" id="cel">
+    <h2>1. Цель и принципы</h2>
+    <p>Режим совместимости решает три задачи:</p>
+    <ul>
+      <li><strong>Запуск старых программ</strong> КуМир 2 без изменений (совместимость по поведению).</li>
+      <li><strong>Переключатели поведения</strong> — спорные места (видимость, кодировка, деление) ведут себя «по-старому».</li>
+      <li><strong>Исполнители</strong> — классические Робот, Чертёжник и др. доступны как часть совместимости.</li>
+    </ul>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Не «урезание»</span>
+      Режим не прячет возможности КуМир 3 — он меняет <em>поведение</em> на совместимое и включает
+      исполнителей. Расширения 3 остаются доступны, если не конфликтуют с семантикой 2.
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Статус</span>
+      Единого режима в движке <strong>ещё нет</strong>. Сейчас лексер понимает ключевые слова 2 и 3
+      одновременно, в <code>kumir.toml</code> есть поля <code>edition</code>/<code>kumir_version</code>,
+      строки умеют CP-1251 — но переключателя нет. Всё ниже помечено <span class="kite-badge is-proposed">📋&nbsp;Предложено</span>.
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="kite-section" id="aktivaciya">
+    <h2>2. Активация и приоритет</h2>
+    <p>Три способа включения, с понятным приоритетом (сильнее — выше):</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Приоритет</th><th>Способ</th><th>Область</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td>1 (сильнейший)</td><td>Директива-комментарий в начале файла</td><td>Только этот файл</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>2</td><td>Флаг CLI <code>--режим кум2</code></td><td>Весь запуск</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>3</td><td><code>kumir.toml</code> → <code>edition</code> (число) и точный <code>kumir_version</code></td><td>Весь проект</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>4 (по умолчанию)</td><td>—</td><td>КуМир 3</td><td><span class="kite-badge is-available">✅</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Директива файла</h3>
+    <p>Директива оформлена как <strong>обычный комментарий</strong> Кумира (<code>|</code>) — поэтому
+       классическая среда КуМир 2 просто игнорирует строку, и файл остаётся запускаемым «как есть».</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>| MODE: KUM2          | по-английски
+| РЕЖИМ: КУМ2         | эквивалент по-русски
+
+алг Главный
+нач
+  | ...классический код КуМир 2...
+кон</code></pre>
+    </div>
+
+    <h3>Настройка в kumir.toml</h3>
+    <p><code>edition</code> задаётся <strong>числом</strong>; для точного закрепления версии языка —
+       отдельное поле <code>kumir_version</code> (семантическая версия).</p>
+    <div class="kite-code" data-lang="toml">
+<pre><code>[package]
+edition = 2                 # 2 = КуМир 2, 3 = КуМир 3
+kumir_version = "2.1.0"     # точный pin диалекта/семантики</code></pre>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="kite-section" id="granulyarnost">
+    <h2>3. Гранулярность и смешивание</h2>
+    <p>Режим действует <strong>на уровне файла/модуля</strong>. Это позволяет смешивать:</p>
+    <ul>
+      <li>Проект в целом — на КуМир 3 (по умолчанию или через <code>kumir.toml</code>).</li>
+      <li>Отдельные файлы — в совместимости через директиву, не затрагивая остальные.</li>
+      <li>И наоборот: проект с <code>edition = "кумир2"</code> глобально, а отдельный новый файл — на КуМир 3.</li>
+    </ul>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Граница — модуль</span>
+      Режим фиксируется при загрузке файла и не «протекает» в импортированные модули — каждый
+      модуль объявляет свой режим сам.
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="kite-section" id="pereklyuchateli">
+    <h2>4. Что переключается</h2>
+    <p>Различия поведения, которые флипает режим (все <span class="kite-badge is-proposed">📋</span>):</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Аспект</th><th>КуМир 2 (совместимость)</th><th>КуМир 3 (по умолчанию)</th></tr></thead>
+        <tbody>
+          <tr><td>Область видимости</td><td>Стековая/динамическая (как в текущем движке, см. <a href="./KITE-0004-environments-scope.html">KITE 4</a>)</td><td>Лексическая (предложено)</td></tr>
+          <tr><td>Кодировка строк</td><td>CP-1251</td><td>UTF-8</td></tr>
+          <tr><td>Объявление переменных</td><td>Мягкое (неявное создание)</td><td>Обязательное объявление</td></tr>
+          <tr><td>Набор типов</td><td>Базовые <code>цел/вещ/лог/сим/лит/таб</code></td><td>Полная система типов (<a href="./KITE-0002-type-system.html">KITE 2</a>)</td></tr>
+          <tr><td>Ввод/вывод</td><td>Семантика <code>ввод</code>/<code>вывод</code> КуМир 2</td><td>Расширенная</td></tr>
+          <tr><td>Исполнители</td><td>Включены</td><td>Подключаются явно</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="kite-section" id="ispolniteli">
+    <h2>5. Исполнители</h2>
+    <p>
+      Классические «исполнители» — визитная карточка КуМир: учебные миры с состоянием (обстановкой)
+      и набором команд. В режиме совместимости они доступны как стандартные модули.
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Исполнитель</th><th>Среда</th><th>Команды (примеры)</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Робот</strong></td><td>Клетчатое поле со стенами</td><td><code>вверх</code>, <code>вниз</code>, <code>влево</code>, <code>вправо</code>, <code>закрасить</code>; проверки <code>слева&nbsp;свободно</code></td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><strong>Чертёжник</strong></td><td>Координатная плоскость</td><td><code>опустить&nbsp;перо</code>, <code>поднять&nbsp;перо</code>, <code>сместиться&nbsp;в&nbsp;точку</code></td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><strong>Водолей</strong></td><td>Сосуды с водой</td><td>наполнить, перелить, вылить</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><strong>Кузнечик</strong></td><td>Числовая прямая</td><td>вперёд, назад</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Модель исполнителя</span>
+      Каждый исполнитель = состояние обстановки + набор команд + условия отказа (упёрся в стену и т.п.).
+      Обстановка загружается из файла поля; команды меняют состояние и могут возбуждать отказ.
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="kite-section" id="mehanika">
+    <h2>6. Как это работает внутри</h2>
+    <p>Флаг режима протягивается через конвейер исполнения:</p>
+    <ol>
+      <li><strong>Загрузчик</strong> определяет режим файла (директива → CLI → <code>kumir.toml</code> → КуМир 3).</li>
+      <li><strong>Лексер</strong> выбирает кодировку (CP-1251/UTF-8) и при необходимости ограничивает набор лексем.</li>
+      <li><strong>Парсер/семантика</strong> применяет правила видимости и объявления согласно режиму.</li>
+      <li><strong>Среда исполнения</strong> регистрирует исполнителей и совместимую стандартную среду.</li>
+    </ol>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Зависимость</span>
+      Полноценные переключатели видимости опираются на переработку окружения (<a href="./KITE-0004-environments-scope.html">KITE 4</a>): сначала появится лексическая видимость в КуМир 3, затем — режим, возвращающий старое поведение.
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="kite-section" id="migraciya">
+    <h2>7. Миграция</h2>
+    <ul>
+      <li>Запусти старую программу в режиме <code>кумир2</code> — она работает как раньше.</li>
+      <li>Включай возможности КуМир 3 пофайлово, по мере готовности.</li>
+      <li>Линтер <code>кумлинт</code> подсказывает, какие места изменят поведение при переходе на КуМир 3.</li>
+    </ul>
+  </section>
+
+  <!-- 8 -->
+  <section class="kite-section" id="voprosy">
+    <h2>8. Открытые вопросы (думаем вместе)</h2>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Уже решено</span>
+      <ul>
+        <li><strong>Синтаксис директивы:</strong> комментарий <code>| MODE: KUM2</code> / <code>| РЕЖИМ: КУМ2</code> — чтобы файл оставался запускаемым в классическом КуМир 2.</li>
+        <li><strong><code>edition</code>:</strong> числовое значение (2 или 3); точный pin — через <code>kumir_version</code>.</li>
+      </ul>
+    </div>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Ещё обсуждаем</span>
+      <ul>
+        <li>Полный список переключаемых различий поведения (раздел 4) — что ещё отличается (деление, округление, имена встроенных величин)?</li>
+        <li>Канонический набор команд каждого исполнителя и формат файла обстановки.</li>
+        <li>Допустимо ли в режиме КУМ2 частично использовать фичи 3 — и какие именно запретить.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="kite-footer">
+    <span>KITE 6 · Режим совместимости с КуМир 2</span>
+    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>

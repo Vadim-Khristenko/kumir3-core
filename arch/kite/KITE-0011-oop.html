@@ -1,0 +1,176 @@
+<link rel="stylesheet" href="./assets/kite.css">
+<!-- =============================================================================
+     KITE 11 — Объектная модель (ООП)
+     Источники: shared/src/types/class.rs, registry.rs; interpreter evaluator.
+============================================================================== -->
+<article class="kite" data-kite="0011" data-status="draft" lang="ru">
+
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE 11 · Спецификация / Дизайн</span>
+    <h1>Объектная модель (ООП)</h1>
+    <dl class="kite-meta">
+      <dt>Номер</dt>            <dd>KITE 11</dd>
+      <dt>Название</dt>         <dd>Продвинутая объектная модель Kumir 3</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
+      <dt>Тип</dt>              <dd>Спецификация / Дизайн</dd>
+      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Создан</dt>           <dd>2026-05-31</dd>
+      <dt>Версия документа</dt> <dd>0.1.0</dd>
+    </dl>
+  </header>
+
+  <nav class="kite-toc" aria-label="Содержание">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#sostoyanie">Текущее состояние</a></li>
+      <li><a href="#model">Модель типов</a></li>
+      <li><a href="#nasledovanie">Наследование и полиморфизм</a></li>
+      <li><a href="#traits">Интерфейсы и типажи</a></li>
+      <li><a href="#polya">Поля, свойства, инкапсуляция</a></li>
+      <li><a href="#generics">Обобщённые типы</a></li>
+      <li><a href="#operatory">Перегрузка операторов</a></li>
+      <li><a href="#dvizhok">Связь с движком типов</a></li>
+      <li><a href="#plan">План реализации</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section class="kite-section" id="sostoyanie">
+    <h2>1. Текущее состояние</h2>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Честно</span>
+      AST-модель ООП богатая (классы, структуры, интерфейсы, типажи, impl, generics, модификаторы
+      <code>виртуальный/переопределить/финал/абстрактный</code>, видимость). Уже сделано:
+      <strong>идентичность объектов</strong> (стабильный <code>type_id</code> через <code>TypeRegistry</code>)
+      и <strong>разрешение методов по иерархии</strong> с работающим переопределением (полиморфизм).
+      Осталось: полные проверки виртуальности, диспетчеризация типажей/интерфейсов, инкапсуляция,
+      generics, перегрузка операторов.
+    </div>
+    <p>Ниже: <span class="kite-badge is-available">✅</span> — работает, <span class="kite-badge is-experimental">🧪</span> — частично/в AST, <span class="kite-badge is-proposed">📋</span> — спроектировано.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="kite-section" id="model">
+    <h2>2. Модель типов</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Вид</th><th>Назначение</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td><code>класс</code></td><td>Класс с наследованием, методами, виртуальной диспетчеризацией.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>структура</code></td><td>Лёгкие данные без виртуальной диспетчеризации.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>интерфейс</code></td><td>Только сигнатуры методов.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>свойство</code> (trait)</td><td>Типаж с дефолтными реализациями.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>@native</code></td><td>Нативный тип из ядра/расширения.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Член типа описывается полем (<code>Field</code>), методом (<code>Method</code>), конструктором/деструктором; у каждого — видимость и модификаторы.</p>
+  </section>
+
+  <!-- 3 -->
+  <section class="kite-section" id="nasledovanie">
+    <h2>3. Наследование и полиморфизм</h2>
+    <ul>
+      <li><strong>Наследование:</strong> <code>расширяет</code> (один предок), <code>реализует</code> (интерфейсы).</li>
+      <li><strong>Разрешение методов по иерархии:</strong> поиск метода идёт от класса объекта вверх по предкам — первый найденный выигрывает (vtable-подобно). <span class="kite-badge is-available">✅</span></li>
+      <li><strong>Виртуальная диспетчеризация:</strong> вызов по фактическому типу (переопределение выигрывает); <code>финал</code> запрещает переопределение, <code>абстрактный</code> требует реализации в неабстрактном потомке. <span class="kite-badge is-available">✅</span></li>
+      <li><strong>Вызов предка:</strong> <code>предок.метод(...)</code> — вызов реализации родителя (обходит переопределение). <span class="kite-badge is-available">✅</span></li>
+      <li><strong>Абстрактные классы:</strong> создание экземпляра абстрактного класса запрещено. <span class="kite-badge is-available">✅</span></li>
+    </ul>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Фундамент — идентичность объектов</span>
+      Корректная диспетчеризация требует надёжной связи объект → класс (через <code>TypeId</code> и
+      <code>TypeRegistry</code>), а не сопоставления по набору полей. Это первый шаг плана (§9).
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="kite-section" id="traits">
+    <h2>4. Интерфейсы и типажи</h2>
+    <ul>
+      <li><strong>Интерфейс</strong> — набор сигнатур; тип обязан их реализовать.</li>
+      <li><strong>Типаж</strong> (<code>свойство</code>) — как интерфейс, но с <strong>дефолтными реализациями</strong> методов и супертипажами.</li>
+      <li><strong>Реализация:</strong> <code>реализация Типаж для Тип</code> привязывает методы к типу.</li>
+      <li><strong>Диспетчеризация через impl-блоки:</strong> метод из <code>реализация [Типаж] для Тип</code> ищется по типу и предкам после методов класса. <span class="kite-badge is-available">✅</span></li>
+      <li><strong>Дефолтные реализации типажа</strong> и проверка соответствия интерфейсу — на очереди. <span class="kite-badge is-proposed">📋</span></li>
+      <li><strong>Проверка реализации</strong> через <code>TypeRegistry</code> (номинальный подтип, см. <a href="./KITE-0010-type-engine.html">KITE 10</a>). <span class="kite-badge is-experimental">🧪</span></li>
+    </ul>
+  </section>
+
+  <!-- 5 -->
+  <section class="kite-section" id="polya">
+    <h2>5. Поля, свойства, инкапсуляция</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Возможность</th><th>Описание</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td>Видимость</td><td><code>открытый</code>/<code>закрытый</code>/<code>защищённый</code> — доступ к полю извне класса проверяется (закрытое — только владелец, защищённое — владелец и потомки).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Типизация полей</td><td>Тип поля проверяется движком (<a href="./KITE-0010-type-engine.html">KITE 10</a>); значение по умолчанию — <code>default_value</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Свойства-аксессоры</td><td>Вычисляемые <code>чтение</code>/<code>запись</code> (get/set) поверх полей.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Статические члены</td><td>Поля/методы уровня типа (<code>статический</code>).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td>Изменяемость</td><td><code>измен</code>/<code>конст</code> для полей.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Конструктор/деструктор</td><td>Инициализация и освобождение ресурсов; цепочка к предку.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="kite-section" id="generics">
+    <h2>6. Обобщённые типы</h2>
+    <ul>
+      <li>Параметры типа (<code>type_params</code>) на классах, методах, интерфейсах и типажах.</li>
+      <li>Ограничения <code>где</code> — требования к параметрам (реализует типаж, подтип и т.п.).</li>
+      <li>Представление через <code>TypeKind::Generic { name, type_args }</code>; проверка совместимости — движком (ковариантно по аргументам).</li>
+      <li>Стратегия: стирание с проверкой типов на границах (мономорфизация — позже). <span class="kite-badge is-proposed">📋</span></li>
+    </ul>
+  </section>
+
+  <!-- 7 -->
+  <section class="kite-section" id="operatory">
+    <h2>7. Перегрузка операторов</h2>
+    <ul>
+      <li>Операторы выражаются типажами-операторами (напр. <code>Сложение</code>, <code>Сравнение</code>); <code>a + b</code> разворачивается в вызов метода типажа.</li>
+      <li>Тип результата операции даёт движок (<code>result_of_binop</code>) либо сигнатура метода типажа.</li>
+      <li>Это позволяет <code>дробь</code>, <code>комплекс</code>, <code>вектор</code> и т.п. вести себя как числа. <span class="kite-badge is-proposed">📋</span></li>
+    </ul>
+  </section>
+
+  <!-- 8 -->
+  <section class="kite-section" id="dvizhok">
+    <h2>8. Связь с движком типов</h2>
+    <p>ООП опирается на единый движок (<a href="./KITE-0010-type-engine.html">KITE 10</a>):</p>
+    <ul>
+      <li><strong>Номинальный подтип</strong> (<code>nominal</code>-правило) — наследование и реализация интерфейсов через <code>TypeRegistry</code>.</li>
+      <li><strong>Проверка присваиваний и параметров</strong> методов — <code>check_assignable</code>.</li>
+      <li><strong>Типы полей и значения по умолчанию</strong> — <code>default_value</code>.</li>
+      <li><strong>Перегрузка операторов</strong> — типизация через <code>result_of_binop</code>.</li>
+    </ul>
+  </section>
+
+  <!-- 9 -->
+  <section class="kite-section" id="plan">
+    <h2>9. План реализации</h2>
+    <ol>
+      <li>✅ <strong>Идентичность объектов:</strong> класс регистрируется в <code>TypeRegistry</code> при объявлении; объект несёт стабильный <code>type_id</code> (вместо сопоставления по полям).</li>
+      <li>✅ <strong>Разрешение методов по иерархии:</strong> поиск метода от класса объекта вверх по предкам; переопределение подкласса выигрывает (полиморфизм).</li>
+      <li>✅ <strong>Виртуальная диспетчеризация:</strong> переопределение, <code>предок.метод()</code>, запрет инстанцирования <code>абстрактный</code>, запрет переопределения <code>финал</code>, обязательность реализации абстрактных методов.</li>
+      <li>🚧 <strong>Типажи и интерфейсы:</strong> диспетчеризация в impl-методы — ✅; дефолтные реализации типажа и проверка соответствия интерфейсу — далее.</li>
+      <li>🚧 <strong>Инкапсуляция и свойства:</strong> проверка видимости полей — ✅; свойства-аксессоры и типизация полей через движок — далее.</li>
+      <li><strong>Обобщённые типы:</strong> параметры и ограничения <code>где</code>.</li>
+      <li><strong>Перегрузка операторов:</strong> типажи-операторы.</li>
+    </ol>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Подход</span>
+      Каждый шаг — отдельной правкой по TDD, с зелёными тестами и сохранением совместимости.
+      Документ обновляется по мере реализации (бейджи 🧪/✅).
+    </div>
+  </section>
+
+  <footer class="kite-footer">
+    <span>KITE 11 · Объектная модель</span>
+    <span>Kumir3 House 🐾🦀 · 2026-05-31</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>

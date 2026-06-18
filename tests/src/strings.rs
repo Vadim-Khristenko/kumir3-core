@@ -22,7 +22,7 @@ fn test_code_cp1251_cyrillic() {
     assert_eq!(StringOperations::code_cp1251('А'), 192);
     assert_eq!(StringOperations::code_cp1251('Б'), 193);
     assert_eq!(StringOperations::code_cp1251('Я'), 223);
-    
+
     // Строчные буквы а-я (0xE0-0xFF в CP-1251)
     assert_eq!(StringOperations::code_cp1251('а'), 224);
     assert_eq!(StringOperations::code_cp1251('б'), 225);
@@ -147,7 +147,10 @@ fn test_capitalize() {
 fn test_title_case() {
     assert_eq!(StringOperations::title_case("hello world"), "Hello World");
     assert_eq!(StringOperations::title_case("привет мир"), "Привет Мир");
-    assert_eq!(StringOperations::title_case("  multiple   spaces  "), "  Multiple   Spaces  ");
+    assert_eq!(
+        StringOperations::title_case("  multiple   spaces  "),
+        "  Multiple   Spaces  "
+    );
 }
 
 #[test]
@@ -235,26 +238,44 @@ fn test_count_occurrences() {
 
 #[test]
 fn test_substring_basic() {
-    assert_eq!(StringOperations::substring("Hello", 1, 3), Ok("Hel".to_string()));
-    assert_eq!(StringOperations::substring("Hello", 2, 3), Ok("ell".to_string()));
-    assert_eq!(StringOperations::substring("Hello", 5, 1), Ok("o".to_string()));
+    assert_eq!(
+        StringOperations::substring("Hello", 1, 3),
+        Ok("Hel".to_string())
+    );
+    assert_eq!(
+        StringOperations::substring("Hello", 2, 3),
+        Ok("ell".to_string())
+    );
+    assert_eq!(
+        StringOperations::substring("Hello", 5, 1),
+        Ok("o".to_string())
+    );
 }
 
 #[test]
 fn test_substring_unicode() {
-    assert_eq!(StringOperations::substring("Привет", 1, 3), Ok("При".to_string()));
-    assert_eq!(StringOperations::substring("Привет Мир", 8, 3), Ok("Мир".to_string()));
+    assert_eq!(
+        StringOperations::substring("Привет", 1, 3),
+        Ok("При".to_string())
+    );
+    assert_eq!(
+        StringOperations::substring("Привет Мир", 8, 3),
+        Ok("Мир".to_string())
+    );
 }
 
 #[test]
 fn test_substring_overflow() {
     // Запрос больше символов, чем есть — возвращает до конца строки
-    assert_eq!(StringOperations::substring("Hello", 3, 100), Ok("llo".to_string()));
+    assert_eq!(
+        StringOperations::substring("Hello", 3, 100),
+        Ok("llo".to_string())
+    );
 }
 
 #[test]
 fn test_substring_errors() {
-    assert!(StringOperations::substring("Hello", 0, 3).is_err());  // pos < 1
+    assert!(StringOperations::substring("Hello", 0, 3).is_err()); // pos < 1
     assert!(StringOperations::substring("Hello", 10, 3).is_err()); // pos > len
     assert!(StringOperations::substring("Hello", 1, -1).is_err()); // count < 0
 }
@@ -270,7 +291,10 @@ fn test_left() {
 #[test]
 fn test_right() {
     assert_eq!(StringOperations::right("Hello", 3), Ok("llo".to_string()));
-    assert_eq!(StringOperations::right("Hello", 10), Ok("Hello".to_string()));
+    assert_eq!(
+        StringOperations::right("Hello", 10),
+        Ok("Hello".to_string())
+    );
     assert_eq!(StringOperations::right("Hello", 0), Ok("".to_string()));
     assert_eq!(StringOperations::right("Привет", 3), Ok("вет".to_string()));
 }
@@ -430,26 +454,44 @@ fn test_trim_chars() {
 #[test]
 fn test_split_by_delimiter() {
     assert_eq!(StringOperations::split("a,b,c", ","), vec!["a", "b", "c"]);
-    assert_eq!(StringOperations::split("a::b::c", "::"), vec!["a", "b", "c"]);
+    assert_eq!(
+        StringOperations::split("a::b::c", "::"),
+        vec!["a", "b", "c"]
+    );
 }
 
 #[test]
 fn test_split_empty_delimiter() {
     // Разбить на символы
     assert_eq!(StringOperations::split("abc", ""), vec!["a", "b", "c"]);
-    assert_eq!(StringOperations::split("Привет", ""), vec!["П", "р", "и", "в", "е", "т"]);
+    assert_eq!(
+        StringOperations::split("Привет", ""),
+        vec!["П", "р", "и", "в", "е", "т"]
+    );
 }
 
 #[test]
 fn test_split_words() {
-    assert_eq!(StringOperations::split_words("Hello World"), vec!["Hello", "World"]);
-    assert_eq!(StringOperations::split_words("  multiple   spaces  "), vec!["multiple", "spaces"]);
+    assert_eq!(
+        StringOperations::split_words("Hello World"),
+        vec!["Hello", "World"]
+    );
+    assert_eq!(
+        StringOperations::split_words("  multiple   spaces  "),
+        vec!["multiple", "spaces"]
+    );
 }
 
 #[test]
 fn test_split_lines() {
-    assert_eq!(StringOperations::split_lines("a\nb\nc"), vec!["a", "b", "c"]);
-    assert_eq!(StringOperations::split_lines("a\r\nb\r\nc"), vec!["a", "b", "c"]);
+    assert_eq!(
+        StringOperations::split_lines("a\nb\nc"),
+        vec!["a", "b", "c"]
+    );
+    assert_eq!(
+        StringOperations::split_lines("a\r\nb\r\nc"),
+        vec!["a", "b", "c"]
+    );
 }
 
 #[test]
@@ -646,17 +688,16 @@ fn test_equals_ignore_case() {
 #[test]
 fn test_format() {
     use shared::types::Value;
-    
+
     let result = StringOperations::format("Hello, {}!", &[Value::from("World")]);
     assert_eq!(result, "Hello, World!");
-    
-    let result = StringOperations::format("{} + {} = {}", &[
-        Value::from(2i64),
-        Value::from(3i64),
-        Value::from(5i64),
-    ]);
+
+    let result = StringOperations::format(
+        "{} + {} = {}",
+        &[Value::from(2i64), Value::from(3i64), Value::from(5i64)],
+    );
     assert_eq!(result, "2 + 3 = 5");
-    
+
     // Больше placeholders, чем аргументов
     let result = StringOperations::format("{} {} {}", &[Value::from("a")]);
     assert_eq!(result, "a {} {}");

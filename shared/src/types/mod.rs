@@ -1,5 +1,5 @@
 //! Модуль типов языка Кумир 3
-//! 
+//!
 //! Структура модуля:
 //! - `number` - числовые типы (Number)
 //! - `value` - значения времени выполнения (Value)
@@ -18,92 +18,86 @@
 //! - `config` - конфигурация проекта (kumir.toml)
 //! - `resolver` - резолвер зависимостей
 
-mod number;
-mod value;
-mod token;
-mod expr;
-mod stmt;
-mod pattern;
-mod class;
 mod algorithm;
+mod class;
+pub mod config;
+pub mod environment;
+mod expr;
+pub mod import_spec;
+pub mod library;
+mod number;
+mod pattern;
 mod program;
 mod registry;
-pub mod library;
-pub mod version;
-pub mod environment;
-pub mod import_spec;
-pub mod type_spec;
-pub mod config;
 pub mod resolver;
+mod stmt;
+mod token;
+pub mod value;
 pub mod venv_loader;
+pub mod version;
 
 // Re-export всех публичных типов
-pub use number::Number;
-pub use value::{Value, PromiseStatus};
-pub use token::Token;
-pub use expr::Expr;
-pub use stmt::Stmt;
-pub use pattern::Pattern;
-pub use type_spec::TypeSpec;
-pub use class::{
-    ClassDef, Field, Method, MethodSignature, Constructor, Visibility,
-    InterfaceDef, TraitDef, TraitMethod, ImplDef,
+pub use algorithm::{
+    Algorithm, AlgorithmKind, Attribute, CallConvention, EffectFlags, NodeId, OverloadedAlgorithm,
+    ParamMode, Parameter, SourceSpan, TypeConstraint, TypeParam,
 };
-pub use algorithm::{Algorithm, Parameter, ParamMode, OverloadedAlgorithm};
+pub use class::{
+    ClassDef, ClassKind, Constructor, Field, ImplDef, InterfaceDef, Method, MethodSignature,
+    TraitDef, TraitMethod, Visibility,
+};
+pub use expr::Expr;
+pub use number::Number;
+pub use pattern::Pattern;
 pub use program::Program;
+pub use stmt::Stmt;
+pub use token::Token;
+pub use value::{
+    GeneratorState, LambdaValue, Ownership, PromiseStatus, TypeKind, Value, ValueMeta,
+};
 
 // TypeRegistry v2
 pub use registry::{
-    TypeRegistry, TypeId, TypeDef, FieldDef, 
-    MethodDef, MethodParam, ParamMode as RegistryParamMode,
-    TypeDefBuilder, MethodDefBuilder,
-    NativeFactory, InstanceMethodHandler, StaticMethodHandler,
-    FieldAccessHandler, FieldSetHandler,
+    FieldAccessHandler, FieldDef, FieldSetHandler, InstanceMethodHandler, MethodDef,
+    MethodDefBuilder, MethodParam, NativeFactory, ParamMode as RegistryParamMode,
+    StaticMethodHandler, TypeDef, TypeDefBuilder, TypeId, TypeRegistry,
 };
 
 // Library system
 pub use library::{
-    LibraryDef, LibFunctionDef, LibParamDef, LibConstantDef,
-    LibVersion, LibDependency, LibFieldDef,
-    ParamPassMode, NativeFn, NativeResult, LibraryRegistry,
+    LibConstantDef, LibDependency, LibFieldDef, LibFunctionDef, LibParamDef, LibVersion,
+    LibraryDef, LibraryRegistry, NativeFn, NativeResult,
 };
 
 // Version system
-pub use version::{Version, VersionSpec, VersionReq, VersionOp, VersionParseError};
+pub use version::{Version, VersionOp, VersionParseError, VersionReq, VersionSpec};
 
 // Environment system
 pub use environment::{
-    VirtualEnvironment, VersionedLibrary, LibrarySource, EnvPaths,
-    ResolvedDependency, EnvironmentManager,
+    EnvPaths, EnvironmentManager, LibrarySource, ResolvedDependency, VersionedLibrary,
+    VirtualEnvironment,
 };
 
 // Import system
-pub use import_spec::{ImportSpec, ImportItem, ImportSource, ImportParser, parse_import};
+pub use import_spec::{ImportItem, ImportParser, ImportSource, ImportSpec, parse_import};
 
 // Config system
 pub use config::{
-    KumirConfig, ProjectMetadata, DependencySpec, BuildSettings, BuildProfile,
-    LockFile, LockEntry, ConfigError, GitSource,
+    BuildProfile, BuildSettings, ConfigError, DependencySpec, GitSource, KumirConfig, LockEntry,
+    LockFile, ProjectMetadata,
 };
 
 // Resolver
 pub use resolver::{
-    DependencyResolver, DependencyGraph, DependencyNode, ResolutionResult,
-    ResolvedPackage, ResolutionStatus, ResolutionError, VersionConflict,
-    ConflictStrategy, LibraryProvider,
+    ConflictStrategy, DependencyGraph, DependencyNode, DependencyResolver, LibraryProvider,
+    ResolutionError, ResolutionResult, ResolutionStatus, ResolvedPackage, VersionConflict,
 };
 
 // Integrated loader
 pub use venv_loader::{
-    IntegratedLoader, LoadedLibrary, LoaderError, LoaderResult,
-    LibraryManifest, ManifestDependency,
-    loader, register_builtin, load_library, load_library_versioned,
-    load_library_with_deps, activate_project, deactivate_project, list_available,
+    IntegratedLoader, LibraryManifest, LoadedLibrary, LoaderError, LoaderResult,
+    ManifestDependency, activate_project, deactivate_project, list_available, load_library,
+    load_library_versioned, load_library_with_deps, loader, register_builtin,
 };
 
-// Обратная совместимость (будет удалено)
-pub use registry::{TypeInfo, TypeKind, NativeType, InitMethod};
-
 // Вспомогательные структуры
-pub use stmt::{EnumVariant, MatchArm};
-
+pub use stmt::{EnumVariant, MatchArm, VarModifiers, YieldParam};

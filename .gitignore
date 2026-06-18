@@ -5,10 +5,11 @@
 *.debug
 
 # IDE
-/.idea
-/.vscode
-/.vs
-/.idx
+.*/
+!.github/
+
+# Git hooks (version-controlled; activate with tools/install-hooks.sh|ps1)
+!.githooks/
 
 # Remove doc files
 # You can actually generate your own documentation using `cargo doc`.

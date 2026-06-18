@@ -1,21 +1,8 @@
-//! Конфигурация проекта Kumir 3 (kumir.toml)
+//! Kumir 3 project configuration (kumir.toml).
 //!
-//! Формат файла конфигурации:
-//! ```toml
-//! [проект]
-//! имя = "мой_проект"
-//! версия = "1.0.0"
-//! авторы = ["Иван Иванов"]
-//! 
-//! [зависимости]
-//! Сокеты = "^2.0"
-//! Графика = { версия = "1.5", опционально = true }
-//! МойМодуль = { путь = "./libs/мой_модуль" }
-//! 
-//! [сборка]
-//! главный = "main.kum"
-//! выход = "./build"
-//! ```
+//! [STABLE] Modern, extensible configuration model for projects, workspaces,
+//! dependencies, registries, and build profiles. Replaces legacy RTC-style
+//! config with richer metadata, safer parsing, and lockfile support.
 
 use std::collections::HashMap;
 use std::fs;
@@ -23,101 +10,77 @@ use std::path::{Path, PathBuf};
 
 use toml::Value;
 
-use super::version::{Version, VersionSpec, VersionParseError};
+use super::version::{Version, VersionParseError, VersionSpec};
 
-// ============================================================================
-//                         МЕТАДАННЫЕ ПРОЕКТА
-// ============================================================================
+// =============================================================================
+//         SECTION: PROJECT METADATA
+// =============================================================================
 
-/// Метаданные проекта
 #[derive(Debug, Clone, Default)]
 pub struct ProjectMetadata {
-    /// Имя проекта
     pub name: String,
-    /// Версия проекта
     pub version: Version,
-    /// Авторы
     pub authors: Vec<String>,
-    /// Описание
     pub description: Option<String>,
-    /// Лицензия
     pub license: Option<String>,
-    /// Домашняя страница
     pub homepage: Option<String>,
-    /// Репозиторий
     pub repository: Option<String>,
-    /// Ключевые слова
     pub keywords: Vec<String>,
+    pub readme: Option<String>,
+    pub kumir_version: Option<Version>,
+    pub edition: Option<String>,
 }
 
-// ============================================================================
-//                         ЗАВИСИМОСТИ
-// ============================================================================
+// =============================================================================
+//         SECTION: DEPENDENCIES
+// =============================================================================
 
-/// Спецификация зависимости
-#[derive(Debug, Clone)]
-pub struct DependencySpec {
-    /// Имя библиотеки
-    pub name: String,
-    /// Спецификация версии
-    pub version: VersionSpec,
-    /// Путь к локальной библиотеке (вместо версии)
-    pub path: Option<PathBuf>,
-    /// Git репозиторий
-    pub git: Option<GitSource>,
-    /// URL для скачивания
-    pub url: Option<String>,
-    /// Опциональная зависимость
-    pub optional: bool,
-    /// Фичи библиотеки
-    pub features: Vec<String>,
-    /// Отключённые фичи по умолчанию
-    pub default_features: bool,
-}
-
-/// Источник Git
 #[derive(Debug, Clone)]
 pub struct GitSource {
-    /// URL репозитория
     pub url: String,
-    /// Ветка
     pub branch: Option<String>,
-    /// Тег
     pub tag: Option<String>,
-    /// Коммит
     pub rev: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct DependencySpec {
+    pub name: String,
+    pub version: VersionSpec,
+    pub path: Option<PathBuf>,
+    pub git: Option<GitSource>,
+    pub registry: Option<String>,
+    pub url: Option<String>,
+    pub optional: bool,
+    pub features: Vec<String>,
+    pub default_features: bool,
+    pub target: Option<String>,
+    pub package: Option<String>,
+}
+
 impl DependencySpec {
-    /// Создаёт зависимость с версией
     pub fn version(name: impl Into<String>, version: VersionSpec) -> Self {
         Self {
             name: name.into(),
             version,
             path: None,
             git: None,
+            registry: None,
             url: None,
             optional: false,
             features: Vec::new(),
             default_features: true,
+            target: None,
+            package: None,
         }
     }
 
-    /// Создаёт зависимость с путём
     pub fn path(name: impl Into<String>, path: impl Into<PathBuf>) -> Self {
-        Self {
-            name: name.into(),
-            version: VersionSpec::any(),
-            path: Some(path.into()),
-            git: None,
-            url: None,
-            optional: false,
-            features: Vec::new(),
-            default_features: true,
-        }
+        let mut dep = Self::version(name, VersionSpec::any());
+        dep.path = Some(path.into());
+        dep
     }
 
-    /// Создаёт зависимость с git
     pub fn git(name: impl Into<String>, url: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -129,153 +92,153 @@ impl DependencySpec {
                 tag: None,
                 rev: None,
             }),
+            registry: None,
             url: None,
             optional: false,
             features: Vec::new(),
             default_features: true,
+            target: None,
+            package: None,
         }
     }
 
-    /// Помечает как опциональную
     pub fn optional(mut self) -> Self {
         self.optional = true;
         self
     }
-
-    /// Добавляет фичу
     pub fn with_feature(mut self, feature: impl Into<String>) -> Self {
         self.features.push(feature.into());
         self
     }
-
-    /// Является ли зависимость локальной
     pub fn is_local(&self) -> bool {
         self.path.is_some()
     }
-
-    /// Является ли зависимость из git
     pub fn is_git(&self) -> bool {
         self.git.is_some()
     }
 }
 
-// ============================================================================
-//                         НАСТРОЙКИ СБОРКИ
-// ============================================================================
+// =============================================================================
+//         SECTION: BUILD SETTINGS AND PROFILES
+// =============================================================================
 
-/// Настройки сборки
 #[derive(Debug, Clone)]
 pub struct BuildSettings {
-    /// Главный файл программы
     pub main_file: PathBuf,
-    /// Директория вывода
     pub output_dir: PathBuf,
-    /// Уровень оптимизации (0-3)
     pub optimization_level: u8,
-    /// Включить отладочную информацию
     pub debug_info: bool,
-    /// Включить проверки границ
     pub bounds_check: bool,
-    /// Строгий режим типизации
     pub strict_mode: bool,
+    pub incremental: bool,
+    pub lto: bool,
+    pub target_triple: Option<String>,
+    pub emit_ir: bool,
 }
 
 impl Default for BuildSettings {
     fn default() -> Self {
         Self {
-            main_file: PathBuf::from("главный.kum"),
-            output_dir: PathBuf::from("./сборка"),
-            optimization_level: 1,
+            main_file: PathBuf::from("main.kum"),
+            output_dir: PathBuf::from("./build"),
+            optimization_level: 0,
             debug_info: true,
             bounds_check: true,
             strict_mode: false,
+            incremental: true,
+            lto: false,
+            target_triple: None,
+            emit_ir: false,
         }
     }
 }
 
-// ============================================================================
-//                         ПРОФИЛИ
-// ============================================================================
-
-/// Профиль сборки
 #[derive(Debug, Clone)]
 pub struct BuildProfile {
-    /// Имя профиля
     pub name: String,
-    /// Уровень оптимизации
     pub optimization_level: Option<u8>,
-    /// Отладочная информация
     pub debug_info: Option<bool>,
-    /// Проверки границ
     pub bounds_check: Option<bool>,
-    /// Дополнительные определения
+    pub incremental: Option<bool>,
+    pub lto: Option<bool>,
     pub defines: HashMap<String, String>,
 }
 
 impl BuildProfile {
-    /// Профиль разработки
     pub fn dev() -> Self {
         Self {
-            name: "разработка".to_string(),
+            name: "dev".into(),
             optimization_level: Some(0),
             debug_info: Some(true),
             bounds_check: Some(true),
+            incremental: Some(true),
+            lto: Some(false),
             defines: HashMap::new(),
         }
     }
 
-    /// Профиль выпуска
     pub fn release() -> Self {
         Self {
-            name: "выпуск".to_string(),
+            name: "release".into(),
             optimization_level: Some(3),
             debug_info: Some(false),
             bounds_check: Some(false),
+            incremental: Some(false),
+            lto: Some(true),
             defines: HashMap::new(),
         }
     }
 
-    /// Профиль тестирования
     pub fn test() -> Self {
         Self {
-            name: "тест".to_string(),
+            name: "test".into(),
             optimization_level: Some(0),
             debug_info: Some(true),
             bounds_check: Some(true),
-            defines: HashMap::from([
-                ("ТЕСТ".to_string(), "да".to_string()),
-            ]),
+            incremental: Some(true),
+            lto: Some(false),
+            defines: HashMap::new(),
         }
     }
 }
 
-// ============================================================================
-//                         КОНФИГУРАЦИЯ ПРОЕКТА
-// ============================================================================
+// =============================================================================
+//         SECTION: WORKSPACE & REGISTRIES
+// =============================================================================
 
-/// Полная конфигурация проекта
+#[derive(Debug, Clone, Default)]
+pub struct Workspace {
+    pub members: Vec<PathBuf>,
+    pub exclude: Vec<PathBuf>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Registry {
+    pub name: String,
+    pub index: String,
+    pub priority: u32,
+}
+
+// =============================================================================
+//         SECTION: FULL CONFIG
+// =============================================================================
+
 #[derive(Debug, Clone)]
 pub struct KumirConfig {
-    /// Путь к файлу конфигурации
     pub config_path: PathBuf,
-    /// Корень проекта
     pub project_root: PathBuf,
-    /// Метаданные проекта
     pub metadata: ProjectMetadata,
-    /// Зависимости
     pub dependencies: HashMap<String, DependencySpec>,
-    /// Зависимости для разработки
     pub dev_dependencies: HashMap<String, DependencySpec>,
-    /// Настройки сборки
+    pub build_dependencies: HashMap<String, DependencySpec>,
     pub build: BuildSettings,
-    /// Профили сборки
     pub profiles: HashMap<String, BuildProfile>,
-    /// Рабочие пространства (для монорепозиториев)
-    pub workspaces: Vec<PathBuf>,
+    pub workspace: Workspace,
+    pub registries: HashMap<String, Registry>,
+    pub env: HashMap<String, String>,
 }
 
 impl KumirConfig {
-    /// Создаёт новую конфигурацию
     pub fn new(project_root: impl AsRef<Path>) -> Self {
         let root = project_root.as_ref().to_path_buf();
         Self {
@@ -284,184 +247,301 @@ impl KumirConfig {
             metadata: ProjectMetadata::default(),
             dependencies: HashMap::new(),
             dev_dependencies: HashMap::new(),
+            build_dependencies: HashMap::new(),
             build: BuildSettings::default(),
-            profiles: HashMap::from([
-                ("разработка".to_string(), BuildProfile::dev()),
-                ("выпуск".to_string(), BuildProfile::release()),
-                ("тест".to_string(), BuildProfile::test()),
-            ]),
-            workspaces: Vec::new(),
+            profiles: HashMap::new(),
+            workspace: Workspace::default(),
+            registries: HashMap::new(),
+            env: HashMap::new(),
         }
     }
 
-    /// Загружает конфигурацию из файла
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         let path = path.as_ref();
-        let content = fs::read_to_string(path)
-            .map_err(|e| ConfigError::IoError(e.to_string()))?;
-        
+        let content = fs::read_to_string(path).map_err(|e| ConfigError::IoError(e.to_string()))?;
         Self::parse(&content, path)
     }
 
-    /// Ищет и загружает конфигурацию из текущей или родительских директорий
     pub fn find(start_dir: impl AsRef<Path>) -> Option<Self> {
         let mut current = start_dir.as_ref().to_path_buf();
-        
         loop {
-            let config_path = current.join("kumir.toml");
-            if config_path.exists() {
-                return Self::load(&config_path).ok();
+            let candidate = current.join("kumir.toml");
+            if candidate.exists() {
+                return Self::load(&candidate).ok();
             }
-            
             if !current.pop() {
-                return None;
+                break;
             }
         }
+        None
     }
 
-    /// Парсит конфигурацию из строки
     pub fn parse(content: &str, config_path: &Path) -> Result<Self, ConfigError> {
-        let project_root = config_path.parent()
-            .ok_or_else(|| ConfigError::ParseError("Не удалось определить корень проекта".into()))?
-            .to_path_buf();
-        
-        let mut config = Self::new(&project_root);
-        config.config_path = config_path.to_path_buf();
+        let value: Value = content
+            .parse::<Value>()
+            .map_err(|e| ConfigError::ParseError(format!("TOML parse error: {e}")))?;
 
-        // Простой парсер TOML (в реальности лучше использовать библиотеку toml)
-        let mut current_section = String::new();
-        
-        for line in content.lines() {
-            let line = line.trim();
-            
-            // Пропускаем пустые строки и комментарии
-            if line.is_empty() || line.starts_with('#') {
-                continue;
+        let project_root = config_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf();
+        let mut cfg = Self::new(&project_root);
+        cfg.config_path = config_path.to_path_buf();
+
+        let table = value
+            .as_table()
+            .ok_or_else(|| ConfigError::InvalidFormat("Root must be a TOML table".into()))?;
+
+        if let Some(project) = table
+            .get("project")
+            .or_else(|| table.get("проект"))
+            .or_else(|| table.get("package"))
+            && let Some(t) = project.as_table()
+        {
+            cfg.metadata.name = t
+                .get("name")
+                .or_else(|| t.get("имя"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            // Главный файл может быть указан в [package]/[project].
+            if let Some(v) = t
+                .get("main")
+                .or_else(|| t.get("главный"))
+                .and_then(|v| v.as_str())
+            {
+                cfg.build.main_file = PathBuf::from(v);
             }
-            
-            // Секция
-            if line.starts_with('[') && line.ends_with(']') {
-                current_section = line[1..line.len()-1].to_string();
-                continue;
+            cfg.metadata.version = t
+                .get("version")
+                .or_else(|| t.get("версия"))
+                .and_then(|v| v.as_str())
+                .map(Version::parse)
+                .transpose()
+                .map_err(ConfigError::Version)?
+                .unwrap_or_else(|| Version::new(0, 0, 0));
+            cfg.metadata.description = t
+                .get("description")
+                .or_else(|| t.get("описание"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            cfg.metadata.license = t
+                .get("license")
+                .or_else(|| t.get("лицензия"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            cfg.metadata.homepage = t
+                .get("homepage")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            cfg.metadata.repository = t
+                .get("repository")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            cfg.metadata.readme = t
+                .get("readme")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            cfg.metadata.kumir_version = t
+                .get("kumir_version")
+                .and_then(|v| v.as_str())
+                .and_then(|s| Version::parse(s).ok());
+            cfg.metadata.edition = t
+                .get("edition")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            if let Some(authors) = t
+                .get("authors")
+                .or_else(|| t.get("авторы"))
+                .and_then(|v| v.as_array())
+            {
+                cfg.metadata.authors = authors
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
             }
-            
-            // Ключ = значение
-            if let Some((key, value)) = line.split_once('=') {
-                let key = key.trim();
-                let value = value.trim().trim_matches('"');
-                
-                match current_section.as_str() {
-                    "проект" | "project" => {
-                        match key {
-                            "имя" | "name" => config.metadata.name = value.to_string(),
-                            "версия" | "version" => {
-                                config.metadata.version = value.parse()
-                                    .map_err(|e: VersionParseError| ConfigError::ParseError(e.message))?;
-                            }
-                            "описание" | "description" => {
-                                config.metadata.description = Some(value.to_string());
-                            }
-                            "лицензия" | "license" => {
-                                config.metadata.license = Some(value.to_string());
-                            }
-                            _ => {}
-                        }
-                    }
-                    "зависимости" | "dependencies" => {
-                        // Простая версия: зависимость = "версия"
-                        let spec = if value.starts_with('^') || value.starts_with('~') 
-                            || value.starts_with('>') || value.starts_with('<')
-                            || value.starts_with('=') || value.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false)
-                        {
-                            let version: VersionSpec = value.parse()
-                                .map_err(|e: VersionParseError| ConfigError::ParseError(e.message))?;
-                            DependencySpec::version(key, version)
-                        } else if value.starts_with("./") || value.starts_with("../") {
-                            DependencySpec::path(key, value)
-                        } else {
-                            // По умолчанию любая версия
-                            DependencySpec::version(key, VersionSpec::any())
-                        };
-                        config.dependencies.insert(key.to_string(), spec);
-                    }
-                    "сборка" | "build" => {
-                        match key {
-                            "главный" | "main" => {
-                                config.build.main_file = PathBuf::from(value);
-                            }
-                            "выход" | "output" => {
-                                config.build.output_dir = PathBuf::from(value);
-                            }
-                            "оптимизация" | "optimization" => {
-                                config.build.optimization_level = value.parse().unwrap_or(1);
-                            }
-                            _ => {}
-                        }
-                    }
-                    _ => {}
+            if let Some(keys) = t.get("keywords").or_else(|| t.get("ключевые"))
+                && let Some(arr) = keys.as_array()
+            {
+                cfg.metadata.keywords = arr
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
+            }
+        }
+
+        if let Some(deps) = table
+            .get("dependencies")
+            .or_else(|| table.get("зависимости"))
+        {
+            cfg.dependencies = parse_deps_table(deps, &project_root)?;
+        }
+        if let Some(dev) = table
+            .get("dev-dependencies")
+            .or_else(|| table.get("dev_dependencies"))
+        {
+            cfg.dev_dependencies = parse_deps_table(dev, &project_root)?;
+        }
+        if let Some(build_deps) = table
+            .get("build-dependencies")
+            .or_else(|| table.get("build_dependencies"))
+        {
+            cfg.build_dependencies = parse_deps_table(build_deps, &project_root)?;
+        }
+
+        if let Some(build) = table.get("build").or_else(|| table.get("сборка"))
+            && let Some(t) = build.as_table()
+        {
+            if let Some(v) = t
+                .get("main")
+                .or_else(|| t.get("главный"))
+                .and_then(|v| v.as_str())
+            {
+                cfg.build.main_file = PathBuf::from(v);
+            }
+            if let Some(v) = t
+                .get("output")
+                .or_else(|| t.get("выход"))
+                .and_then(|v| v.as_str())
+            {
+                cfg.build.output_dir = PathBuf::from(v);
+            }
+            cfg.build.optimization_level =
+                t.get("optimization")
+                    .or_else(|| t.get("оптимизация"))
+                    .and_then(|v| v.as_integer())
+                    .unwrap_or(cfg.build.optimization_level as i64) as u8;
+            cfg.build.debug_info = t
+                .get("debug_info")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(cfg.build.debug_info);
+            cfg.build.bounds_check = t
+                .get("bounds_check")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(cfg.build.bounds_check);
+            cfg.build.strict_mode = t
+                .get("strict_mode")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(cfg.build.strict_mode);
+            cfg.build.incremental = t
+                .get("incremental")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(cfg.build.incremental);
+            cfg.build.lto = t
+                .get("lto")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(cfg.build.lto);
+            cfg.build.target_triple = t
+                .get("target")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            cfg.build.emit_ir = t
+                .get("emit_ir")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(cfg.build.emit_ir);
+        }
+
+        if let Some(ws) = table
+            .get("workspace")
+            .or_else(|| table.get("рабочее_пространство"))
+            && let Some(t) = ws.as_table()
+        {
+            if let Some(members) = t.get("members").and_then(|v| v.as_array()) {
+                cfg.workspace.members = members
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| project_root.join(s)))
+                    .collect();
+            }
+            if let Some(exclude) = t.get("exclude").and_then(|v| v.as_array()) {
+                cfg.workspace.exclude = exclude
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| project_root.join(s)))
+                    .collect();
+            }
+        }
+
+        if let Some(regs) = table.get("registries")
+            && let Some(t) = regs.as_table()
+        {
+            for (name, v) in t {
+                if let Some(rt) = v.as_table() {
+                    let index = rt
+                        .get("index")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let priority =
+                        rt.get("priority").and_then(|v| v.as_integer()).unwrap_or(0) as u32;
+                    cfg.registries.insert(
+                        name.clone(),
+                        Registry {
+                            name: name.clone(),
+                            index,
+                            priority,
+                        },
+                    );
                 }
             }
         }
 
-        Ok(config)
+        if let Some(env) = table.get("env")
+            && let Some(t) = env.as_table()
+        {
+            for (k, v) in t {
+                if let Some(val) = v.as_str() {
+                    cfg.env.insert(k.clone(), val.to_string());
+                }
+            }
+        }
+
+        Ok(cfg)
     }
 
-    /// Сохраняет конфигурацию в файл
     pub fn save(&self) -> Result<(), ConfigError> {
         let content = self.to_toml();
-        fs::write(&self.config_path, content)
-            .map_err(|e| ConfigError::IoError(e.to_string()))
+        fs::write(&self.config_path, content).map_err(|e| ConfigError::IoError(e.to_string()))
     }
 
-    /// Генерирует TOML представление
     pub fn to_toml(&self) -> String {
-        let mut output = String::new();
-
-        // Секция проекта
-        output.push_str("[проект]\n");
-        output.push_str(&format!("имя = \"{}\"\n", self.metadata.name));
-        output.push_str(&format!("версия = \"{}\"\n", self.metadata.version));
+        let mut out = String::new();
+        out.push_str("[project]\n");
+        out.push_str(&format!("name = \"{}\"\n", self.metadata.name));
+        out.push_str(&format!("version = \"{}\"\n", self.metadata.version));
         if let Some(desc) = &self.metadata.description {
-            output.push_str(&format!("описание = \"{}\"\n", desc));
+            out.push_str(&format!("description = \"{}\"\n", desc));
         }
         if !self.metadata.authors.is_empty() {
-            output.push_str(&format!("авторы = {:?}\n", self.metadata.authors));
-        }
-        output.push('\n');
-
-        // Зависимости
-        if !self.dependencies.is_empty() {
-            output.push_str("[зависимости]\n");
-            for (name, spec) in &self.dependencies {
-                if let Some(path) = &spec.path {
-                    output.push_str(&format!("{} = {{ путь = \"{}\" }}\n", name, path.display()));
-                } else {
-                    output.push_str(&format!("{} = \"{}\"\n", name, spec.version));
+            out.push_str("authors = [");
+            for (i, a) in self.metadata.authors.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
                 }
+                out.push_str(&format!("\"{}\"", a));
             }
-            output.push('\n');
+            out.push_str("]\n");
         }
-
-        // Сборка
-        output.push_str("[сборка]\n");
-        output.push_str(&format!("главный = \"{}\"\n", self.build.main_file.display()));
-        output.push_str(&format!("выход = \"{}\"\n", self.build.output_dir.display()));
-        output.push_str(&format!("оптимизация = {}\n", self.build.optimization_level));
-
-        output
+        if let Some(home) = &self.metadata.homepage {
+            out.push_str(&format!("homepage = \"{}\"\n", home));
+        }
+        if let Some(repo) = &self.metadata.repository {
+            out.push_str(&format!("repository = \"{}\"\n", repo));
+        }
+        out.push_str("\n[build]\n");
+        out.push_str(&format!("main = \"{}\"\n", self.build.main_file.display()));
+        out.push_str(&format!(
+            "output = \"{}\"\n",
+            self.build.output_dir.display()
+        ));
+        out.push_str(&format!(
+            "optimization = {}\n",
+            self.build.optimization_level
+        ));
+        out.push_str(&format!("debug_info = {}\n", self.build.debug_info));
+        out.push_str(&format!("bounds_check = {}\n", self.build.bounds_check));
+        out.push_str(&format!("strict_mode = {}\n", self.build.strict_mode));
+        out
     }
 
-    /// Добавляет зависимость
-    pub fn add_dependency(&mut self, spec: DependencySpec) {
-        self.dependencies.insert(spec.name.clone(), spec);
-    }
-
-    /// Удаляет зависимость
-    pub fn remove_dependency(&mut self, name: &str) -> Option<DependencySpec> {
-        self.dependencies.remove(name)
-    }
-
-    /// Возвращает абсолютный путь к главному файлу
     pub fn main_file_path(&self) -> PathBuf {
         if self.build.main_file.is_absolute() {
             self.build.main_file.clone()
@@ -470,7 +550,6 @@ impl KumirConfig {
         }
     }
 
-    /// Возвращает абсолютный путь к директории вывода
     pub fn output_dir_path(&self) -> PathBuf {
         if self.build.output_dir.is_absolute() {
             self.build.output_dir.clone()
@@ -480,81 +559,27 @@ impl KumirConfig {
     }
 }
 
-// ============================================================================
-//                         ОШИБКИ
-// ============================================================================
+// =============================================================================
+//         SECTION: LOCK FILES
+// =============================================================================
 
-/// Ошибки конфигурации
-#[derive(Debug, Clone)]
-pub enum ConfigError {
-    /// Ошибка ввода-вывода
-    IoError(String),
-    /// Ошибка парсинга
-    ParseError(String),
-    /// Файл не найден
-    NotFound(PathBuf),
-    /// Неверный формат
-    InvalidFormat(String),
-}
-
-impl std::fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ConfigError::IoError(e) => write!(f, "Ошибка IO: {}", e),
-            ConfigError::ParseError(e) => write!(f, "Ошибка парсинга: {}", e),
-            ConfigError::NotFound(p) => write!(f, "Файл не найден: {}", p.display()),
-            ConfigError::InvalidFormat(e) => write!(f, "Неверный формат: {}", e),
-        }
-    }
-}
-
-impl std::error::Error for ConfigError {}
-
-// ============================================================================
-//                         LOCK ФАЙЛ
-// ============================================================================
-
-/// Запись в lock файле
 #[derive(Debug, Clone)]
 pub struct LockEntry {
-    /// Имя библиотеки
     pub name: String,
-    /// Точная версия
     pub version: Version,
-    /// Хеш содержимого
     pub checksum: Option<String>,
-    /// Источник
     pub source: String,
-    /// Зависимости
     pub dependencies: Vec<String>,
 }
 
-/// Lock файл (kumir.lock)
-///
-/// Строгий формат TOML:
-/// ```toml
-/// # Этот файл генерируется автоматически. Не редактируйте вручную.
-/// format_version = 1
-///
-/// [[package]]
-/// name = "sockets"
-/// version = "1.2.3"
-/// source = "registry"
-/// checksum = "sha256:..."
-/// dependencies = ["http", "json"]
-/// ```
 #[derive(Debug, Clone, Default)]
 pub struct LockFile {
-    /// Путь к файлу
     pub path: PathBuf,
-    /// Версия формата
     pub format_version: u32,
-    /// Записи
     pub entries: HashMap<String, LockEntry>,
 }
 
 impl LockFile {
-    /// Создаёт новый lock файл
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self {
             path: path.into(),
@@ -563,198 +588,212 @@ impl LockFile {
         }
     }
 
-    /// Загружает lock файл
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         let path = path.as_ref();
         if !path.exists() {
-            return Ok(Self::new(path));
+            return Err(ConfigError::NotFound(path.to_path_buf()));
         }
-
-        let content = fs::read_to_string(path)
-            .map_err(|e| ConfigError::IoError(e.to_string()))?;
-
+        let content = fs::read_to_string(path).map_err(|e| ConfigError::IoError(e.to_string()))?;
         let value: Value = content
             .parse::<Value>()
-            .map_err(|e: toml::de::Error| ConfigError::ParseError(e.to_string()))?;
-
-        let table = value.as_table().ok_or_else(|| ConfigError::InvalidFormat(
-            "Корневой объект kumir.lock должен быть TOML-таблицей".to_string(),
-        ))?;
-
+            .map_err(|e| ConfigError::ParseError(format!("TOML parse error: {e}")))?;
+        let table = value
+            .as_table()
+            .ok_or_else(|| ConfigError::InvalidFormat("Lock root must be a table".into()))?;
         let mut lock = Self::new(path);
-
         lock.format_version = table
             .get("format_version")
-            .or_else(|| table.get("версия_формата"))
             .and_then(|v| v.as_integer())
-            .map(|v| v as u32)
-            .unwrap_or(1);
-
-        if let Some(packages) = table.get("package").and_then(|v| v.as_array())
-            .or_else(|| table.get("пакет").and_then(|v| v.as_array()))
+            .unwrap_or(1) as u32;
+        if let Some(pkgs) = table
+            .get("package")
+            .and_then(|v| v.as_array())
             .or_else(|| table.get("packages").and_then(|v| v.as_array()))
         {
-            for pkg in packages {
-                let pkg_table = pkg.as_table().ok_or_else(|| ConfigError::InvalidFormat(
-                    "[[package]] должен быть таблицей".to_string(),
-                ))?;
-
-                let get_str = |keys: &[&str]| -> Option<String> {
-                    keys.iter()
-                        .find_map(|k| pkg_table.get(*k).and_then(|v| v.as_str()))
-                        .map(|s| s.to_string())
-                };
-
-                let name = get_str(&["name", "имя"]).ok_or_else(|| ConfigError::InvalidFormat(
-                    "Поле name обязательно для записи [[package]]".to_string(),
-                ))?;
-
-                let version_str = get_str(&["version", "версия"]).ok_or_else(|| ConfigError::InvalidFormat(
-                    format!("Поле version обязательно для пакета {}", name),
-                ))?;
-
-                let version = version_str.parse().map_err(|e: VersionParseError| ConfigError::InvalidFormat(
-                    format!("Неверная версия для {}: {}", name, e.message),
-                ))?;
-
-                let source = get_str(&["source", "источник"]).ok_or_else(|| ConfigError::InvalidFormat(
-                    format!("Поле source обязательно для пакета {}", name),
-                ))?;
-
-                let checksum = get_str(&["checksum", "хеш"]);
-
-                let dependencies = pkg_table.get("dependencies")
-                    .or_else(|| pkg_table.get("зависимости"))
-                    .map(|v| v.as_array()
-                        .ok_or_else(|| ConfigError::InvalidFormat(format!("dependencies {} должны быть массивом", name))))
-                    .transpose()? // Result<Option<_>>
-                    .map(|arr| {
-                        arr.iter()
-                            .map(|v| v.as_str()
-                                .ok_or_else(|| ConfigError::InvalidFormat(format!("dependency {} должна быть строкой", name))))
-                            .collect::<Result<Vec<_>, _>>()
-                    })
-                    .transpose()? // Result<Option<Vec<&str>>>
-                    .map(|vec| vec.into_iter().map(|s| s.to_string()).collect())
-                    .unwrap_or_default();
-
-                let entry = LockEntry {
-                    name: name.clone(),
-                    version,
-                    checksum,
-                    source,
-                    dependencies,
-                };
-
-                lock.entries.insert(name, entry);
+            for pkg in pkgs {
+                if let Some(t) = pkg.as_table() {
+                    let name = t
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let version = t
+                        .get("version")
+                        .and_then(|v| v.as_str())
+                        .map(Version::parse)
+                        .transpose()
+                        .map_err(ConfigError::Version)?
+                        .unwrap_or_else(|| Version::new(0, 0, 0));
+                    let source = t
+                        .get("source")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let checksum = t
+                        .get("checksum")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    let deps = t
+                        .get("dependencies")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    lock.entries.insert(
+                        name.clone(),
+                        LockEntry {
+                            name,
+                            version,
+                            checksum,
+                            source,
+                            dependencies: deps,
+                        },
+                    );
+                }
             }
         }
-
         Ok(lock)
     }
 
-    /// Сохраняет lock файл
     pub fn save(&self) -> Result<(), ConfigError> {
-        let mut output = String::new();
-        
-        output.push_str("# Этот файл генерируется автоматически. Не редактируйте вручную.\n");
-        output.push_str(&format!("format_version = {}\n\n", self.format_version));
-        
+        let mut out = String::new();
+        out.push_str(&format!("format_version = {}\n\n", self.format_version));
         for entry in self.entries.values() {
-            output.push_str("[[package]]\n");
-            output.push_str(&format!("name = \"{}\"\n", entry.name));
-            output.push_str(&format!("version = \"{}\"\n", entry.version));
-            if let Some(checksum) = &entry.checksum {
-                output.push_str(&format!("checksum = \"{}\"\n", checksum));
+            out.push_str("[[package]]\n");
+            out.push_str(&format!("name = \"{}\"\n", entry.name));
+            out.push_str(&format!("version = \"{}\"\n", entry.version));
+            out.push_str(&format!("source = \"{}\"\n", entry.source));
+            if let Some(cs) = &entry.checksum {
+                out.push_str(&format!("checksum = \"{}\"\n", cs));
             }
-            output.push_str(&format!("source = \"{}\"\n", entry.source));
             if !entry.dependencies.is_empty() {
-                let deps = entry
-                    .dependencies
-                    .iter()
-                    .map(|d| format!("\"{}\"", d))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                output.push_str(&format!("dependencies = [{}]\n", deps));
+                out.push_str("dependencies = [");
+                for (i, d) in entry.dependencies.iter().enumerate() {
+                    if i > 0 {
+                        out.push_str(", ");
+                    }
+                    out.push_str(&format!("\"{}\"", d));
+                }
+                out.push_str("]\n");
             }
-            output.push('\n');
+            out.push('\n');
         }
-
-        fs::write(&self.path, output)
-            .map_err(|e| ConfigError::IoError(e.to_string()))
+        fs::write(&self.path, out).map_err(|e| ConfigError::IoError(e.to_string()))
     }
 
-    /// Добавляет или обновляет запись
     pub fn update(&mut self, entry: LockEntry) {
         self.entries.insert(entry.name.clone(), entry);
     }
 
-    /// Проверяет, заблокирована ли библиотека
+    /// Returns the locked version for a package name
+    pub fn locked_version(&self, name: &str) -> Option<&Version> {
+        self.entries.get(name).map(|e| &e.version)
+    }
+
+    /// Checks if a package is locked
     pub fn is_locked(&self, name: &str) -> bool {
         self.entries.contains_key(name)
     }
 
-    /// Получает заблокированную версию
-    pub fn locked_version(&self, name: &str) -> Option<&Version> {
-        self.entries.get(name).map(|e| &e.version)
+    /// Gets the lock entry for a package
+    pub fn get(&self, name: &str) -> Option<&LockEntry> {
+        self.entries.get(name)
     }
 }
 
-// ============================================================================
-//                         ТЕСТЫ
-// ============================================================================
+// =============================================================================
+//         SECTION: ERRORS
+// =============================================================================
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[derive(Debug, Clone)]
+pub enum ConfigError {
+    IoError(String),
+    ParseError(String),
+    Version(VersionParseError),
+    InvalidFormat(String),
+    NotFound(PathBuf),
+}
 
-    #[test]
-    fn test_config_parse() {
-        let toml = r#"
-[проект]
-имя = "тест"
-версия = "1.0.0"
-описание = "Тестовый проект"
-
-[зависимости]
-Сокеты = "^2.0"
-Графика = "1.5.0"
-
-[сборка]
-главный = "main.kum"
-выход = "./build"
-"#;
-        
-        let config = KumirConfig::parse(toml, Path::new("/test/kumir.toml")).unwrap();
-        
-        assert_eq!(config.metadata.name, "тест");
-        assert_eq!(config.metadata.version, Version::new(1, 0, 0));
-        assert!(config.dependencies.contains_key("Сокеты"));
-        assert!(config.dependencies.contains_key("Графика"));
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigError::IoError(e) => write!(f, "IO error: {e}"),
+            ConfigError::ParseError(e) => write!(f, "Parse error: {e}"),
+            ConfigError::Version(e) => write!(f, "Version parse error: {e}"),
+            ConfigError::InvalidFormat(e) => write!(f, "Invalid format: {e}"),
+            ConfigError::NotFound(p) => write!(f, "Config not found: {}", p.display()),
+        }
     }
+}
 
-    #[test]
-    fn test_dependency_spec() {
-        let dep = DependencySpec::version("test", VersionSpec::compatible(Version::new(1, 0, 0)));
-        assert!(!dep.is_local());
-        
-        let local_dep = DependencySpec::path("local", "./libs/local");
-        assert!(local_dep.is_local());
-    }
+impl std::error::Error for ConfigError {}
 
-    #[test]
-    fn test_to_toml() {
-        let mut config = KumirConfig::new("/test");
-        config.metadata.name = "мой_проект".to_string();
-        config.metadata.version = Version::new(2, 0, 0);
-        config.add_dependency(DependencySpec::version(
-            "Сокеты",
-            VersionSpec::compatible(Version::new(1, 5, 0))
-        ));
-        
-        let toml = config.to_toml();
-        assert!(toml.contains("мой_проект"));
-        assert!(toml.contains("2.0.0"));
-        assert!(toml.contains("Сокеты"));
+// =============================================================================
+//         SECTION: HELPERS
+// =============================================================================
+
+fn parse_deps_table(
+    value: &Value,
+    root: &Path,
+) -> Result<HashMap<String, DependencySpec>, ConfigError> {
+    let mut map = HashMap::new();
+    let tbl = value
+        .as_table()
+        .ok_or_else(|| ConfigError::InvalidFormat("dependencies must be a table".into()))?;
+    for (name, val) in tbl {
+        let spec = if let Some(ver) = val.as_str() {
+            DependencySpec::version(
+                name.clone(),
+                VersionSpec::parse(ver).map_err(ConfigError::ParseError)?,
+            )
+        } else if let Some(t) = val.as_table() {
+            let version_str = t
+                .get("version")
+                .or_else(|| t.get("версия"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("*");
+            let mut dep = DependencySpec::version(
+                name.clone(),
+                VersionSpec::parse(version_str).map_err(ConfigError::ParseError)?,
+            );
+            dep.optional = t.get("optional").and_then(|v| v.as_bool()).unwrap_or(false);
+            dep.default_features = t
+                .get("default_features")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(true);
+            if let Some(arr) = t.get("features").and_then(|v| v.as_array()) {
+                dep.features = arr
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
+            }
+            if let Some(p) = t.get("path").and_then(|v| v.as_str()) {
+                dep.path = Some(root.join(p));
+            }
+            if let Some(url) = t.get("git").and_then(|v| v.as_str()) {
+                dep.git = Some(GitSource {
+                    url: url.to_string(),
+                    branch: None,
+                    tag: None,
+                    rev: None,
+                });
+            }
+            if let Some(reg) = t.get("registry").and_then(|v| v.as_str()) {
+                dep.registry = Some(reg.to_string());
+            }
+            if let Some(pkg) = t.get("package").and_then(|v| v.as_str()) {
+                dep.package = Some(pkg.to_string());
+            }
+            dep
+        } else {
+            return Err(ConfigError::InvalidFormat(format!(
+                "Invalid dependency spec for {name}"
+            )));
+        };
+        map.insert(name.clone(), spec);
     }
+    Ok(map)
 }

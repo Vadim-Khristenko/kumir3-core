@@ -1,6 +1,6 @@
 [package]
 name = "kumir3-interpreter"
-version = "0.1.0"
+version = "0.2.0-alpha.1"
 edition = "2024"
 description = "Kumir 3 Interpreter"
 authors = ["Vadim Khristenko <just@vai-prog.ru>"]
@@ -34,3 +34,6 @@ path = "src/interpreter_cli.rs"
 [[bin]]
 name = "interpreter-tui"
 path = "src/interpreter_tui.rs"
+
+[lints]
+workspace = true

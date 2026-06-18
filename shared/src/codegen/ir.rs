@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
+// Licensed under MIT OR Apache-2.0
+
 // ============================================================================
 //                    ПРОМЕЖУТОЧНОЕ ПРЕДСТАВЛЕНИЕ (IR)
 // ============================================================================
@@ -54,8 +57,8 @@ impl IrType {
             IrType::Int => 8,
             IrType::Float => 8,
             IrType::Bool => 1,
-            IrType::Char => 4, // UTF-8 codepoint
-            IrType::String => 16, // ptr + len
+            IrType::Char => 4,      // UTF-8 codepoint
+            IrType::String => 16,   // ptr + len
             IrType::Array(_) => 24, // ptr + len + cap
             IrType::Struct(_) => 0, // зависит от полей
             IrType::Ptr(_) => 8,
@@ -125,22 +128,13 @@ pub enum UnaryOp {
 #[derive(Debug, Clone)]
 pub enum IrInstruction {
     /// Загрузка константы: %dest = const value
-    LoadConst {
-        dest: VarId,
-        value: IrValue,
-    },
+    LoadConst { dest: VarId, value: IrValue },
 
     /// Загрузка переменной: %dest = load %src
-    Load {
-        dest: VarId,
-        src: VarId,
-    },
+    Load { dest: VarId, src: VarId },
 
     /// Сохранение: store %src, %dest
-    Store {
-        src: VarId,
-        dest: VarId,
-    },
+    Store { src: VarId, dest: VarId },
 
     /// Бинарная операция: %dest = %left op %right
     BinaryOp {
@@ -173,14 +167,10 @@ pub enum IrInstruction {
     },
 
     /// Возврат из функции: ret %value
-    Return {
-        value: Option<VarId>,
-    },
+    Return { value: Option<VarId> },
 
     /// Безусловный переход: br label
-    Branch {
-        target: BlockId,
-    },
+    Branch { target: BlockId },
 
     /// Условный переход: br %cond, then_label, else_label
     CondBranch {
@@ -224,10 +214,7 @@ pub enum IrInstruction {
     },
 
     /// Выделение памяти: %dest = alloc type
-    Alloc {
-        dest: VarId,
-        typ: IrType,
-    },
+    Alloc { dest: VarId, typ: IrType },
 
     /// Выделение массива: %dest = alloc_array type, %size
     AllocArray {
@@ -433,10 +420,10 @@ impl IrBuilder {
 
     /// Добавляет инструкцию в текущий блок
     fn emit(&mut self, instr: IrInstruction) {
-        if let Some(ref func_name) = self.current_func {
-            if let Some(func) = self.module.functions.get_mut(func_name) {
-                func.push_to_block(self.current_block, instr);
-            }
+        if let Some(ref func_name) = self.current_func
+            && let Some(func) = self.module.functions.get_mut(func_name)
+        {
+            func.push_to_block(self.current_block, instr);
         }
     }
 
@@ -465,7 +452,12 @@ impl IrBuilder {
     /// Бинарная операция
     pub fn binary(&mut self, op: BinaryOp, left: VarId, right: VarId) -> VarId {
         let dest = self.new_var();
-        self.emit(IrInstruction::BinaryOp { dest, op, left, right });
+        self.emit(IrInstruction::BinaryOp {
+            dest,
+            op,
+            left,
+            right,
+        });
         dest
     }
 
@@ -508,10 +500,10 @@ impl IrBuilder {
 
     /// Создаёт новый блок в текущей функции
     pub fn new_block(&mut self, label: &str) -> BlockId {
-        if let Some(ref func_name) = self.current_func {
-            if let Some(func) = self.module.functions.get_mut(func_name) {
-                return func.add_block(label);
-            }
+        if let Some(ref func_name) = self.current_func
+            && let Some(func) = self.module.functions.get_mut(func_name)
+        {
+            return func.add_block(label);
         }
         BlockId(0)
     }
@@ -544,10 +536,14 @@ mod tests {
     fn test_ir_builder_simple_function() {
         let mut builder = IrBuilder::new("test");
 
-        builder.begin_function("add", vec![
-            ("a".to_string(), IrType::Int),
-            ("b".to_string(), IrType::Int),
-        ], IrType::Int);
+        builder.begin_function(
+            "add",
+            vec![
+                ("a".to_string(), IrType::Int),
+                ("b".to_string(), IrType::Int),
+            ],
+            IrType::Int,
+        );
 
         let a = builder.load_int(10);
         let b = builder.load_int(20);
@@ -572,7 +568,9 @@ mod tests {
             dest: VarId(0),
             value: IrValue::Int(42),
         });
-        block.push(IrInstruction::Return { value: Some(VarId(0)) });
+        block.push(IrInstruction::Return {
+            value: Some(VarId(0)),
+        });
 
         assert!(block.is_terminated());
         assert_eq!(block.instructions.len(), 2);

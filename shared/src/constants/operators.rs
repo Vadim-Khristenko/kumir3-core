@@ -1,94 +1,183 @@
-//! Операторы языка Кумир
+//! Kumir 3 Operators
 //!
-//! Содержит таблицы операторов разной длины.
+//! Operator tables for lexical analysis. Operators are checked by length
+//! (3-char first, then 2-char, then 1-char) to ensure longest match.
 
-use std::collections::HashMap;
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
 use crate::types::Token;
 
-// ============================================================================
-//                    ТРЁХСИМВОЛЬНЫЕ ОПЕРАТОРЫ
-// ============================================================================
+// =============================================================================
+//         SECTION: THREE-CHARACTER OPERATORS
+// =============================================================================
 
-/// Трёхсимвольные операторы.
+/// Three-character operators (checked first).
 pub static OPERATORS_3: Lazy<HashMap<&'static str, Token>> = Lazy::new(|| {
     let mut m = HashMap::new();
-    m.insert("...", Token::Ellipsis);
+    m.insert("...", Token::Ellipsis); // variadic / spread
+    m.insert("..=", Token::DoubleDotEq); // inclusive range
+    m.insert("<<=", Token::Assign); // left shift assign (future)
+    m.insert(">>=", Token::Assign); // right shift assign (future)
     m
 });
 
-// ============================================================================
-//                    ДВУХСИМВОЛЬНЫЕ ОПЕРАТОРЫ
-// ============================================================================
+// =============================================================================
+//         SECTION: TWO-CHARACTER OPERATORS
+// =============================================================================
 
-/// Двухсимвольные операторы (проверяются первыми после трёхсимвольных).
+/// Two-character operators (checked after 3-char).
 pub static OPERATORS_2: Lazy<HashMap<&'static str, Token>> = Lazy::new(|| {
     let mut m = HashMap::new();
-    
-    // Сравнение
-    m.insert("<>", Token::NotEqual);
-    m.insert("<=", Token::LessEqual);
-    m.insert(">=", Token::GreaterEqual);
-    
-    // Присваивание
-    m.insert(":=", Token::Assign);
-    m.insert("+=", Token::PlusAssign);
-    m.insert("-=", Token::MinusAssign);
-    m.insert("*=", Token::StarAssign);
-    m.insert("/=", Token::SlashAssign);
-    
-    // Возведение в степень
-    m.insert("**", Token::Power);
-    
-    // Kumir 3: специальные операторы
-    m.insert("->", Token::Arrow);
-    m.insert("=>", Token::FatArrow);
-    m.insert("::", Token::DoubleColon);
-    m.insert("|>", Token::Pipe);
-    m.insert(">>", Token::Compose);
-    m.insert("..", Token::DoubleDot);
-    
+
+    // Comparison
+    m.insert("<>", Token::NotEqual); // inequality (Kumir style)
+    m.insert("!=", Token::NotEqual); // inequality (C style)
+    m.insert("<=", Token::LessEqual); // less or equal
+    m.insert(">=", Token::GreaterEqual); // greater or equal
+    m.insert("==", Token::Equal); // strict equality
+
+    // Assignment
+    m.insert(":=", Token::Assign); // assignment (Kumir style)
+    m.insert("+=", Token::PlusAssign); // add-assign
+    m.insert("-=", Token::MinusAssign); // subtract-assign
+    m.insert("*=", Token::StarAssign); // multiply-assign
+    m.insert("/=", Token::SlashAssign); // divide-assign
+    m.insert("%=", Token::Assign); // modulo-assign (maps to assign for now)
+
+    // Exponentiation
+    m.insert("**", Token::Power); // power
+
+    // Kumir 3 special operators
+    m.insert("->", Token::Arrow); // arrow (lambdas, return types)
+    m.insert("=>", Token::FatArrow); // fat arrow (match arms)
+    m.insert("::", Token::DoubleColon); // module/namespace access
+    m.insert("|>", Token::Pipe); // pipe operator
+    m.insert(">>", Token::Compose); // function composition
+    m.insert("..", Token::DoubleDot); // range operator
+
+    // Logic (alternative)
+    m.insert("&&", Token::And); // logical AND (C style)
+    m.insert("||", Token::Or); // logical OR (C style)
+
     m
 });
 
-// ============================================================================
-//                    ОДНОСИМВОЛЬНЫЕ ОПЕРАТОРЫ
-// ============================================================================
+// =============================================================================
+//         SECTION: SINGLE-CHARACTER OPERATORS
+// =============================================================================
 
-/// Односимвольные операторы.
+/// Single-character operators.
 pub static OPERATORS_1: Lazy<HashMap<char, Token>> = Lazy::new(|| {
     let mut m = HashMap::new();
-    
-    // Арифметика
-    m.insert('+', Token::Plus);
-    m.insert('-', Token::Minus);
-    m.insert('*', Token::Star);
-    m.insert('/', Token::Slash);
-    m.insert('%', Token::Percent);
-    
-    // Сравнение
-    m.insert('=', Token::Equal);
-    m.insert('<', Token::Less);
-    m.insert('>', Token::Greater);
-    
-    // Разделители
-    m.insert('(', Token::LParen);
-    m.insert(')', Token::RParen);
-    m.insert('[', Token::LBracket);
-    m.insert(']', Token::RBracket);
-    m.insert('{', Token::LBrace);
-    m.insert('}', Token::RBrace);
-    m.insert(',', Token::Comma);
-    m.insert(':', Token::Colon);
-    m.insert(';', Token::SemiColon);
-    m.insert('.', Token::Dot);
-    
-    // Kumir 3: специальные символы
-    m.insert('@', Token::At);
-    m.insert('&', Token::Ampersand);
-    m.insert('^', Token::Caret);
-    m.insert('?', Token::Question);
-    
+
+    // Arithmetic
+    m.insert('+', Token::Plus); // addition
+    m.insert('-', Token::Minus); // subtraction
+    m.insert('*', Token::Star); // multiplication
+    m.insert('/', Token::Slash); // division
+    m.insert('%', Token::Percent); // modulo
+
+    // Comparison
+    m.insert('=', Token::Equal); // equality
+    m.insert('<', Token::Less); // less than
+    m.insert('>', Token::Greater); // greater than
+
+    // Delimiters
+    m.insert('(', Token::LParen); // left paren
+    m.insert(')', Token::RParen); // right paren
+    m.insert('[', Token::LBracket); // left bracket
+    m.insert(']', Token::RBracket); // right bracket
+    m.insert('{', Token::LBrace); // left brace
+    m.insert('}', Token::RBrace); // right brace
+    m.insert(',', Token::Comma); // comma
+    m.insert(':', Token::Colon); // colon
+    m.insert(';', Token::SemiColon); // semicolon
+    m.insert('.', Token::Dot); // dot
+
+    // Kumir 3 special
+    m.insert('@', Token::At); // decorator/annotation
+    m.insert('&', Token::Ampersand); // reference
+    m.insert('^', Token::Caret); // dereference
+    m.insert('?', Token::Question); // optional/early return
+    m.insert('!', Token::Not); // logical not (alternative)
+    m.insert('~', Token::Not); // bitwise not (maps to Not)
+
     m
 });
+
+// =============================================================================
+//         SECTION: HELPER FUNCTIONS
+// =============================================================================
+
+/// Checks if a character is a potential operator start.
+#[inline]
+pub fn is_operator_char(c: char) -> bool {
+    OPERATORS_1.contains_key(&c) || matches!(c, '|' | '!' | '~')
+}
+
+/// Returns operator precedence (higher = binds tighter).
+pub fn operator_precedence(token: &Token) -> u8 {
+    match token {
+        Token::Or => 1,
+        Token::And => 2,
+        Token::Equal | Token::NotEqual => 3,
+        Token::Less | Token::Greater | Token::LessEqual | Token::GreaterEqual => 4,
+        Token::DoubleDot | Token::DoubleDotEq => 5,
+        Token::Pipe => 6,
+        Token::Plus | Token::Minus => 7,
+        Token::Star | Token::Slash | Token::Percent => 8,
+        Token::Power => 9,
+        Token::Compose => 10,
+        Token::Dot | Token::DoubleColon => 11,
+        Token::Not => 12,
+        _ => 0,
+    }
+}
+
+/// Checks if token is a binary operator.
+pub fn is_binary_operator(token: &Token) -> bool {
+    matches!(
+        token,
+        Token::Plus
+            | Token::Minus
+            | Token::Star
+            | Token::Slash
+            | Token::Percent
+            | Token::Power
+            | Token::Equal
+            | Token::NotEqual
+            | Token::Less
+            | Token::Greater
+            | Token::LessEqual
+            | Token::GreaterEqual
+            | Token::And
+            | Token::Or
+            | Token::Pipe
+            | Token::Compose
+            | Token::DoubleDot
+            | Token::DoubleDotEq
+            | Token::Dot
+            | Token::DoubleColon
+    )
+}
+
+/// Checks if token is a unary operator.
+pub fn is_unary_operator(token: &Token) -> bool {
+    matches!(
+        token,
+        Token::Plus | Token::Minus | Token::Not | Token::Ampersand | Token::Caret
+    )
+}
+
+/// Checks if token is an assignment operator.
+pub fn is_assignment_operator(token: &Token) -> bool {
+    matches!(
+        token,
+        Token::Assign
+            | Token::PlusAssign
+            | Token::MinusAssign
+            | Token::StarAssign
+            | Token::SlashAssign
+    )
+}

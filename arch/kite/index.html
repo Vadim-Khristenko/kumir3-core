@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KITE — стандарт языка Kumir 3</title>
+  <link rel="stylesheet" href="./assets/kite.css">
+</head>
+<body>
+<!-- =============================================================================
+     KITE INDEX — оглавление документов стандарта (с поиском через kite.js)
+============================================================================== -->
+<article class="kite" lang="ru">
+
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE · Оглавление</span>
+    <h1>Стандарт языка Kumir 3</h1>
+    <p><strong>KITE</strong> (<em>Кумир: Инновации, Технологии, Эволюция</em>) — серия документов,
+       описывающих язык: философию, типы, асинхронность, библиотеки и процессы. Аналог Python PEP.</p>
+  </header>
+
+  <!-- Cards; kite.js injects a search box before this container. -->
+  <section class="kite-section">
+    <div class="kite-grid" data-kite-index>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0000-standard.html">
+          <span class="kite-card-num">KITE 0 · Мета</span>
+          <h3>Стандарт KITE</h3>
+          <p>Что такое KITE, типы и нумерация документов, статусы, формат, словарь классов и процесс.</p>
+          <p><span class="kite-status is-stable">Active</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0001-language-overview.html">
+          <span class="kite-card-num">KITE 1 · Информационный</span>
+          <h3>Kumir 3: язык, цели и преимущества</h3>
+          <p>Философия, цели, ключевые преимущества, парадигмы, инструменты, совместимость с КуМир 2.</p>
+          <p><span class="kite-status is-stable">Active</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0002-type-system.html">
+          <span class="kite-card-num">KITE 2 · Спецификация</span>
+          <h3>Система типов Kumir 3</h3>
+          <p>Числа, скаляры, коллекции, обёртки, владение, пользовательские и async-типы, сахар.</p>
+          <p><span class="kite-status is-stable">Active</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0003-async-runtime.html">
+          <span class="kite-card-num">KITE 3 · Спецификация</span>
+          <h3>Асинхронность и среда исполнения</h3>
+          <p>Как работает движок задач: что, куда и как подключается — и, главное, когда исполняется.</p>
+          <p><span class="kite-status is-experimental">Experimental</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0004-environments-scope.html">
+          <span class="kite-card-num">KITE 4 · Спецификация</span>
+          <h3>Окружения и область видимости</h3>
+          <p>Окружения переменных, рекурсивный поиск по стеку и непредвиденные поведения.</p>
+          <p><span class="kite-status is-stable">Active</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0005-libraries.html">
+          <span class="kite-card-num">KITE 5 · Спецификация</span>
+          <h3>Библиотеки: встроенные и пользовательские</h3>
+          <p>Как устроены библиотеки и как подключать внешние — формы импорта, версии, окружения.</p>
+          <p><span class="kite-status is-stable">Active</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0006-kumir2-compatibility.html">
+          <span class="kite-card-num">KITE 6 · Дизайн</span>
+          <h3>Режим совместимости с КуМир 2</h3>
+          <p>Запуск старых программ, переключатели поведения и исполнители (Робот и др.).</p>
+          <p><span class="kite-status is-draft">Draft</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0007-stdio.html">
+          <span class="kite-card-num">KITE 7 · Дизайн</span>
+          <h3>Базовая библиотека STDIO</h3>
+          <p>Новая потоковая архитектура ввода-вывода: «всё — поток», переосмысление текущего подхода.</p>
+          <p><span class="kite-status is-draft">Draft</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0008-style-guide.html">
+          <span class="kite-card-num">KITE 8 · Гайдлайны</span>
+          <h3>Как лучше писать на Kumir 3</h3>
+          <p>Именование, структура, типы, ошибки, форматирование и антипаттерны.</p>
+          <p><span class="kite-status is-stable">Active</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0009-dev-cycle-debugging.html">
+          <span class="kite-card-num">KITE 9 · Информационный</span>
+          <h3>Циклы разработки и отладка</h3>
+          <p>Запуск, тесты, чтение ошибок, диагностика «что не так» и инструменты отладки.</p>
+          <p><span class="kite-status is-stable">Active</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0010-type-engine.html">
+          <span class="kite-card-num">KITE 10 · Спецификация</span>
+          <h3>Архитектура движка типов</h3>
+          <p>Расширяемый движок: правила совместимости, унификация, типизация операций для интерпретатора и компилятора.</p>
+          <p><span class="kite-status is-experimental">Experimental</span></p>
+        </a>
+      </div>
+
+      <div class="kite-card">
+        <a class="kite-card-link" href="./KITE-0011-oop.html">
+          <span class="kite-card-num">KITE 11 · Дизайн</span>
+          <h3>Объектная модель (ООП)</h3>
+          <p>Наследование и полиморфизм, типажи/интерфейсы, инкапсуляция, generics, перегрузка операторов.</p>
+          <p><span class="kite-status is-draft">Draft</span></p>
+        </a>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="kite-footer">
+    <span>KITE · Оглавление</span>
+    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>
+</body>
+</html>

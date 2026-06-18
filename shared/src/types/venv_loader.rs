@@ -39,16 +39,14 @@ use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use once_cell::sync::Lazy;
 use toml::Value;
 
-use super::environment::{
-    EnvironmentManager, LibrarySource, ResolvedDependency, VersionedLibrary,
-};
 use super::config::LockFile;
-use super::library::{LibraryDef, LibVersion};
+use super::environment::{EnvironmentManager, LibrarySource, ResolvedDependency, VersionedLibrary};
+use super::library::{LibVersion, LibraryDef};
 use super::version::{Version, VersionSpec};
 
 // =============================================================================
@@ -78,15 +76,9 @@ pub enum LoaderError {
     /// Ошибка чтения файла
     IoError(String),
     /// Ошибка парсинга библиотеки
-    ParseError {
-        path: PathBuf,
-        message: String,
-    },
+    ParseError { path: PathBuf, message: String },
     /// Ошибка парсинга манифеста
-    ManifestError {
-        path: PathBuf,
-        message: String,
-    },
+    ManifestError { path: PathBuf, message: String },
     /// Циклическая зависимость
     CyclicDependency(Vec<String>),
     /// Конфликт версий
@@ -95,10 +87,7 @@ pub enum LoaderError {
         required_by: Vec<(String, VersionSpec)>,
     },
     /// Ошибка загрузки нативного модуля
-    NativeLoadError {
-        path: PathBuf,
-        message: String,
-    },
+    NativeLoadError { path: PathBuf, message: String },
     /// Окружение не инициализировано
     EnvironmentNotInitialized,
     /// Блокировка занята
@@ -108,26 +97,38 @@ pub enum LoaderError {
 impl std::fmt::Display for LoaderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LoaderError::NotFound { name, searched_paths } => {
+            LoaderError::NotFound {
+                name,
+                searched_paths,
+            } => {
                 write!(f, "Библиотека '{}' не найдена.\nПути поиска:\n", name)?;
                 for path in searched_paths {
-                    write!(f, "  - {}\n", path.display())?;
+                    writeln!(f, "  - {}", path.display())?;
                 }
                 Ok(())
             }
-            LoaderError::VersionNotFound { name, requested, available } => {
+            LoaderError::VersionNotFound {
+                name,
+                requested,
+                available,
+            } => {
                 write!(
                     f,
                     "Версия {} библиотеки '{}' не найдена.\nДоступные версии: {}",
                     requested,
                     name,
-                    available.iter()
+                    available
+                        .iter()
                         .map(|v| v.to_string())
                         .collect::<Vec<_>>()
                         .join(", ")
                 )
             }
-            LoaderError::VersionMismatch { name, required, found } => {
+            LoaderError::VersionMismatch {
+                name,
+                required,
+                found,
+            } => {
                 write!(
                     f,
                     "Несовместимая версия библиотеки '{}': требуется {}, найдена {}",
@@ -145,14 +146,19 @@ impl std::fmt::Display for LoaderError {
                 write!(f, "Циклическая зависимость: {}", chain.join(" → "))
             }
             LoaderError::VersionConflict { name, required_by } => {
-                write!(f, "Конфликт версий библиотеки '{}':\n", name)?;
+                writeln!(f, "Конфликт версий библиотеки '{}':", name)?;
                 for (dep, spec) in required_by {
-                    write!(f, "  - {} требует {}\n", dep, spec)?;
+                    writeln!(f, "  - {} требует {}", dep, spec)?;
                 }
                 Ok(())
             }
             LoaderError::NativeLoadError { path, message } => {
-                write!(f, "Ошибка загрузки нативного модуля {}: {}", path.display(), message)
+                write!(
+                    f,
+                    "Ошибка загрузки нативного модуля {}: {}",
+                    path.display(),
+                    message
+                )
             }
             LoaderError::EnvironmentNotInitialized => {
                 write!(f, "Окружение не инициализировано")
@@ -217,12 +223,13 @@ pub struct ManifestDependency {
 impl LibraryManifest {
     /// Парсит манифест из TOML строки
     pub fn parse(content: &str) -> LoaderResult<Self> {
-        let value: Value = content
-            .parse::<Value>()
-            .map_err(|e: toml::de::Error| LoaderError::ParseError {
-                path: PathBuf::new(),
-                message: e.to_string(),
-            })?;
+        let value: Value =
+            content
+                .parse::<Value>()
+                .map_err(|e: toml::de::Error| LoaderError::ParseError {
+                    path: PathBuf::new(),
+                    message: e.to_string(),
+                })?;
 
         let table = value.as_table().ok_or_else(|| LoaderError::ParseError {
             path: PathBuf::new(),
@@ -271,9 +278,14 @@ impl LibraryManifest {
 
         manifest.description = get_str(table, "description").unwrap_or_default();
         manifest.author = get_str(table, "author").unwrap_or_default();
-        manifest.kumir_version = get_str(table, "kumir_version").unwrap_or_else(|| "3.0".to_string());
-        manifest.entry_point = get_str(table, "entry_point").unwrap_or_else(|| "lib.kum".to_string());
-        manifest.stable = table.get("stable").and_then(|v| v.as_bool()).unwrap_or(true);
+        manifest.kumir_version =
+            get_str(table, "kumir_version").unwrap_or_else(|| "3.0".to_string());
+        manifest.entry_point =
+            get_str(table, "entry_point").unwrap_or_else(|| "lib.kum".to_string());
+        manifest.stable = table
+            .get("stable")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
 
         if let Some(arr) = table.get("aliases").and_then(|v| v.as_array()) {
             manifest.aliases = arr
@@ -309,7 +321,10 @@ impl LibraryManifest {
                             .and_then(|v| v.as_str())
                             .ok_or_else(|| LoaderError::ParseError {
                                 path: PathBuf::new(),
-                                message: format!("Зависимость {} должна содержать version", dep_name),
+                                message: format!(
+                                    "Зависимость {} должна содержать version",
+                                    dep_name
+                                ),
                             })?;
 
                         let version = version_str.parse().map_err(|e| LoaderError::ParseError {
@@ -431,7 +446,7 @@ impl IntegratedLoader {
         let name = def.name.to_string();
         self.builtins.insert(def.id.to_string(), def.clone());
         self.builtins.insert(name.clone(), def.clone());
-        for &alias in def.aliases {
+        for alias in &def.aliases {
             self.builtins.insert(alias.to_string(), def.clone());
         }
 
@@ -451,16 +466,16 @@ impl IntegratedLoader {
     /// Активирует окружение проекта
     pub fn activate_project(&mut self, project_root: impl AsRef<Path>) -> LoaderResult<()> {
         let project_root = project_root.as_ref();
-        
+
         // Активируем окружение
         self.env_manager.activate_project(project_root);
-        
+
         // Загружаем kumir.lock если есть
         let lock_path = project_root.join("kumir.lock");
         if lock_path.exists() {
             self.load_lock_file(&lock_path)?;
         }
-        
+
         Ok(())
     }
 
@@ -521,7 +536,11 @@ impl IntegratedLoader {
     }
 
     /// Загружает библиотеку с проверкой версии
-    pub fn load_with_spec(&mut self, name: &str, spec: &VersionSpec) -> LoaderResult<LoadedLibrary> {
+    pub fn load_with_spec(
+        &mut self,
+        name: &str,
+        spec: &VersionSpec,
+    ) -> LoaderResult<LoadedLibrary> {
         // Проверяем на цикл
         if self.loading_stack.contains(&name.to_string()) {
             let mut chain = self.loading_stack.clone();
@@ -557,12 +576,8 @@ impl IntegratedLoader {
 
         // 2. Встроенные библиотеки
         if let Some(def) = self.builtins.get(name) {
-            let version = Version::new(
-                def.version.major,
-                def.version.minor,
-                def.version.patch,
-            );
-            
+            let version = Version::new(def.version.major, def.version.minor, def.version.patch);
+
             if spec.matches(&version) {
                 return Ok(LoadedLibrary {
                     def: def.clone(),
@@ -587,11 +602,8 @@ impl IntegratedLoader {
         }
 
         // 5. Не найдено
-        let searched_paths = vec![
-            paths.local_libs,
-            paths.global_cache,
-        ];
-        
+        let searched_paths = vec![paths.local_libs, paths.global_cache];
+
         Err(LoaderError::NotFound {
             name: name.to_string(),
             searched_paths,
@@ -625,7 +637,8 @@ impl IntegratedLoader {
                 });
             }
 
-            let mut lib = self.load_from_file(&entry_path, LibrarySource::Local(entry_path.clone()))?;
+            let mut lib =
+                self.load_from_file(&entry_path, LibrarySource::Local(entry_path.clone()))?;
             lib.manifest = Some(manifest.clone());
             lib.version = manifest.version.clone();
             return Ok(Some(lib));
@@ -641,7 +654,7 @@ impl IntegratedLoader {
         for path in variants {
             if path.exists() {
                 let lib = self.load_from_file(&path, LibrarySource::Local(path.clone()))?;
-                
+
                 if spec.matches(&lib.version) {
                     return Ok(Some(lib));
                 }
@@ -668,12 +681,12 @@ impl IntegratedLoader {
         if let Ok(entries) = fs::read_dir(registry_dir) {
             for entry in entries.flatten() {
                 let dir_name = entry.file_name().to_string_lossy().to_string();
-                
+
                 // Формат: name-version (например sockets-1.0.0)
-                if let Some(suffix) = dir_name.strip_prefix(&format!("{}-", name)) {
-                    if let Ok(version) = suffix.parse::<Version>() {
-                        versions.push((version, entry.path()));
-                    }
+                if let Some(suffix) = dir_name.strip_prefix(&format!("{}-", name))
+                    && let Ok(version) = suffix.parse::<Version>()
+                {
+                    versions.push((version, entry.path()));
                 }
             }
         }
@@ -701,7 +714,7 @@ impl IntegratedLoader {
                     }
 
                     let entry_path = path.join(&manifest.entry_point);
-                    
+
                     if entry_path.exists() {
                         let mut lib = self.load_from_file(
                             &entry_path,
@@ -712,10 +725,8 @@ impl IntegratedLoader {
                         return Ok(Some(lib));
                     }
                 } else if lib_path.exists() {
-                    let mut lib = self.load_from_file(
-                        &lib_path,
-                        LibrarySource::GlobalCache(path.clone()),
-                    )?;
+                    let mut lib =
+                        self.load_from_file(&lib_path, LibrarySource::GlobalCache(path.clone()))?;
                     lib.version = version;
                     return Ok(Some(lib));
                 }
@@ -726,14 +737,18 @@ impl IntegratedLoader {
     }
 
     /// Загружает библиотеку из файла
-    pub fn load_from_file(&mut self, path: &Path, source: LibrarySource) -> LoaderResult<LoadedLibrary> {
+    pub fn load_from_file(
+        &mut self,
+        path: &Path,
+        source: LibrarySource,
+    ) -> LoaderResult<LoadedLibrary> {
         // Проверяем кэш
         if let Some(lib) = self.file_cache.get(path) {
             return Ok(lib.clone());
         }
 
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-        
+
         let lib = match extension {
             "kum" | "kumir" => self.parse_kumir_file(path, source)?,
             _ => {
@@ -746,14 +761,14 @@ impl IntegratedLoader {
 
         // Кэшируем
         self.file_cache.insert(path.to_path_buf(), lib.clone());
-        
+
         Ok(lib)
     }
 
     /// Парсит Kumir-файл библиотеки
     fn parse_kumir_file(&self, path: &Path, source: LibrarySource) -> LoaderResult<LoadedLibrary> {
         let content = fs::read_to_string(path)?;
-        
+
         // Извлекаем метаданные из комментариев и директив
         let mut name = path
             .file_stem()
@@ -763,58 +778,71 @@ impl IntegratedLoader {
         let mut description = String::new();
         let mut version = Version::new(1, 0, 0);
         let mut author = String::new();
-        let mut aliases: Vec<&'static str> = Vec::new();
+        let mut aliases: Vec<Arc<str>> = Vec::new();
 
         for line in content.lines() {
             let line = line.trim();
-            
+
             // | библиотека ИмяБиблиотеки
-            if line.starts_with("библиотека ") || line.starts_with("library ") {
-                if let Some(lib_name) = line.split_whitespace().nth(1) {
-                    name = lib_name.to_string();
-                }
+            if (line.starts_with("библиотека ") || line.starts_with("library "))
+                && let Some(lib_name) = line.split_whitespace().nth(1)
+            {
+                name = lib_name.to_string();
             }
-            
+
             // @-директивы в комментариях
             // | @описание Текст
-            if let Some(desc) = line.strip_prefix("@описание ").or(line.strip_prefix("@description ")) {
+            if let Some(desc) = line
+                .strip_prefix("@описание ")
+                .or(line.strip_prefix("@description "))
+            {
                 description = desc.to_string();
             }
-            
+
             // | @версия 1.2.3
-            if let Some(ver) = line.strip_prefix("@версия ").or(line.strip_prefix("@version ")) {
-                if let Ok(v) = ver.trim().parse() {
-                    version = v;
-                }
+            if let Some(ver) = line
+                .strip_prefix("@версия ")
+                .or(line.strip_prefix("@version "))
+                && let Ok(v) = ver.trim().parse()
+            {
+                version = v;
             }
-            
+
             // | @автор Имя
-            if let Some(auth) = line.strip_prefix("@автор ").or(line.strip_prefix("@author ")) {
+            if let Some(auth) = line
+                .strip_prefix("@автор ")
+                .or(line.strip_prefix("@author "))
+            {
                 author = auth.to_string();
             }
-            
+
             // | @алиас ДругоеИмя
-            if let Some(alias) = line.strip_prefix("@алиас ").or(line.strip_prefix("@alias ")) {
-                // Для статических строк нужен Box::leak (как в других местах)
-                aliases.push(Box::leak(alias.trim().to_string().into_boxed_str()));
+            if let Some(alias) = line
+                .strip_prefix("@алиас ")
+                .or(line.strip_prefix("@alias "))
+            {
+                aliases.push(Arc::from(alias.trim()));
             }
         }
 
         // Создаём LibraryDef
-        // Используем Box::leak для статических строк
         let def = LibraryDef {
-            id: Box::leak(name.clone().into_boxed_str()),
-            name: Box::leak(name.clone().into_boxed_str()),
-            aliases: Box::leak(aliases.into_boxed_slice()),
-            description: Box::leak(description.into_boxed_str()),
+            id: Arc::from(name.as_str()),
+            name: Arc::from(name.as_str()),
+            aliases,
+            description: if description.is_empty() {
+                None
+            } else {
+                Some(Arc::from(description.as_str()))
+            },
             version: LibVersion::new(version.major, version.minor, version.patch),
-            author: Box::leak(author.into_boxed_str()),
+            author: Arc::from(author.as_str()),
             dependencies: Vec::new(),
             classes: Vec::new(),
             functions: Vec::new(),
             types: Vec::new(),
             constants: Vec::new(),
-            kumir_version: "3.0",
+            kumir_version: Some(Version::new(3, 0, 0)),
             stable: true,
         };
 
@@ -848,7 +876,10 @@ impl IntegratedLoader {
 
         while let Some((lib_name, lib_spec)) = to_load.pop() {
             // Пропускаем уже загруженные
-            if loaded.iter().any(|l| l.def.name == lib_name || l.def.id == lib_name) {
+            if loaded
+                .iter()
+                .any(|l| l.def.name.as_ref() == lib_name || l.def.id.as_ref() == lib_name)
+            {
                 continue;
             }
 
@@ -880,7 +911,7 @@ impl IntegratedLoader {
     /// Возвращает список доступных библиотек
     pub fn available_libraries(&self) -> Vec<String> {
         let mut libs: Vec<String> = self.builtins.keys().cloned().collect();
-        
+
         // Добавляем из окружения
         for lib in self.env_manager.active().all_libraries() {
             if !libs.contains(&lib.def.name.to_string()) {
@@ -920,10 +951,10 @@ impl IntegratedLoader {
         if let Ok(entries) = fs::read_dir(&paths.global_cache) {
             for entry in entries.flatten() {
                 let dir_name = entry.file_name().to_string_lossy().to_string();
-                if let Some(suffix) = dir_name.strip_prefix(&format!("{}-", name)) {
-                    if let Ok(version) = suffix.parse::<Version>() {
-                        versions.push(version);
-                    }
+                if let Some(suffix) = dir_name.strip_prefix(&format!("{}-", name))
+                    && let Ok(version) = suffix.parse::<Version>()
+                {
+                    versions.push(version);
                 }
             }
         }
@@ -1035,17 +1066,25 @@ optional = true
 "#;
 
         let manifest = LibraryManifest::parse(toml).unwrap();
-        
+
         assert_eq!(manifest.id, "sockets");
         assert_eq!(manifest.name, "Сокеты");
         assert_eq!(manifest.version, Version::new(1, 2, 3));
         assert_eq!(manifest.aliases, vec!["сокеты", "net"]);
         assert_eq!(manifest.dependencies.len(), 2);
-        
-        let http_dep = manifest.dependencies.iter().find(|d| d.name == "http").unwrap();
+
+        let http_dep = manifest
+            .dependencies
+            .iter()
+            .find(|d| d.name == "http")
+            .unwrap();
         assert!(!http_dep.optional);
-        
-        let json_dep = manifest.dependencies.iter().find(|d| d.name == "json").unwrap();
+
+        let json_dep = manifest
+            .dependencies
+            .iter()
+            .find(|d| d.name == "json")
+            .unwrap();
         assert!(json_dep.optional);
     }
 
@@ -1058,10 +1097,10 @@ optional = true
     #[test]
     fn test_builtin_registration() {
         let mut loader = IntegratedLoader::new();
-        
+
         let def = LibraryDef::new("test", "Тест");
         loader.register_builtin(def);
-        
+
         assert!(loader.is_builtin("test"));
         assert!(loader.is_builtin("Тест"));
     }
@@ -1069,13 +1108,13 @@ optional = true
     #[test]
     fn test_load_builtin() {
         let mut loader = IntegratedLoader::new();
-        
+
         let def = LibraryDef::new("mylib", "МояБиблиотека");
         loader.register_builtin(def);
-        
+
         let result = loader.load("mylib");
         assert!(result.is_ok());
-        
+
         let lib = result.unwrap();
         assert!(matches!(lib.source, LibrarySource::Builtin));
     }

@@ -1,6 +1,6 @@
 mod constant;
 mod f128_tests;
-mod lexer;
 mod iostream;
+mod lexer;
 mod math;
 mod strings;
