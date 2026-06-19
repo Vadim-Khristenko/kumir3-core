@@ -185,6 +185,174 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
     ),
 ];
 
+// (имя, категория). Источник истины для встроенных функций.
+// Math/String/Io -> is_builtin_function=true; Other -> false.
+// Имена из слайсов Math/String/Io стоят с соответствующей категорией.
+// Имена только из extra-списка стоят с Other.
+// Имена, присутствующие в обоих (например "int"), стоят только один раз с категорией слайса.
+const BUILTINS: &[(&str, &str)] = &[
+    // ----- Math -----
+    ("sin", "Math"),
+    ("cos", "Math"),
+    ("tg", "Math"),
+    ("tan", "Math"),
+    ("ctg", "Math"),
+    ("cot", "Math"),
+    ("arcsin", "Math"),
+    ("arccos", "Math"),
+    ("arctg", "Math"),
+    ("arctan", "Math"),
+    ("arcctg", "Math"),
+    ("arccot", "Math"),
+    ("sh", "Math"),
+    ("sinh", "Math"),
+    ("ch", "Math"),
+    ("cosh", "Math"),
+    ("th", "Math"),
+    ("tanh", "Math"),
+    ("sqrt", "Math"),
+    ("корень", "Math"),
+    ("exp", "Math"),
+    ("ln", "Math"),
+    ("lg", "Math"),
+    ("log", "Math"),
+    ("степень", "Math"),
+    ("pow", "Math"),
+    ("abs", "Math"),
+    ("модуль", "Math"),
+    ("sign", "Math"),
+    ("знак", "Math"),
+    ("int", "Math"),
+    ("цел_часть", "Math"),
+    ("frac", "Math"),
+    ("дробь", "Math"),
+    ("floor", "Math"),
+    ("ceil", "Math"),
+    ("round", "Math"),
+    ("округл", "Math"),
+    ("min", "Math"),
+    ("мин", "Math"),
+    ("max", "Math"),
+    ("макс", "Math"),
+    ("mod", "Math"),
+    ("div", "Math"),
+    ("случ", "Math"),
+    ("rand", "Math"),
+    ("random", "Math"),
+    // ----- String -----
+    ("длин", "String"),
+    ("len", "String"),
+    ("length", "String"),
+    ("символ", "String"),
+    ("char", "String"),
+    ("chr", "String"),
+    ("код", "String"),
+    ("ord", "String"),
+    ("code", "String"),
+    ("вырезка", "String"),
+    ("substr", "String"),
+    ("substring", "String"),
+    ("позиция", "String"),
+    ("pos", "String"),
+    ("position", "String"),
+    ("find", "String"),
+    ("заменить", "String"),
+    ("replace", "String"),
+    ("верхний", "String"),
+    ("upper", "String"),
+    ("uppercase", "String"),
+    ("нижний", "String"),
+    ("lower", "String"),
+    ("lowercase", "String"),
+    ("обрезать", "String"),
+    ("trim", "String"),
+    ("слева", "String"),
+    ("left", "String"),
+    ("справа", "String"),
+    ("right", "String"),
+    ("повторить", "String"),
+    ("repeat", "String"),
+    ("разбить", "String"),
+    ("split", "String"),
+    ("соединить", "String"),
+    ("join", "String"),
+    // ----- Io -----
+    ("ввод", "Io"),
+    ("input", "Io"),
+    ("вывод", "Io"),
+    ("output", "Io"),
+    ("print", "Io"),
+    ("вывод_строки", "Io"),
+    ("println", "Io"),
+    ("новая_строка", "Io"),
+    ("newline", "Io"),
+    ("нс", "Io"),
+    // ----- Other (extra-only: conversions / collections / misc) -----
+    ("цел", "Other"),
+    ("to_int", "Other"),
+    ("вещ", "Other"),
+    ("float", "Other"),
+    ("to_float", "Other"),
+    ("строка", "Other"),
+    ("str", "Other"),
+    ("to_string", "Other"),
+    ("лог", "Other"),
+    ("bool", "Other"),
+    ("to_bool", "Other"),
+    ("размер", "Other"),
+    ("size", "Other"),
+    ("добавить", "Other"),
+    ("push", "Other"),
+    ("извлечь", "Other"),
+    ("pop", "Other"),
+    ("обратить", "Other"),
+    ("reverse", "Other"),
+    ("сортировать", "Other"),
+    ("sort", "Other"),
+    ("содержит", "Other"),
+    ("contains", "Other"),
+    ("индекс", "Other"),
+    ("index_of", "Other"),
+    ("утв", "Other"),
+    ("assert", "Other"),
+    ("тип", "Other"),
+    ("type_of", "Other"),
+    ("ошибка", "Other"),
+    ("error", "Other"),
+];
+
+fn write_builtins(out_dir: &str) {
+    let path = Path::new(out_dir).join("builtins_gen.rs");
+    let mut w = BufWriter::new(File::create(&path).unwrap());
+
+    let entries: Vec<(&str, String)> = BUILTINS
+        .iter()
+        .map(|(name, cat)| {
+            assert!(
+                !name.contains('"') && !name.contains('\\'),
+                "builtin name needs escaping: {name}"
+            );
+            (*name, format!("BuiltinCategory::{cat}"))
+        })
+        .collect();
+    let mut map = phf_codegen::Map::new();
+    for (name, value) in &entries {
+        map.entry(*name, value);
+    }
+    writeln!(
+        w,
+        "static BUILTIN_INDEX: ::phf::Map<&'static str, BuiltinCategory> = {};",
+        map.build()
+    )
+    .unwrap();
+
+    write!(w, "static ALL_BUILTIN_NAMES: &[&str] = &[").unwrap();
+    for (name, _) in BUILTINS {
+        write!(w, "\"{name}\",").unwrap();
+    }
+    writeln!(w, "];").unwrap();
+}
+
 // (символ, Token-вариант). Несколько символов могут давать один Token — это ок;
 // обратный поиск для операторов НЕ генерируется.
 const OPERATORS: &[(&str, &str)] = &[
@@ -350,5 +518,6 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     write_keywords(&out_dir);
     write_operators(&out_dir);
+    write_builtins(&out_dir);
     println!("cargo:rerun-if-changed=build.rs");
 }
