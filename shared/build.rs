@@ -185,6 +185,108 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
     ),
 ];
 
+// (символ, Token-вариант). Несколько символов могут давать один Token — это ок;
+// обратный поиск для операторов НЕ генерируется.
+const OPERATORS: &[(&str, &str)] = &[
+    // 3-char
+    ("...", "Ellipsis"),
+    ("..=", "DoubleDotEq"),
+    ("<<=", "Assign"),
+    (">>=", "Assign"),
+    // 2-char
+    ("<>", "NotEqual"),
+    ("!=", "NotEqual"),
+    ("<=", "LessEqual"),
+    (">=", "GreaterEqual"),
+    ("==", "Equal"),
+    (":=", "Assign"),
+    ("+=", "PlusAssign"),
+    ("-=", "MinusAssign"),
+    ("*=", "StarAssign"),
+    ("/=", "SlashAssign"),
+    ("%=", "Assign"),
+    ("**", "Power"),
+    ("->", "Arrow"),
+    ("=>", "FatArrow"),
+    ("::", "DoubleColon"),
+    ("|>", "Pipe"),
+    (">>", "Compose"),
+    ("..", "DoubleDot"),
+    ("&&", "And"),
+    ("||", "Or"),
+    // 1-char
+    ("+", "Plus"),
+    ("-", "Minus"),
+    ("*", "Star"),
+    ("/", "Slash"),
+    ("%", "Percent"),
+    ("=", "Equal"),
+    ("<", "Less"),
+    (">", "Greater"),
+    ("(", "LParen"),
+    (")", "RParen"),
+    ("[", "LBracket"),
+    ("]", "RBracket"),
+    ("{", "LBrace"),
+    ("}", "RBrace"),
+    (",", "Comma"),
+    (":", "Colon"),
+    (";", "SemiColon"),
+    (".", "Dot"),
+    ("@", "At"),
+    ("&", "Ampersand"),
+    ("^", "Caret"),
+    ("?", "Question"),
+    ("!", "Not"),
+    ("~", "Not"),
+];
+
+fn write_operators(out_dir: &str) {
+    let path = Path::new(out_dir).join("operators_gen.rs");
+    let mut w = BufWriter::new(File::create(&path).unwrap());
+
+    // Прямая карта: значения должны пережить карту до вызова `build()`,
+    // поэтому собираем их заранее во владеющий Vec (как в write_keywords).
+    let entries: Vec<(&str, String)> = OPERATORS
+        .iter()
+        .map(|(sym, variant)| {
+            assert!(
+                !sym.contains('"') && !sym.contains('\\'),
+                "operator symbol needs escaping: {sym}"
+            );
+            (*sym, format!("Token::{variant}"))
+        })
+        .collect();
+    let mut map = phf_codegen::Map::new();
+    for (sym, value) in &entries {
+        map.entry(*sym, value);
+    }
+    writeln!(
+        w,
+        "static OPERATOR_INDEX: ::phf::Map<&'static str, Token> = {};",
+        map.build()
+    )
+    .unwrap();
+
+    // Множество первых символов всех операторов (для is_operator_char).
+    let mut first_chars: Vec<char> = OPERATORS
+        .iter()
+        .map(|(sym, _)| sym.chars().next().unwrap())
+        .collect();
+    first_chars.sort();
+    first_chars.dedup();
+    let mut set = phf_codegen::Set::new();
+    for c in &first_chars {
+        set.entry(*c);
+    }
+    writeln!(
+        w,
+        "static OPERATOR_FIRST_CHARS: ::phf::Set<char> = {};",
+        set.build()
+    )
+    .unwrap();
+}
+
 fn write_keywords(out_dir: &str) {
     let path = Path::new(out_dir).join("keywords_gen.rs");
     let mut w = BufWriter::new(File::create(&path).unwrap());
@@ -195,6 +297,16 @@ fn write_keywords(out_dir: &str) {
         .iter()
         .flat_map(|(variant, canonical, aliases)| {
             let value = format!("Token::{variant}");
+            assert!(
+                !canonical.contains('"') && !canonical.contains('\\'),
+                "keyword spelling needs escaping: {canonical}"
+            );
+            for alias in *aliases {
+                assert!(
+                    !alias.contains('"') && !alias.contains('\\'),
+                    "keyword spelling needs escaping: {alias}"
+                );
+            }
             std::iter::once((*canonical, value.clone()))
                 .chain(aliases.iter().map(move |alias| (*alias, value.clone())))
         })
@@ -213,7 +325,7 @@ fn write_keywords(out_dir: &str) {
 
     writeln!(
         w,
-        "pub fn keyword_canonical(t: &Token) -> Option<&'static str> {{"
+        "fn keyword_canonical(t: &Token) -> Option<&'static str> {{"
     )
     .unwrap();
     writeln!(w, "    match t {{").unwrap();
@@ -237,5 +349,6 @@ fn write_keywords(out_dir: &str) {
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     write_keywords(&out_dir);
+    write_operators(&out_dir);
     println!("cargo:rerun-if-changed=build.rs");
 }

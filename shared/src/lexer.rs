@@ -39,8 +39,8 @@
 //! - All Kumir 3 operators and delimiters
 
 use crate::constants::{
-    OPERATORS_1, OPERATORS_2, OPERATORS_3, get_keyword_token, is_digit_start, is_ident_continue,
-    is_ident_start, is_whitespace,
+    get_keyword_token, is_digit_start, is_ident_continue, is_ident_start, is_whitespace,
+    operator_token,
 };
 use crate::types::Token;
 
@@ -1399,12 +1399,12 @@ impl<'a> Lexer<'a> {
         // Try 3-char operators
         if let (Some(c2), Some(c3)) = (self.peek_at(1), self.peek_at(2)) {
             let s3: String = [c1, c2, c3].iter().collect();
-            if let Some(token) = OPERATORS_3.get(s3.as_str()) {
+            if let Some(token) = operator_token(&s3) {
                 self.advance();
                 self.advance();
                 self.advance();
                 return Ok(Some(SpannedToken::new(
-                    token.clone(),
+                    token,
                     Span::new(start, self.position),
                 )));
             }
@@ -1413,21 +1413,22 @@ impl<'a> Lexer<'a> {
         // Try 2-char operators
         if let Some(c2) = self.peek_at(1) {
             let s2: String = [c1, c2].iter().collect();
-            if let Some(token) = OPERATORS_2.get(s2.as_str()) {
+            if let Some(token) = operator_token(&s2) {
                 self.advance();
                 self.advance();
                 return Ok(Some(SpannedToken::new(
-                    token.clone(),
+                    token,
                     Span::new(start, self.position),
                 )));
             }
         }
 
         // Try 1-char operators
-        if let Some(token) = OPERATORS_1.get(&c1) {
+        let mut buf = [0u8; 4];
+        if let Some(token) = operator_token(c1.encode_utf8(&mut buf)) {
             self.advance();
             return Ok(Some(SpannedToken::new(
-                token.clone(),
+                token,
                 Span::new(start, self.position),
             )));
         }
