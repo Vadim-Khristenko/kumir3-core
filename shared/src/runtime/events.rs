@@ -287,7 +287,7 @@ impl EventBus {
 
         // Сортируем по приоритету (выше = раньше)
         if let Some(list) = handlers.get_mut(&name_key) {
-            list.sort_by(|a, b| b.priority.cmp(&a.priority));
+            list.sort_by_key(|h| std::cmp::Reverse(h.priority));
         }
 
         id

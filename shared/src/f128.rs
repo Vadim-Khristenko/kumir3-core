@@ -1323,14 +1323,12 @@ impl F128 {
         let x2 = self * self;
         let mut term = self;
         let mut sum = self;
-        let mut n: u64 = 1;
 
-        for _ in 0..25 {
+        for n in 1u64..=25 {
             let num = (2 * n - 1) * (2 * n - 1);
             let den = (2 * n) * (2 * n + 1);
             term = term * x2 * Self::from(num) / Self::from(den);
             sum = sum + term;
-            n += 1;
             if term.is_zero() {
                 break;
             }
@@ -1561,11 +1559,9 @@ impl F128 {
     fn taylor_sin(x: Self, x2: Self) -> Self {
         let mut term = x;
         let mut sum = x;
-        let mut n = 1u64;
-        for _ in 0..20 {
+        for n in 1u64..=20 {
             term = -term * x2 / Self::from((2 * n) * (2 * n + 1));
             sum = sum + term;
-            n += 1;
             if term.is_zero() {
                 break;
             }
@@ -1576,11 +1572,9 @@ impl F128 {
     fn taylor_cos(_x: Self, x2: Self) -> Self {
         let mut term = Self::ONE;
         let mut sum = Self::ONE;
-        let mut n = 1u64;
-        for _ in 0..20 {
+        for n in 1u64..=20 {
             term = -term * x2 / Self::from((2 * n - 1) * (2 * n));
             sum = sum + term;
-            n += 1;
             if term.is_zero() {
                 break;
             }
