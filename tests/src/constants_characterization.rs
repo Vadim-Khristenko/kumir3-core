@@ -29,6 +29,10 @@ fn assert_snapshot(rel_path: &str, actual: &str) {
             path.display()
         )
     });
+    // Сравнение устойчиво к переводам строк: git с autocrlf=true может выдать CRLF
+    // в рабочей копии, тогда как `actual` всегда LF. Нормализуем обе стороны.
+    let expected = expected.replace("\r\n", "\n");
+    let actual = actual.replace("\r\n", "\n");
     assert_eq!(actual, expected, "snapshot drift in {rel_path}");
 }
 
