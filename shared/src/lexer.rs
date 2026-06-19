@@ -39,7 +39,7 @@
 //! - All Kumir 3 operators and delimiters
 
 use crate::constants::{
-    KEYWORDS, OPERATORS_1, OPERATORS_2, OPERATORS_3, is_digit_start, is_ident_continue,
+    OPERATORS_1, OPERATORS_2, OPERATORS_3, get_keyword_token, is_digit_start, is_ident_continue,
     is_ident_start, is_whitespace,
 };
 use crate::types::Token;
@@ -1355,10 +1355,7 @@ impl<'a> Lexer<'a> {
         }
 
         // Look up in keywords table, otherwise return as identifier
-        let token = KEYWORDS
-            .get(ident)
-            .cloned()
-            .unwrap_or_else(|| Token::Ident(ident.to_string()));
+        let token = get_keyword_token(ident).unwrap_or_else(|| Token::Ident(ident.to_string()));
 
         Ok(Some(SpannedToken::new(
             token,
