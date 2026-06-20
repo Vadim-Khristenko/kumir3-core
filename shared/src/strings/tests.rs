@@ -2,7 +2,7 @@
 //                    ТЕСТЫ МОДУЛЯ РАБОТЫ СО СТРОКАМИ
 // ============================================================================
 
-use shared::strings::StringOperations;
+use crate::strings::StringOperations;
 
 // ============================================================================
 //                         ТЕСТЫ КОДИРОВАНИЯ
@@ -687,7 +687,7 @@ fn test_equals_ignore_case() {
 
 #[test]
 fn test_format() {
-    use shared::types::Value;
+    use crate::types::Value;
 
     let result = StringOperations::format("Hello, {}!", &[Value::from("World")]);
     assert_eq!(result, "Hello, World!");

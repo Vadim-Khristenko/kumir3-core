@@ -1,7 +1,7 @@
-use shared::f128::F128;
-use shared::math::MathErr;
-use shared::math::MathOperators;
-use shared::types::{Number, Value};
+use crate::f128::F128;
+use crate::math::MathErr;
+use crate::math::MathOperators;
+use crate::types::{Number, Value};
 
 #[test]
 fn string_subtraction_basic() {

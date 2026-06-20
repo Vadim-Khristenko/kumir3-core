@@ -26,6 +26,9 @@ ratatui = {workspace = true}
 crossterm = {workspace = true}
 phf = {workspace = true}
 
+[dev-dependencies]
+rstest = "0.26.1"
+
 [build-dependencies]
 phf_codegen = {workspace = true}
 

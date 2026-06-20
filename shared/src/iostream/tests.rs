@@ -1,4 +1,4 @@
-use shared::iostream::{FileStream, IOStream, StreamError};
+use crate::iostream::{FileStream, IOStream, StreamError};
 use std::fs;
 use std::path::Path;
 

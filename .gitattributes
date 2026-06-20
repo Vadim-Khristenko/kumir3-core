@@ -1,3 +1,3 @@
 # Golden snapshot fixtures are compared byte-for-byte by tests — pin to LF so
 # autocrlf never rewrites them to CRLF in the working copy (caused CI/local drift).
-tests/src/golden/*.snapshot text eol=lf
+shared/tests/golden/*.snapshot text eol=lf

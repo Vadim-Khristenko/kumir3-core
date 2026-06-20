@@ -48,7 +48,7 @@ fn keyword_map_snapshot() {
         })
         .collect();
     pairs.sort();
-    assert_snapshot("src/golden/keywords.snapshot", &pairs.join("\n"));
+    assert_snapshot("tests/golden/keywords.snapshot", &pairs.join("\n"));
 }
 
 /// Все символы операторов (3/2/1-символьные), порядок не важен — сортируется.
@@ -74,7 +74,7 @@ fn operator_map_snapshot() {
         })
         .collect();
     pairs.sort();
-    assert_snapshot("src/golden/operators.snapshot", &pairs.join("\n"));
+    assert_snapshot("tests/golden/operators.snapshot", &pairs.join("\n"));
 }
 
 #[test]
@@ -87,5 +87,5 @@ fn builtin_function_snapshot() {
         .iter()
         .map(|n| format!("{n}\tis_builtin={}", is_builtin_function(n)))
         .collect();
-    assert_snapshot("src/golden/builtins.snapshot", &lines.join("\n"));
+    assert_snapshot("tests/golden/builtins.snapshot", &lines.join("\n"));
 }

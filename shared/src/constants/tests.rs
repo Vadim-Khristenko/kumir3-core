@@ -1,8 +1,8 @@
 //! Тесты для модуля констант и встроенных функций
 
+use crate::constants::*;
+use crate::libraries::registry::is_known_library;
 use rstest::rstest;
-use shared::constants::*;
-use shared::libraries::registry::is_known_library;
 
 #[test]
 fn test_keywords() {

@@ -1582,6 +1582,7 @@ dependencies = [
  "phf 0.13.1",
  "phf_codegen 0.13.1",
  "ratatui",
+ "rstest",
  "rustls",
  "rustls-pemfile",
  "serde",
@@ -1779,14 +1780,6 @@ dependencies = [
  "wezterm-dynamic",
  "wezterm-input-types",
  "winapi",
-]
-
-[[package]]
-name = "tests"
-version = "0.2.0-alpha.1"
-dependencies = [
- "rstest",
- "shared",
 ]
 
 [[package]]
