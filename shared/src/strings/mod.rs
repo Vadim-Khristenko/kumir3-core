@@ -131,7 +131,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::code_cp1251('А'), 192);
     /// assert_eq!(StringOperations::code_cp1251('a'), 97);
     /// ```
@@ -148,7 +148,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::code_unicode('А'), 0x0410);
     /// assert_eq!(StringOperations::code_unicode('a'), 97);
     /// ```
@@ -160,7 +160,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::char_from_cp1251(192), Ok('А'));
     /// assert_eq!(StringOperations::char_from_cp1251(97), Ok('a'));
     /// ```
@@ -182,7 +182,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::char_from_unicode(0x0410), Ok('А'));
     /// assert_eq!(StringOperations::char_from_unicode(97), Ok('a'));
     /// ```
@@ -201,7 +201,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::length("Привет"), 6);
     /// assert_eq!(StringOperations::length("Hello"), 5);
     /// ```
@@ -222,7 +222,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::to_upper("Привет Мир"), "ПРИВЕТ МИР");
     /// ```
     pub fn to_upper(s: &str) -> String {
@@ -233,7 +233,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::to_lower("Привет Мир"), "привет мир");
     /// ```
     pub fn to_lower(s: &str) -> String {
@@ -244,7 +244,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::capitalize("привет"), "Привет");
     /// ```
     pub fn capitalize(s: &str) -> String {
@@ -300,7 +300,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::position("Hello World", "World"), 7);
     /// assert_eq!(StringOperations::position("Hello", "xyz"), 0);
     /// ```
@@ -328,7 +328,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::position_after(1, "abcabc", "bc"), 2);
     /// assert_eq!(StringOperations::position_after(3, "abcabc", "bc"), 5);
     /// ```
@@ -361,7 +361,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::position_last("abcabc", "bc"), 5);
     /// ```
     pub fn position_last(s: &str, frag: &str) -> i64 {
@@ -417,7 +417,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::substring("Привет Мир", 1, 6), Ok("Привет".to_string()));
     /// assert_eq!(StringOperations::substring("Hello", 2, 3), Ok("ell".to_string()));
     /// ```
@@ -447,7 +447,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::left("Привет", 3), Ok("При".to_string()));
     /// ```
     pub fn left(s: &str, count: i64) -> StringResult<String> {
@@ -463,7 +463,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::right("Привет", 3), Ok("вет".to_string()));
     /// ```
     pub fn right(s: &str, count: i64) -> StringResult<String> {
@@ -496,7 +496,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// let mut s = "Привет".to_string();
     /// StringOperations::insert("123", &mut s, 4).unwrap();
     /// assert_eq!(s, "При123вет");
@@ -527,7 +527,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// let mut s = "Привет Мир".to_string();
     /// StringOperations::delete(&mut s, 7, 4).unwrap();
     /// assert_eq!(s, "Привет");
@@ -565,7 +565,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// let mut s = "abcabc".to_string();
     /// StringOperations::replace(&mut s, "bc", "XY", true).unwrap();
     /// assert_eq!(s, "aXYaXY");
@@ -601,7 +601,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::trim("  Привет  "), "Привет");
     /// ```
     pub fn trim(s: &str) -> String {
@@ -632,7 +632,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::split("a,b,c", ","), vec!["a", "b", "c"]);
     /// ```
     pub fn split(s: &str, delim: &str) -> Vec<String> {
@@ -657,7 +657,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::join(&["a", "b", "c"], ","), "a,b,c");
     /// ```
     pub fn join(parts: &[&str], delim: &str) -> String {
@@ -681,7 +681,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::repeat("ab", 3), Ok("ababab".to_string()));
     /// ```
     pub fn repeat(s: &str, count: i64) -> StringResult<String> {
@@ -695,7 +695,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::pad_left("42", 5, '0'), "00042");
     /// ```
     pub fn pad_left(s: &str, width: i64, fill: char) -> String {
@@ -742,7 +742,7 @@ impl StringOperations {
     ///
     /// # Пример
     /// ```
-    /// use crate::shared::strings::StringOperations;
+    /// use shared::strings::StringOperations;
     /// assert_eq!(StringOperations::reverse("Привет"), "тевирП");
     /// ```
     pub fn reverse(s: &str) -> String {
