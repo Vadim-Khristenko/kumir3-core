@@ -6,12 +6,12 @@
 
 use std::collections::BTreeMap;
 
-use shared::math::MathOperators;
 use shared::types::{Algorithm, Expr, Number, Pattern, Token, TypeKind, Value};
 
 use super::builtins::Builtins;
 use super::environment::Environment;
 use super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
+use super::ops::TypeOps;
 
 /// Вычислитель выражений.
 pub struct ExprEvaluator;
@@ -191,34 +191,7 @@ impl ExprEvaluator {
         let left_val = Self::evaluate(left, env)?;
         let right_val = Self::evaluate(right, env)?;
 
-        match op {
-            // Арифметические операции
-            Token::Plus => MathOperators::add(left_val, right_val, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::Minus => MathOperators::sub(left_val, right_val, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::Star => MathOperators::mul(left_val, right_val, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::Slash => MathOperators::div(left_val, right_val, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::Percent => MathOperators::modulus(left_val, right_val, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::Power => MathOperators::pow(left_val, right_val, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-
-            // Сравнения
-            Token::Equal => Ok(Value::Boolean(Self::values_equal(&left_val, &right_val))),
-            Token::NotEqual => Ok(Value::Boolean(!Self::values_equal(&left_val, &right_val))),
-            Token::Less => Self::compare_values(&left_val, &right_val, |o| o.is_lt()),
-            Token::Greater => Self::compare_values(&left_val, &right_val, |o| o.is_gt()),
-            Token::LessEqual => Self::compare_values(&left_val, &right_val, |o| o.is_le()),
-            Token::GreaterEqual => Self::compare_values(&left_val, &right_val, |o| o.is_ge()),
-
-            _ => Err(RuntimeError::new(
-                format!("Неизвестный бинарный оператор: {:?}", op),
-                RuntimeErrorKind::Other,
-            )),
-        }
+        TypeOps::binary(op, left_val, right_val)
     }
 
     // =========================================================================
@@ -227,41 +200,7 @@ impl ExprEvaluator {
 
     fn eval_unary_op(op: &Token, operand: &Expr, env: &mut Environment) -> RuntimeResult<Value> {
         let value = Self::evaluate(operand, env)?;
-
-        match op {
-            Token::Minus => match value {
-                Value::Number(n) => {
-                    let negated = Self::negate_number(n)?;
-                    Ok(Value::Number(negated))
-                }
-                _ => Err(RuntimeError::type_mismatch("число", "не число")),
-            },
-            Token::Not => Ok(Value::Boolean(!Self::is_truthy(&value))),
-            _ => Err(RuntimeError::new(
-                format!("Неизвестный унарный оператор: {:?}", op),
-                RuntimeErrorKind::Other,
-            )),
-        }
-    }
-
-    fn negate_number(n: Number) -> RuntimeResult<Number> {
-        Ok(match n {
-            Number::I8(v) => Number::I8(-v),
-            Number::I16(v) => Number::I16(-v),
-            Number::I32(v) => Number::I32(-v),
-            Number::I64(v) => Number::I64(-v),
-            Number::I128(v) => Number::I128(-v),
-            Number::F32(v) => Number::F32(-v),
-            Number::F64(v) => Number::F64(-v),
-            Number::F128(v) => Number::F128(-v),
-            // Беззнаковые нельзя отрицать
-            _ => {
-                return Err(RuntimeError::new(
-                    "Нельзя применить унарный минус к беззнаковому числу",
-                    RuntimeErrorKind::TypeMismatch,
-                ));
-            }
-        })
+        TypeOps::unary(op, value)
     }
 
     // =========================================================================
@@ -436,7 +375,7 @@ impl ExprEvaluator {
                 }
 
                 let index = Self::evaluate(&indices[0], env)?;
-                let idx = Self::to_index(&index)?;
+                let idx = TypeOps::to_index(&index)?;
 
                 if idx < 0 || idx as usize >= elements.len() {
                     return Err(RuntimeError::index_out_of_bounds(idx, elements.len()));
@@ -453,7 +392,7 @@ impl ExprEvaluator {
                 }
 
                 let index = Self::evaluate(&indices[0], env)?;
-                let idx = Self::to_index(&index)?;
+                let idx = TypeOps::to_index(&index)?;
 
                 let chars: Vec<char> = s.chars().collect();
                 if idx < 1 || idx as usize > chars.len() {
@@ -1150,36 +1089,7 @@ impl ExprEvaluator {
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
         let value = Self::evaluate(expr, env)?;
-
-        match target_type {
-            TypeKind::Int64 => {
-                let n = value
-                    .as_int()
-                    .ok_or_else(|| RuntimeError::type_mismatch("цел", "не число"))?;
-                Ok(Value::Number(Number::I64(n)))
-            }
-            TypeKind::Float64 => match &value {
-                Value::Number(n) => {
-                    let f = n
-                        .to_f64()
-                        .ok_or_else(|| RuntimeError::type_mismatch("вещ", "не число"))?;
-                    Ok(Value::Number(Number::F64(f)))
-                }
-                Value::String(s) => {
-                    let f: f64 = s
-                        .parse()
-                        .map_err(|_| RuntimeError::type_mismatch("вещ", "не число"))?;
-                    Ok(Value::Number(Number::F64(f)))
-                }
-                _ => Err(RuntimeError::type_mismatch("вещ", "не число")),
-            },
-            TypeKind::String => Ok(Value::String(value.to_string())),
-            TypeKind::Bool => Ok(Value::Boolean(Self::is_truthy(&value))),
-            _ => Err(RuntimeError::not_implemented(&format!(
-                "приведение к типу {:?}",
-                target_type
-            ))),
-        }
+        TypeOps::cast(value, target_type)
     }
 
     fn eval_type_check(
@@ -1188,18 +1098,7 @@ impl ExprEvaluator {
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
         let value = Self::evaluate(expr, env)?;
-
-        let matches = match (check_type, &value) {
-            (TypeKind::Int64, Value::Number(Number::I64(_))) => true,
-            (TypeKind::Float64, Value::Number(Number::F64(_))) => true,
-            (TypeKind::String, Value::String(_)) => true,
-            (TypeKind::Bool, Value::Boolean(_)) => true,
-            (TypeKind::Char, Value::Char(_)) => true,
-            (TypeKind::Array(_), Value::Array(_)) => true,
-            _ => false,
-        };
-
-        Ok(Value::Boolean(matches))
+        Ok(Value::Boolean(TypeOps::type_check(&value, check_type)))
     }
 
     // =========================================================================
@@ -1333,80 +1232,21 @@ impl ExprEvaluator {
     //                    ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
     // =========================================================================
 
-    /// Проверяет "истинность" значения.
+    /// Проверяет "истинность" значения (тонкий делегатор к [`TypeOps`]).
+    #[inline]
     pub fn is_truthy(value: &Value) -> bool {
-        match value {
-            Value::Boolean(b) => *b,
-            Value::Number(n) => n.to_f64().map(|f| f != 0.0).unwrap_or(false),
-            Value::String(s) => !s.is_empty(),
-            Value::Array(a) => !a.is_empty(),
-            Value::Null | Value::Undefined => false,
-            Value::Option(opt) => opt.is_some(),
-            _ => true,
-        }
+        TypeOps::is_truthy(value)
     }
 
-    /// Сравнивает два значения на равенство.
+    /// Сравнивает два значения на равенство (тонкий делегатор к [`TypeOps`]).
+    #[inline]
     pub fn values_equal(a: &Value, b: &Value) -> bool {
-        a == b
+        TypeOps::values_equal(a, b)
     }
 
-    /// Сравнивает два значения.
-    fn compare_values<F>(a: &Value, b: &Value, cmp: F) -> RuntimeResult<Value>
-    where
-        F: Fn(std::cmp::Ordering) -> bool,
-    {
-        let result = match (a, b) {
-            (Value::Number(na), Value::Number(nb)) => {
-                let fa = na
-                    .to_f64()
-                    .ok_or_else(|| RuntimeError::type_mismatch("число", "не число"))?;
-                let fb = nb
-                    .to_f64()
-                    .ok_or_else(|| RuntimeError::type_mismatch("число", "не число"))?;
-                cmp(fa.partial_cmp(&fb).unwrap_or(std::cmp::Ordering::Equal))
-            }
-            (Value::String(sa), Value::String(sb)) => cmp(sa.cmp(sb)),
-            (Value::Char(ca), Value::Char(cb)) => cmp(ca.cmp(cb)),
-            _ => {
-                return Err(RuntimeError::type_mismatch(
-                    "сравнимые типы",
-                    "несравнимые типы",
-                ));
-            }
-        };
-        Ok(Value::Boolean(result))
-    }
-
-    /// Преобразует значение в индекс.
-    fn to_index(value: &Value) -> RuntimeResult<i64> {
-        value
-            .as_int()
-            .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))
-    }
-
-    /// Возвращает значение по умолчанию для типа.
+    /// Возвращает значение по умолчанию для типа (тонкий делегатор к [`TypeOps`]).
+    #[inline]
     pub fn default_value_for_type(type_spec: &TypeKind) -> Value {
-        match type_spec {
-            TypeKind::Int8 => Value::Number(Number::I8(0)),
-            TypeKind::Int16 => Value::Number(Number::I16(0)),
-            TypeKind::Int32 => Value::Number(Number::I32(0)),
-            TypeKind::Int64 => Value::Number(Number::I64(0)),
-            TypeKind::Int128 => Value::Number(Number::I128(0)),
-            TypeKind::UInt8 => Value::Number(Number::U8(0)),
-            TypeKind::UInt16 => Value::Number(Number::U16(0)),
-            TypeKind::UInt32 => Value::Number(Number::U32(0)),
-            TypeKind::UInt64 => Value::Number(Number::U64(0)),
-            TypeKind::UInt128 => Value::Number(Number::U128(0)),
-            TypeKind::Float32 => Value::Number(Number::F32(0.0)),
-            TypeKind::Float64 => Value::Number(Number::F64(0.0)),
-            TypeKind::Float128 => Value::Number(Number::F128(shared::f128::F128::from(0.0))),
-            TypeKind::String => Value::String(String::new()),
-            TypeKind::Bool => Value::Boolean(false),
-            TypeKind::Char => Value::Char('\0'),
-            TypeKind::Array(_) => Value::Array(Vec::new()),
-            TypeKind::Option(_) => Value::Option(Box::new(None)),
-            _ => Value::Undefined,
-        }
+        TypeOps::default_value(type_spec)
     }
 }

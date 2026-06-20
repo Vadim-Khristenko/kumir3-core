@@ -42,6 +42,7 @@ mod evaluator;
 mod executor;
 mod file_importer;
 mod library_bridge;
+mod ops;
 
 pub use environment::Environment;
 pub use error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
@@ -701,6 +702,9 @@ pub fn run_and_get_output(source: &str) -> RuntimeResult<String> {
 // =============================================================================
 //                           ТЕСТЫ
 // =============================================================================
+
+#[cfg(test)]
+mod typeops_characterization;
 
 #[cfg(test)]
 mod tests {
