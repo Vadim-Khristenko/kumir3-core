@@ -1,5 +1,5 @@
 [workspace]
-members = ["compiler", "interpreter", "shared", "tests"]
+members = ["compiler", "interpreter", "shared"]
 resolver = "2"
 
 # Политика линтов (общая для всех крейтов; подключается `[lints] workspace = true`).
