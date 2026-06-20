@@ -42,6 +42,7 @@ mod evaluator;
 mod executor;
 mod file_importer;
 mod library_bridge;
+mod ops;
 
 pub use environment::Environment;
 pub use error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
