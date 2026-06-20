@@ -255,3 +255,6 @@ impl Drop for FileStream {
         self.close();
     }
 }
+
+#[cfg(test)]
+mod tests;

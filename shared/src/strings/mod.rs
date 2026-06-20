@@ -863,3 +863,6 @@ impl StringOperations {
         a.to_lowercase() == b.to_lowercase()
     }
 }
+
+#[cfg(test)]
+mod tests;

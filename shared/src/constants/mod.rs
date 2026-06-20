@@ -19,3 +19,6 @@ pub use ident::*;
 pub use keywords::*;
 pub use math::*;
 pub use operators::*;
+
+#[cfg(test)]
+mod tests;

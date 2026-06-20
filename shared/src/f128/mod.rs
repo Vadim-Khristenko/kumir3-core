@@ -2104,3 +2104,6 @@ impl U512 {
         ((self.d[1] as u128) << 64) | (self.d[0] as u128)
     }
 }
+
+#[cfg(test)]
+mod tests;

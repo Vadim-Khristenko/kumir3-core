@@ -1409,3 +1409,6 @@ impl MathOperators {
         x.is_integer()
     }
 }
+
+#[cfg(test)]
+mod tests;
