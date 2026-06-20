@@ -703,6 +703,9 @@ pub fn run_and_get_output(source: &str) -> RuntimeResult<String> {
 // =============================================================================
 
 #[cfg(test)]
+mod typeops_characterization;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
