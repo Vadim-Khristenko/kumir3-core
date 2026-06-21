@@ -218,6 +218,7 @@ yield	Yield
 лог	BoolType
 ложь	False
 лямбда	Lambda
+мод	Percent
 модуль	Module
 может	OptionalType
 надо	Need

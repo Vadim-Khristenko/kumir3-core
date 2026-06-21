@@ -48,11 +48,11 @@ fn char_binary_div_integers_is_float() {
 }
 
 #[test]
-fn char_binary_mod_keyword_passes_through() {
-    // CAPTURED: the `мод` keyword is NOT a binary operator in expression
-    // context — it is lexed as an identifier and never consumed, so the
-    // expression evaluates to just the left operand. (Use `%` for modulo.)
-    assert_eq!(eval("7 мод 3").unwrap(), Value::Number(Number::I64(7)));
+fn char_binary_mod_keyword() {
+    // FIXED (slice 2b): `мод` is now an arithmetic remainder operator
+    // (keyword lexed to Token::Percent), equivalent to `%`.
+    assert_eq!(eval("7 мод 3").unwrap(), Value::Number(Number::I64(1)));
+    assert_eq!(eval("10 мод 4").unwrap(), Value::Number(Number::I64(2)));
 }
 
 #[test]
@@ -200,28 +200,29 @@ fn char_cast_to_char_is_unsupported() {
 //                    TYPE CHECK  (expr это Тип)
 // =============================================================================
 
-// CAPTURED: the `это` type-check operator is NOT reachable in expression
-// context. The token `это` is lexed as the self-reference keyword (Token::This),
-// not as the identifier the postfix `это`-branch expects, so the type-check is
-// never applied — the expression evaluates to just the left operand and the
-// trailing `... Тип` is left unconsumed. Documented here verbatim as today's
-// behavior; a true type-check would return a Boolean.
+// FIXED (slice 2b): the postfix `это` type-check is now reachable — `это`
+// lexes to Token::This and, in postfix position (after an expression), the
+// parser treats `expr это Тип` as a type check returning a Boolean.
 #[test]
-fn char_typecheck_int_passes_through() {
-    assert_eq!(eval("5 это цел").unwrap(), Value::Number(Number::I64(5)));
+fn char_typecheck_int_true() {
+    assert_eq!(eval("5 это цел").unwrap(), Value::Boolean(true));
 }
 
 #[test]
-fn char_typecheck_string_passes_through() {
-    assert_eq!(
-        eval("\"x\" это лит").unwrap(),
-        Value::String("x".to_string())
-    );
+fn char_typecheck_string_true() {
+    assert_eq!(eval("\"x\" это лит").unwrap(), Value::Boolean(true));
 }
 
 #[test]
-fn char_typecheck_bool_passes_through() {
+fn char_typecheck_bool_true() {
     assert_eq!(eval("да это лог").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_typecheck_mismatch_false() {
+    // A value of the wrong type yields `false`, not the left operand.
+    assert_eq!(eval("5 это лит").unwrap(), Value::Boolean(false));
+    assert_eq!(eval("\"x\" это цел").unwrap(), Value::Boolean(false));
 }
 
 // =============================================================================
