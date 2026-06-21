@@ -345,7 +345,9 @@ impl Parser {
                 }
 
                 // ── Type check: expr это Тип ────────────────────────
-                Token::Ident(s) if s == "это" => {
+                // `это` лексится в Token::This (оно же self-ref в primary-позиции).
+                // В постфиксной позиции, т.е. после выражения, это всегда проверка типа.
+                Token::This => {
                     self.advance();
                     let check_type = self.parse_type()?;
                     expr = Expr::TypeCheck {
