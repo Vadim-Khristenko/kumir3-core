@@ -18,7 +18,6 @@ inherent_to_string_shadow_display = "allow"
 approx_constant = "allow"               # математические константы высокой точности
 while_let_loop = "allow"
 needless_range_loop = "allow"
-manual_strip = "allow"
 if_same_then_else = "allow"
 unusual_byte_groupings = "allow"
 assertions_on_constants = "allow"

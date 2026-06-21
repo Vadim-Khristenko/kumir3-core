@@ -392,20 +392,20 @@ impl FromStr for VersionReq {
         }
 
         // Detect operator and the remaining version string
-        let (op, version_str) = if s.starts_with(">=") {
-            (VersionOp::GreaterEq, &s[2..])
-        } else if s.starts_with("<=") {
-            (VersionOp::LessEq, &s[2..])
-        } else if s.starts_with('>') {
-            (VersionOp::Greater, &s[1..])
-        } else if s.starts_with('<') {
-            (VersionOp::Less, &s[1..])
-        } else if s.starts_with('^') {
-            (VersionOp::Compatible, &s[1..])
-        } else if s.starts_with('~') {
-            (VersionOp::Tilde, &s[1..])
-        } else if s.starts_with('=') {
-            (VersionOp::Exact, &s[1..])
+        let (op, version_str) = if let Some(rest) = s.strip_prefix(">=") {
+            (VersionOp::GreaterEq, rest)
+        } else if let Some(rest) = s.strip_prefix("<=") {
+            (VersionOp::LessEq, rest)
+        } else if let Some(rest) = s.strip_prefix('>') {
+            (VersionOp::Greater, rest)
+        } else if let Some(rest) = s.strip_prefix('<') {
+            (VersionOp::Less, rest)
+        } else if let Some(rest) = s.strip_prefix('^') {
+            (VersionOp::Compatible, rest)
+        } else if let Some(rest) = s.strip_prefix('~') {
+            (VersionOp::Tilde, rest)
+        } else if let Some(rest) = s.strip_prefix('=') {
+            (VersionOp::Exact, rest)
         } else {
             // No operator means exact match
             (VersionOp::Exact, s)

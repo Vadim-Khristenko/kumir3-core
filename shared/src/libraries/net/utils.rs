@@ -439,8 +439,8 @@ fn parse_json_array(input: &str) -> Result<(Value, &str), String> {
     let mut rest = input[1..].trim_start();
     let mut items = Vec::new();
 
-    if rest.starts_with(']') {
-        return Ok((Value::Array(items), &rest[1..]));
+    if let Some(rest_tail) = rest.strip_prefix(']') {
+        return Ok((Value::Array(items), rest_tail));
     }
 
     loop {
@@ -448,8 +448,8 @@ fn parse_json_array(input: &str) -> Result<(Value, &str), String> {
         items.push(val);
         rest = r.trim_start();
 
-        if rest.starts_with(']') {
-            return Ok((Value::Array(items), &rest[1..]));
+        if let Some(rest_tail) = rest.strip_prefix(']') {
+            return Ok((Value::Array(items), rest_tail));
         }
         if rest.starts_with(',') {
             rest = rest[1..].trim_start();
@@ -463,8 +463,8 @@ fn parse_json_object(input: &str) -> Result<(Value, &str), String> {
     let mut rest = input[1..].trim_start();
     let mut entries = std::collections::BTreeMap::new();
 
-    if rest.starts_with('}') {
-        return Ok((Value::Map(entries), &rest[1..]));
+    if let Some(rest_tail) = rest.strip_prefix('}') {
+        return Ok((Value::Map(entries), rest_tail));
     }
 
     loop {
@@ -481,8 +481,8 @@ fn parse_json_object(input: &str) -> Result<(Value, &str), String> {
         entries.insert(key, val);
         rest = r.trim_start();
 
-        if rest.starts_with('}') {
-            return Ok((Value::Map(entries), &rest[1..]));
+        if let Some(rest_tail) = rest.strip_prefix('}') {
+            return Ok((Value::Map(entries), rest_tail));
         }
         if rest.starts_with(',') {
             rest = rest[1..].trim_start();

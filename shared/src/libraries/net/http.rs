@@ -11,10 +11,10 @@ use crate::types::value::{TypeKind, Value};
 /// Разбирает URL на (host, port, path)
 fn parse_url(url: &str) -> Result<(String, u16, String, bool), String> {
     let url_trimmed = url.trim();
-    let (scheme, rest) = if url_trimmed.starts_with("https://") {
-        (true, &url_trimmed[8..])
-    } else if url_trimmed.starts_with("http://") {
-        (false, &url_trimmed[7..])
+    let (scheme, rest) = if let Some(rest) = url_trimmed.strip_prefix("https://") {
+        (true, rest)
+    } else if let Some(rest) = url_trimmed.strip_prefix("http://") {
+        (false, rest)
     } else {
         (false, url_trimmed)
     };
