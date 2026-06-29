@@ -1486,12 +1486,12 @@ impl F128 {
 
         let mut result = [0u64; 4];
 
-        for i in 0..4 {
+        for (i, result_item) in result.iter_mut().enumerate() {
             let src_idx = word + i;
             if src_idx < 4 {
-                result[i] |= Self::TWO_OVER_PI_BITS[src_idx] >> shift;
+                *result_item |= Self::TWO_OVER_PI_BITS[src_idx] >> shift;
                 if shift != 0 && src_idx + 1 < 4 {
-                    result[i] |= Self::TWO_OVER_PI_BITS[src_idx + 1] << (64 - shift);
+                    *result_item |= Self::TWO_OVER_PI_BITS[src_idx + 1] << (64 - shift);
                 }
             }
         }
@@ -1953,19 +1953,18 @@ impl U256 {
 
         // a_lo * b (младшая половина a)
         let mut carry = 0u64;
-        for j in 0..4 {
-            let prod = (a_lo as u128) * (b.d[j] as u128) + (res[j] as u128) + (carry as u128);
-            res[j] = prod as u64;
+        for (j, res_j) in res.iter_mut().take(4).enumerate() {
+            let prod = (a_lo as u128) * (b.d[j] as u128) + (*res_j as u128) + (carry as u128);
+            *res_j = prod as u64;
             carry = (prod >> 64) as u64;
         }
         res[4] = carry;
 
         // a_hi * b (старшая половина a, сдвинутая на 64 бита)
         carry = 0u64;
-        for j in 0..4 {
-            let k = j + 1; // сдвиг на 64 бита
-            let prod = (a_hi as u128) * (b.d[j] as u128) + (res[k] as u128) + (carry as u128);
-            res[k] = prod as u64;
+        for (j, res_k) in res.iter_mut().skip(1).take(4).enumerate() {
+            let prod = (a_hi as u128) * (b.d[j] as u128) + (*res_k as u128) + (carry as u128);
+            *res_k = prod as u64;
             carry = (prod >> 64) as u64;
         }
         res[5] = carry;
@@ -2029,10 +2028,10 @@ impl U256 {
     fn sub(self, other: Self) -> Self {
         let mut out = [0u64; 4];
         let mut borrow = false;
-        for i in 0..4 {
-            let (diff, b1) = self.d[i].overflowing_sub(other.d[i]);
+        for ((out_i, self_i), other_i) in out.iter_mut().zip(self.d.iter()).zip(other.d.iter()) {
+            let (diff, b1) = self_i.overflowing_sub(*other_i);
             let (res, b2) = diff.overflowing_sub(borrow as u64);
-            out[i] = res;
+            *out_i = res;
             borrow = b1 || b2;
         }
         debug_assert!(!borrow, "U256 underflow");

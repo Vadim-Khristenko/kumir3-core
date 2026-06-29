@@ -1103,11 +1103,8 @@ impl Parser {
             // Constraints: T: Trait1 + Trait2
             let constraints = if self.match_token(&Token::Colon) {
                 let mut c = Vec::new();
-                loop {
-                    let cname = match self.expect_ident("constraint") {
-                        Ok(n) => Arc::from(n.as_str()),
-                        Err(_) => break,
-                    };
+                while let Ok(n) = self.expect_ident("constraint") {
+                    let cname = Arc::from(n.as_str());
                     c.push(TypeConstraint::Implements(cname));
                     if !self.match_token(&Token::Plus) {
                         break;
