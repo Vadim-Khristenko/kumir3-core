@@ -20,7 +20,7 @@ needless_range_loop = "allow"
 if_same_then_else = "allow"
 unusual_byte_groupings = "allow"
 assertions_on_constants = "allow"
-ptr_arg = "allow"
+
 match_like_matches_macro = "allow"
 single_match = "allow"
 vec_init_then_push = "allow"

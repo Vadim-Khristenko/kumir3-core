@@ -8,7 +8,7 @@
 //! - WebAssembly модули
 //! - Интерпретируемый IR (для отладки)
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 
 use clap::{Parser, Subcommand, ValueEnum};
@@ -210,7 +210,7 @@ fn compile(cli: &Cli) -> Result<(), String> {
     Ok(())
 }
 
-fn build_project(path: &PathBuf, release: bool) -> Result<(), String> {
+fn build_project(path: &Path, release: bool) -> Result<(), String> {
     println!("Сборка проекта в {}", path.display());
     if release {
         println!("Режим: Release (с оптимизациями)");
@@ -221,7 +221,7 @@ fn build_project(path: &PathBuf, release: bool) -> Result<(), String> {
     Err("Сборка проектов пока не реализована".to_string())
 }
 
-fn run_program(file: &PathBuf, args: &[String]) -> Result<(), String> {
+fn run_program(file: &Path, args: &[String]) -> Result<(), String> {
     println!("Запуск программы {}", file.display());
     if !args.is_empty() {
         println!("Аргументы: {:?}", args);
