@@ -43,14 +43,14 @@ impl TypeOps {
     /// Проверяет, соответствует ли значение указанному типу.
     pub fn type_check(value: &Value, check: &TypeKind) -> bool {
         // [typesys-seam] будущее: conformance через shared::typesys.
-        match (check, value) {
-            (TypeKind::Int64, Value::Number(Number::I64(_))) => true,
-            (TypeKind::Float64, Value::Number(Number::F64(_))) => true,
-            (TypeKind::String, Value::String(_)) => true,
-            (TypeKind::Bool, Value::Boolean(_)) => true,
-            (TypeKind::Char, Value::Char(_)) => true,
-            (TypeKind::Array(_), Value::Array(_)) => true,
-            _ => false,
-        }
+        matches!(
+            (check, value),
+            (TypeKind::Int64, Value::Number(Number::I64(_)))
+                | (TypeKind::Float64, Value::Number(Number::F64(_)))
+                | (TypeKind::String, Value::String(_))
+                | (TypeKind::Bool, Value::Boolean(_))
+                | (TypeKind::Char, Value::Char(_))
+                | (TypeKind::Array(_), Value::Array(_))
+        )
     }
 }
