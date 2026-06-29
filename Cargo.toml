@@ -22,7 +22,6 @@ unusual_byte_groupings = "allow"
 assertions_on_constants = "allow"
 
 match_like_matches_macro = "allow"
-single_match = "allow"
 vec_init_then_push = "allow"
 redundant_clone = "allow"
 comparison_chain = "allow"
