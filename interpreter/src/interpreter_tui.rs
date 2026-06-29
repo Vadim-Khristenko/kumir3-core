@@ -583,13 +583,12 @@ fn run_ast_tui(path: &PathBuf) -> Result<(), String> {
 
     let program = parse(&source).map_err(|e| format!("Ошибка парсинга: {}", e))?;
 
-    let mut output: Vec<OutputLine> = Vec::new();
-
-    output.push(OutputLine::Header("  AST Программы".to_string()));
-    output.push(OutputLine::System("═".repeat(50)));
-    output.push(OutputLine::System(String::new()));
-
-    output.push(OutputLine::Header("  Импорты:".to_string()));
+    let mut output: Vec<OutputLine> = vec![
+        OutputLine::Header("  AST Программы".to_string()),
+        OutputLine::System("═".repeat(50)),
+        OutputLine::System(String::new()),
+        OutputLine::Header("  Импорты:".to_string()),
+    ];
     if program.imports.is_empty() {
         output.push(OutputLine::Normal("    (нет)".to_string()));
     } else {
