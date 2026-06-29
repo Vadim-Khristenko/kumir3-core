@@ -176,7 +176,7 @@ pub fn write_lines_fn() -> LibFunctionDef {
                 .ok_or_else(|| "Ожидается массив строк".to_string())?;
             let lines: Vec<String> = arr
                 .iter()
-                .map(|v| v.as_string().map(|s| s.to_string()).unwrap_or_default())
+                .map(|v| v.as_string().unwrap_or_default())
                 .collect();
             let content = lines.join("\n");
             std::fs::write(path.as_str(), content.as_bytes())

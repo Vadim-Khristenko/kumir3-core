@@ -275,16 +275,16 @@ fn sqrt_minus_one_special_error() {
 fn string_multiplication_and_division() {
     let a = Value::String("abc".to_string());
     let b = Value::from(3i32);
-    let r = MathOperators::mul(a.clone(), b.clone(), true).unwrap();
+    let r = MathOperators::mul(a.clone(), b, true).unwrap();
     assert_eq!(r, Value::String("abcabcabc".to_string()));
 
     // number * string
-    let r2 = MathOperators::mul(Value::from(2i32), a.clone(), true).unwrap();
+    let r2 = MathOperators::mul(Value::from(2i32), a, true).unwrap();
     assert_eq!(r2, Value::String("abcabc".to_string()));
 
     // division into parts
     let a2 = Value::String("abcdef".to_string());
-    let r3 = MathOperators::div(a2.clone(), Value::from(3i32), true).unwrap();
+    let r3 = MathOperators::div(a2, Value::from(3i32), true).unwrap();
     assert_eq!(
         r3,
         Value::Array(vec![
@@ -296,7 +296,7 @@ fn string_multiplication_and_division() {
 
     // division with remainder distribution
     let a3 = Value::String("abcdefg".to_string());
-    let r4 = MathOperators::div(a3.clone(), Value::from(3i32), true).unwrap();
+    let r4 = MathOperators::div(a3, Value::from(3i32), true).unwrap();
     assert_eq!(
         r4,
         Value::Array(vec![

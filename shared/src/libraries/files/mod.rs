@@ -123,9 +123,7 @@ mod tests {
         ])
         .unwrap();
 
-        let result2 = rf
-            .call(&[crate::types::Value::String(path_str.clone())])
-            .unwrap();
+        let result2 = rf.call(&[crate::types::Value::String(path_str)]).unwrap();
 
         match result2 {
             crate::types::Value::String(s) => assert_eq!(s.as_str(), "Привет мир!"),
@@ -161,9 +159,7 @@ mod tests {
         assert_eq!(result, crate::types::Value::Boolean(true));
 
         let sf = file_size_fn();
-        let result = sf
-            .call(&[crate::types::Value::String(path_str.clone())])
-            .unwrap();
+        let result = sf.call(&[crate::types::Value::String(path_str)]).unwrap();
         match result {
             crate::types::Value::Number(n) => assert_eq!(n.to_i64(), Some(4)),
             _ => panic!("Expected Number"),
@@ -195,9 +191,7 @@ mod tests {
         std::fs::write(dir.join("a.txt"), "A").unwrap();
 
         let lf = list_dir_fn();
-        let result = lf
-            .call(&[crate::types::Value::String(dir_str.clone())])
-            .unwrap();
+        let result = lf.call(&[crate::types::Value::String(dir_str)]).unwrap();
         match result {
             crate::types::Value::Array(arr) => assert_eq!(arr.len(), 1),
             _ => panic!("Expected Array"),

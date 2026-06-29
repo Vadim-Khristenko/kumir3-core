@@ -55,7 +55,7 @@ pub fn dns_reverse_fn() -> LibFunctionDef {
                         .unwrap_or_else(|| ip.to_string());
                     Ok(Value::String(first))
                 }
-                Err(_) => Ok(Value::String(ip.to_string())),
+                Err(_) => Ok(Value::String(ip)),
             }
         })
 }

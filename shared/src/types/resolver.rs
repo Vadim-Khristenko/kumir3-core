@@ -458,7 +458,7 @@ impl<'a> DependencyResolver<'a> {
             }
             return Err(ResolutionError::NoCompatibleVersion {
                 name: name.to_string(),
-                requested: requested.clone(),
+                requested,
             });
         }
 
@@ -484,7 +484,7 @@ impl<'a> DependencyResolver<'a> {
         {
             let conflict = VersionConflict {
                 requester: "previous resolution".to_string(),
-                requested: requested.clone(),
+                requested,
                 conflicts_with: existing.clone(),
             };
             if let Some(node) = self.graph.get_mut(name) {

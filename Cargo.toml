@@ -20,7 +20,7 @@ unusual_byte_groupings = "allow"
 assertions_on_constants = "allow"
 
 
-redundant_clone = "allow"
+
 comparison_chain = "allow"
 too_many_lines = "allow"
 

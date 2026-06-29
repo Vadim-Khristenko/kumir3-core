@@ -62,7 +62,7 @@ impl Executor {
                 env.push_scope();
 
                 if let Some(var) = catch_var {
-                    env.define_local(var.to_string(), Value::String(error.message.clone()));
+                    env.define_local(var.to_string(), Value::String(error.message));
                 }
 
                 let catch_result = Self::execute_stmts(catch_block, env);

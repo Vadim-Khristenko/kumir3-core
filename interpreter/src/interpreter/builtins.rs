@@ -671,7 +671,7 @@ impl Builtins {
                 let vals = eval_args(env)?;
                 Self::check_args(name, &vals, 1)?;
                 let type_name = Self::type_name(&vals[0]);
-                Ok(Some(Value::String(type_name.to_string())))
+                Ok(Some(Value::String(type_name)))
             }
 
             // ===== ПАРЫ И КОРТЕЖИ =====

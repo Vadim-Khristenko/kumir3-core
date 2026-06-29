@@ -182,7 +182,7 @@ pub fn glob_ext_fn() -> LibFunctionDef {
                 .get(1)
                 .and_then(|v| v.as_string())
                 .ok_or_else(|| "Ожидается строковый аргумент 'расширение'".to_string())?;
-            let ext_str = ext.to_string();
+            let ext_str = ext;
             let ext_clean = ext_str.trim_start_matches('.');
 
             fn find_ext(

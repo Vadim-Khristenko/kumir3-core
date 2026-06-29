@@ -445,7 +445,7 @@ impl IntegratedLoader {
         // Сохраняем по всем именам
         let name = def.name.to_string();
         self.builtins.insert(def.id.to_string(), def.clone());
-        self.builtins.insert(name.clone(), def.clone());
+        self.builtins.insert(name, def.clone());
         for alias in &def.aliases {
             self.builtins.insert(alias.to_string(), def.clone());
         }
@@ -625,7 +625,7 @@ impl IntegratedLoader {
                 return Err(LoaderError::VersionMismatch {
                     name: name.to_string(),
                     required: spec.clone(),
-                    found: manifest.version.clone(),
+                    found: manifest.version,
                 });
             }
 
@@ -640,7 +640,7 @@ impl IntegratedLoader {
             let mut lib =
                 self.load_from_file(&entry_path, LibrarySource::Local(entry_path.clone()))?;
             lib.manifest = Some(manifest.clone());
-            lib.version = manifest.version.clone();
+            lib.version = manifest.version;
             return Ok(Some(lib));
         }
 
@@ -708,7 +708,7 @@ impl IntegratedLoader {
                     if manifest.version != version {
                         return Err(LoaderError::VersionMismatch {
                             name: name.to_string(),
-                            required: VersionSpec::exact(version.clone()),
+                            required: VersionSpec::exact(version),
                             found: manifest.version,
                         });
                     }
@@ -716,17 +716,15 @@ impl IntegratedLoader {
                     let entry_path = path.join(&manifest.entry_point);
 
                     if entry_path.exists() {
-                        let mut lib = self.load_from_file(
-                            &entry_path,
-                            LibrarySource::GlobalCache(path.clone()),
-                        )?;
+                        let mut lib =
+                            self.load_from_file(&entry_path, LibrarySource::GlobalCache(path))?;
                         lib.manifest = Some(manifest);
                         lib.version = version;
                         return Ok(Some(lib));
                     }
                 } else if lib_path.exists() {
                     let mut lib =
-                        self.load_from_file(&lib_path, LibrarySource::GlobalCache(path.clone()))?;
+                        self.load_from_file(&lib_path, LibrarySource::GlobalCache(path))?;
                     lib.version = version;
                     return Ok(Some(lib));
                 }
