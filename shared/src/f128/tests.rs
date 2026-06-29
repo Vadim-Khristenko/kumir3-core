@@ -495,7 +495,7 @@ fn trig_tan_asymptote_small_angle_and_inverses() {
     assert!(t.is_infinite() || t.abs() > F128::from(1_000_000));
 
     // small angle approximations
-    let small = F128::from_bits(0x3F5A_2C0E_6FB3_7A6, 0); // ~1e-3 (approx)
+    let small = F128::from_bits(0x03F5_A2C0_E6FB_37A6, 0); // ~1e-3 (approx)
     assert!((small.sin() - small).abs() < F128::from_bits(0x3FCB_0000_0000_0000, 0));
     let one_minus_cos = F128::from(1) - small.cos();
     let approx = small * small / F128::from(2);

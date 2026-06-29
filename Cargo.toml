@@ -15,7 +15,6 @@ type_complexity = "allow"
 derived_hash_with_manual_eq = "allow"   # Value: ручной PartialEq + Hash согласованы через to_string
 inherent_to_string_shadow_display = "allow"
 approx_constant = "allow"               # математические константы высокой точности
-unusual_byte_groupings = "allow"
 
 too_many_lines = "allow"
 
