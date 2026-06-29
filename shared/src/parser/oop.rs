@@ -643,11 +643,7 @@ impl Parser {
 
         self.skip_newlines();
 
-        let kind = if return_type.is_some() {
-            AlgorithmKind::Method
-        } else {
-            AlgorithmKind::Method
-        };
+        let kind = AlgorithmKind::Method;
 
         // ── Precondition (дано) ─────────────────────────────────────
         let precondition = if self.match_token(&Token::Given) {

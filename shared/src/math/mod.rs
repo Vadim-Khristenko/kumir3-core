@@ -829,13 +829,7 @@ impl MathOperators {
             (I32(x), I32(y)) => Ok(I32(x % y)),
             (U64(x), U64(y)) => Ok(U64(x % y)),
             (U32(x), U32(y)) => Ok(U32(x % y)),
-            _ => {
-                if fo_e {
-                    Err(MathErr::TypeMismatch("остаток только для целых"))
-                } else {
-                    Err(MathErr::TypeMismatch("остаток только для целых"))
-                }
-            }
+            _ => Err(MathErr::TypeMismatch("остаток только для целых")),
         }
     }
 
