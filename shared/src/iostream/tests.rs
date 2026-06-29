@@ -60,8 +60,8 @@ fn test_file_not_found() {
     let result = stream.open_read();
     assert!(result.is_err());
     match result.unwrap_err() {
-        StreamError::Io(ref e) if e.kind() == std::io::ErrorKind::NotFound => assert!(true),
-        e => assert!(false, "Expected FileNotFound error, got {:?}", e),
+        StreamError::Io(ref e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        e => panic!("Expected FileNotFound error, got {:?}", e),
     }
 }
 
@@ -71,7 +71,6 @@ fn test_console_stream_creation() {
     use std::io::BufReader;
     let mut _stream = IOStream::new(BufReader::new(io::stdin()), io::stdout());
     // We just verify it compiles and initializes.
-    assert!(true);
 }
 
 #[test]
