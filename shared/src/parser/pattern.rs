@@ -168,7 +168,8 @@ impl Parser {
                         ParseErrorKind::InvalidPattern,
                         "expected number after '-' in pattern",
                         self.span(),
-                    )),
+                    )
+                    .into()),
                 }
             }
 
@@ -262,7 +263,8 @@ impl Parser {
                 ParseErrorKind::ExpectedPattern,
                 "expected pattern",
                 self.span(),
-            )),
+            )
+            .into()),
         }
     }
 

@@ -168,7 +168,8 @@ impl Parser {
                         "объявление алгоритма или переменной",
                         self.peek(),
                         self.span(),
-                    ));
+                    )
+                    .into());
                 }
             }
         }
@@ -223,7 +224,8 @@ impl Parser {
                 "подключить или использовать",
                 self.peek(),
                 self.span(),
-            ));
+            )
+            .into());
         }
 
         let path = self.expect_import_path()?;
@@ -564,7 +566,8 @@ impl Parser {
                         "алгоритм или объявление переменной в модуле",
                         self.peek(),
                         self.span(),
-                    ));
+                    )
+                    .into());
                 }
             }
         }

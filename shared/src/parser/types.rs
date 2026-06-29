@@ -227,7 +227,7 @@ impl Parser {
     /// Recognises builtins, function types, and user-defined types.
     pub fn parse_type(&mut self) -> ParseResult<TypeKind> {
         self.try_parse_type_with_custom()
-            .ok_or_else(|| ParseError::expected_type(self.span()))
+            .ok_or_else(|| ParseError::expected_type(self.span()).into())
     }
 
     // =========================================================================

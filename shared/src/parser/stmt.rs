@@ -234,11 +234,7 @@ impl Parser {
             | Token::ClassIdent(_)
             | Token::NamespaceIdent(_) => self.parse_assignment_or_call(),
 
-            _ => Err(ParseError::unexpected(
-                "statement",
-                self.peek(),
-                self.span(),
-            )),
+            _ => Err(ParseError::unexpected("statement", self.peek(), self.span()).into()),
         }
     }
 
@@ -687,11 +683,7 @@ impl Parser {
             self.expect(&Token::End, "кон")?;
             code
         } else {
-            return Err(ParseError::unexpected(
-                "rust block",
-                self.peek(),
-                self.span(),
-            ));
+            return Err(ParseError::unexpected("rust block", self.peek(), self.span()).into());
         };
 
         let captured_vars = extract_captured_vars(&code);
@@ -823,7 +815,8 @@ impl Parser {
                 _ => Err(ParseError::custom(
                     "compound assignment requires a simple variable",
                     self.span(),
-                )),
+                )
+                .into()),
             };
         }
 
@@ -839,7 +832,7 @@ impl Parser {
                     field,
                     value,
                 }),
-                _ => Err(ParseError::custom("invalid assignment target", self.span())),
+                _ => Err(ParseError::custom("invalid assignment target", self.span()).into()),
             };
         }
 
@@ -918,7 +911,8 @@ impl Parser {
                             return Err(ParseError::custom(
                                 ":: requires a module name",
                                 self.span(),
-                            ));
+                            )
+                            .into());
                         }
                     };
                 }

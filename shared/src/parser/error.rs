@@ -425,4 +425,10 @@ impl Diagnostics {
 // =============================================================================
 
 /// Parser result type.
-pub type ParseResult<T> = Result<T, ParseError>;
+pub type ParseResult<T> = Result<T, Box<ParseError>>;
+
+impl From<LexerError> for Box<ParseError> {
+    fn from(err: LexerError) -> Self {
+        Box::new(ParseError::from(err))
+    }
+}

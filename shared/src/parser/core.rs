@@ -221,7 +221,7 @@ impl Parser {
         if self.check(token) {
             Ok(self.advance())
         } else {
-            Err(ParseError::unexpected(msg, self.peek(), self.span()))
+            Err(ParseError::unexpected(msg, self.peek(), self.span()).into())
         }
     }
 
@@ -241,7 +241,7 @@ impl Parser {
             }
             Ok(())
         } else {
-            Err(ParseError::expected_newline(self.span()))
+            Err(ParseError::expected_newline(self.span()).into())
         }
     }
 
@@ -281,7 +281,7 @@ impl Parser {
             | Token::TypeIdent(s)
             | Token::ClassIdent(s)
             | Token::NamespaceIdent(s) => s,
-            _ => return Err(ParseError::unexpected(msg, self.peek(), self.span())),
+            _ => return Err(ParseError::unexpected(msg, self.peek(), self.span()).into()),
         };
         self.advance();
         Ok(name)
@@ -293,7 +293,7 @@ impl Parser {
             self.advance();
             Ok(s)
         } else {
-            Err(ParseError::unexpected(msg, self.peek(), self.span()))
+            Err(ParseError::unexpected(msg, self.peek(), self.span()).into())
         }
     }
 
@@ -313,11 +313,7 @@ impl Parser {
                 self.advance();
                 Ok(s)
             }
-            _ => Err(ParseError::unexpected(
-                "import path",
-                self.peek(),
-                self.span(),
-            )),
+            _ => Err(ParseError::unexpected("import path", self.peek(), self.span()).into()),
         }
     }
 
@@ -327,7 +323,7 @@ impl Parser {
             self.advance();
             Ok(n)
         } else {
-            Err(ParseError::unexpected(msg, self.peek(), self.span()))
+            Err(ParseError::unexpected(msg, self.peek(), self.span()).into())
         }
     }
 
@@ -366,11 +362,10 @@ impl Parser {
             self.advance();
             Ok(())
         } else {
-            Err(ParseError::unexpected(
-                &format!("keyword «{}»", name),
-                self.peek(),
-                self.span(),
-            ))
+            Err(
+                ParseError::unexpected(&format!("keyword «{}»", name), self.peek(), self.span())
+                    .into(),
+            )
         }
     }
 
@@ -509,7 +504,7 @@ impl Parser {
             self.diagnostics.error(err);
             Ok(())
         } else {
-            Err(err)
+            Err(err.into())
         }
     }
 
@@ -720,3 +715,4 @@ impl Parser {
         &self.diagnostics
     }
 }
+// test

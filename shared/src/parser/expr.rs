@@ -322,7 +322,8 @@ impl Parser {
                             return Err(ParseError::custom(
                                 ":: requires a module or enum on the left",
                                 self.span(),
-                            ));
+                            )
+                            .into());
                         }
                     };
                 }
@@ -516,7 +517,7 @@ impl Parser {
                 Ok(Expr::TypeOf(Box::new(inner)))
             }
 
-            _ => Err(ParseError::expected_expr(self.span())),
+            _ => Err(ParseError::expected_expr(self.span()).into()),
         }
     }
 
@@ -717,7 +718,8 @@ impl Parser {
                     return Err(ParseError::custom(
                         "unterminated interpolated string",
                         self.span(),
-                    ));
+                    )
+                    .into());
                 }
                 _ => {
                     // Embedded expression inside {…}

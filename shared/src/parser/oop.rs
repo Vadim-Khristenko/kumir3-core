@@ -114,7 +114,8 @@ impl Parser {
                 ParseErrorKind::InvalidClassMember,
                 "expected 'класс' or 'структура'",
                 self.span(),
-            ));
+            )
+            .into());
         };
 
         let name: Arc<str> = Arc::from(self.expect_ident("class name")?.as_str());
