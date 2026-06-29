@@ -1166,12 +1166,10 @@ impl F128 {
             }
         }
 
-        if k_int > 0 {
-            sum * Self::from(2i64).powi(k_int as i32)
-        } else if k_int < 0 {
-            sum / Self::from(2i64).powi((-k_int) as i32)
-        } else {
-            sum
+        match k_int.cmp(&0) {
+            Ordering::Greater => sum * Self::from(2i64).powi(k_int as i32),
+            Ordering::Less => sum / Self::from(2i64).powi((-k_int) as i32),
+            Ordering::Equal => sum,
         }
     }
 
@@ -1878,14 +1876,16 @@ impl F128 {
         let msb = 127 - v.leading_zeros() as i32;
         let target = Self::FRAC_BITS as i32;
 
-        let (exp, mant) = if msb > target {
-            let shift = (msb - target) as u32;
-            (msb, v >> shift)
-        } else if msb < target {
-            let shift = (target - msb) as u32;
-            (msb, v << shift)
-        } else {
-            (msb, v)
+        let (exp, mant) = match msb.cmp(&target) {
+            Ordering::Greater => {
+                let shift = (msb - target) as u32;
+                (msb, v >> shift)
+            }
+            Ordering::Less => {
+                let shift = (target - msb) as u32;
+                (msb, v << shift)
+            }
+            Ordering::Equal => (msb, v),
         };
 
         Self::compose(false, exp, mant)
