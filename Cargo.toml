@@ -11,7 +11,6 @@ unused = "allow"               # неиспользуемые импорты/п�
 unreachable_patterns = "allow"
 
 [workspace.lints.clippy]
-type_complexity = "allow"
 derived_hash_with_manual_eq = "allow"   # Value: ручной PartialEq + Hash согласованы через to_string
 inherent_to_string_shadow_display = "allow"
 too_many_lines = "allow"

@@ -21,6 +21,9 @@ use tokio::task::JoinHandle;
 
 use crate::types::Value;
 
+/// Boxed future type used by the scheduler.
+type TaskFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
+
 // ============================================================================
 //                    ИДЕНТИФИКАТОРЫ
 // ============================================================================
@@ -627,7 +630,7 @@ impl Scheduler {
 
         while self.running.load(Ordering::SeqCst) {
             let now = Instant::now();
-            let mut to_run: Vec<(String, Pin<Box<dyn Future<Output = ()> + Send>>)> = Vec::new();
+            let mut to_run: Vec<(String, TaskFuture)> = Vec::new();
             let mut to_remove: Vec<String> = Vec::new();
 
             // Собираем задачи для выполнения
