@@ -75,6 +75,16 @@ pub enum Expr {
         args: Vec<Expr>,
     },
 
+    /// Safe field access: object?.field
+    SafeField { object: Box<Expr>, field: String },
+
+    /// Safe method call: object?.method(args)
+    SafeMethod {
+        object: Box<Expr>,
+        method: String,
+        args: Vec<Expr>,
+    },
+
     /// Class instantiation: new Class(args)
     ///
     /// Semantics of `new` keyword:
@@ -305,6 +315,15 @@ impl Expr {
                 result.extend(object.free_vars(bound));
             }
             Expr::MethodCall { object, args, .. } => {
+                result.extend(object.free_vars(bound));
+                for arg in args {
+                    result.extend(arg.free_vars(bound));
+                }
+            }
+            Expr::SafeField { object, .. } => {
+                result.extend(object.free_vars(bound));
+            }
+            Expr::SafeMethod { object, args, .. } => {
                 result.extend(object.free_vars(bound));
                 for arg in args {
                     result.extend(arg.free_vars(bound));

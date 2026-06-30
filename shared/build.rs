@@ -390,6 +390,7 @@ const OPERATORS: &[(&str, &str)] = &[
     ("&&", "And"),
     ("||", "Or"),
     ("??", "QuestionQuestion"),
+    ("?.", "QuestionDot"),
     // 1-char
     ("+", "Plus"),
     ("-", "Minus"),

@@ -61,6 +61,28 @@ impl ExprEvaluator {
                 args,
             } => Self::eval_method_call(object, method, args, env),
 
+            // [KITE-0002] Safe field access: object?.field
+            Expr::SafeField { object, field } => {
+                let obj = Self::evaluate(object, env)?;
+                if Self::is_null_or_none(&obj) {
+                    return Ok(Value::Null);
+                }
+                Self::eval_field_access(&Expr::Literal(obj), field, env)
+            }
+
+            // [KITE-0002] Safe method call: object?.method(args)
+            Expr::SafeMethod {
+                object,
+                method,
+                args,
+            } => {
+                let obj = Self::evaluate(object, env)?;
+                if Self::is_null_or_none(&obj) {
+                    return Ok(Value::Null);
+                }
+                Self::eval_method_call(&Expr::Literal(obj), method, args, env)
+            }
+
             // ООП: создание экземпляра
             Expr::NewInstance { class_name, args } => {
                 Self::eval_new_instance(class_name, args, env)
@@ -217,6 +239,16 @@ impl ExprEvaluator {
     #[inline]
     pub fn is_truthy(value: &Value) -> bool {
         TypeOps::is_truthy(value)
+    }
+
+    /// Проверяет, является ли значение `null` или `Option::None`.
+    #[inline]
+    fn is_null_or_none(value: &Value) -> bool {
+        match value {
+            Value::Null => true,
+            Value::Option(opt) => opt.is_none(),
+            _ => false,
+        }
     }
 
     /// Сравнивает два значения на равенство (тонкий делегатор к [`TypeOps`]).

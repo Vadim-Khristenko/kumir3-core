@@ -280,6 +280,7 @@ pub enum Token {
     Caret,            // ^        — dereference sigil
     Question,         // ?        — early-return operator
     QuestionQuestion, // ??       — null-coalescing operator
+    QuestionDot,      // ?.       — safe navigation operator
 
     // =============================================================================
     //         SECTION: META & TRIVIA TOKENS

@@ -385,6 +385,27 @@ impl Parser {
                     expr = Expr::FieldAccess(Box::new(expr), field);
                 }
 
+                // ── Safe field / method access: obj?.field / obj?.method(args)
+                Token::QuestionDot => {
+                    self.advance();
+                    let member = self.expect_ident("field or method name")?;
+                    if self.check(&Token::LParen) {
+                        self.advance();
+                        let args = self.parse_args()?;
+                        self.expect(&Token::RParen, ")")?;
+                        expr = Expr::SafeMethod {
+                            object: Box::new(expr),
+                            method: member,
+                            args,
+                        };
+                    } else {
+                        expr = Expr::SafeField {
+                            object: Box::new(expr),
+                            field: member,
+                        };
+                    }
+                }
+
                 // ── Type cast: expr как Тип ─────────────────────────
                 Token::Ident(s) if s == "как" => {
                     self.advance();

@@ -826,6 +826,12 @@ impl AstToIr {
                 Err("Оператор ?? пока не поддерживается компилятором".to_string())
             }
 
+            // [KITE-0002] Safe navigation is not yet supported by the compiler backend.
+            Expr::SafeField { .. } | Expr::SafeMethod { .. } => Err(
+                "Оператор безопасной навигации (?.) пока не поддерживается компилятором"
+                    .to_string(),
+            ),
+
             // [KITE-0002] Lambdas are not yet supported by the compiler backend.
             Expr::Lambda { .. } => Err("Лямбды пока не поддерживаются компилятором".to_string()),
 

@@ -1062,4 +1062,142 @@ mod tests {
             interpreter.get_output()
         );
     }
+
+    #[test]
+    fn test_safe_field_on_null() {
+        let source = r#"
+класс Контейнер
+открытый:
+цел value
+конструктор()
+нач
+кон
+кон
+
+алг Тест
+нач
+    пусть c := ничего
+    вывод c?.value
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("пусто"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_safe_field_on_object() {
+        let source = r#"
+класс Контейнер
+открытый:
+цел value := 42
+конструктор()
+нач
+кон
+кон
+
+алг Тест
+нач
+    пусть c := новый Контейнер()
+    вывод c?.value
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("42"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_safe_method_on_null() {
+        let source = r#"
+класс Счёт
+открытый:
+алг цел получить()
+нач
+    знач := 100
+кон
+кон
+
+алг Тест
+нач
+    пусть c := ничего
+    вывод c?.получить()
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("пусто"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_safe_method_on_object() {
+        let source = r#"
+класс Счёт
+открытый:
+алг цел получить()
+нач
+    знач := 100
+кон
+кон
+
+алг Тест
+нач
+    пусть c := новый Счёт()
+    вывод c?.получить()
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("100"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_safe_chain() {
+        let source = r#"
+класс Внутренний
+открытый:
+цел y := 7
+конструктор()
+нач
+кон
+кон
+
+класс Внешний
+открытый:
+Внутренний inner := ничего
+конструктор()
+нач
+кон
+кон
+
+алг Тест
+нач
+    пусть o := новый Внешний()
+    вывод o?.inner?.y
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("пусто"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
 }
