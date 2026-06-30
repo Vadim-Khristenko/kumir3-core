@@ -821,6 +821,11 @@ impl AstToIr {
                 Ok(dest)
             }
 
+            // [KITE-0002] Compiler support for ?? is not yet implemented.
+            Expr::Coalesce(_, _) => {
+                Err("Оператор ?? пока не поддерживается компилятором".to_string())
+            }
+
             _ => Err(format!("Неподдерживаемое выражение: {:?}", expr)),
         }
     }

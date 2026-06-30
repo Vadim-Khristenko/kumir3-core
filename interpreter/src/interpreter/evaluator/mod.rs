@@ -168,6 +168,19 @@ impl ExprEvaluator {
                 Err(RuntimeError::not_implemented(error_msg))
             }
 
+            // [KITE-0002] Null-coalescing operator: a ?? b
+            Expr::Coalesce(lhs, rhs) => {
+                let left_value = Self::evaluate(lhs, env)?;
+                match left_value {
+                    Value::Option(opt) => match *opt {
+                        None => Self::evaluate(rhs, env),
+                        Some(v) => Ok(v),
+                    },
+                    Value::Null => Self::evaluate(rhs, env),
+                    other => Ok(other),
+                }
+            }
+
             // Все остальные выражения (не реализованы)
             _ => Err(RuntimeError::not_implemented("данное выражение")),
         }

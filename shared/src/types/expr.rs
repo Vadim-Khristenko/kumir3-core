@@ -162,6 +162,9 @@ pub enum Expr {
     // =========================================================================
     //         KUMIR 3: CONDITIONAL EXPRESSIONS
     // =========================================================================
+    /// Null-coalescing operator: a ?? b
+    Coalesce(Box<Expr>, Box<Expr>),
+
     /// Ternary operator: if x > 0 then x else -x end
     IfExpr {
         condition: Box<Expr>,

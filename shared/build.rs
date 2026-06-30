@@ -159,7 +159,11 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
     // ---- RESOURCE GUARDING (KUMIR 3) ----
     ("Defer", "отложить", &["defer"]),
     // ---- SPECIAL VALUES (KUMIR 3) ----
-    ("None", "Пусто", &["пусто", "None", "none", "nil", "null"]),
+    (
+        "None",
+        "Пусто",
+        &["пусто", "ничего", "None", "none", "nil", "null"],
+    ),
     (
         "NotImplemented",
         "НеРеализовано",
@@ -385,6 +389,7 @@ const OPERATORS: &[(&str, &str)] = &[
     ("..", "DoubleDot"),
     ("&&", "And"),
     ("||", "Or"),
+    ("??", "QuestionQuestion"),
     // 1-char
     ("+", "Plus"),
     ("-", "Minus"),

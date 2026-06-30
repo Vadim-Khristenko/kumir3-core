@@ -272,13 +272,14 @@ pub enum Token {
     // =============================================================================
     //         SECTION: SPECIAL OPERATORS (KUMIR 3)
     // =============================================================================
-    Arrow,       // ->       — arrow (lambdas/pointers)
-    FatArrow,    // =>       — fat arrow (match)
-    DoubleColon, // ::       — module/enum access
-    At,          // @        — decorator/annotation
-    Ampersand,   // &        — reference sigil
-    Caret,       // ^        — dereference sigil
-    Question,    // ?        — early-return operator
+    Arrow,            // ->       — arrow (lambdas/pointers)
+    FatArrow,         // =>       — fat arrow (match)
+    DoubleColon,      // ::       — module/enum access
+    At,               // @        — decorator/annotation
+    Ampersand,        // &        — reference sigil
+    Caret,            // ^        — dereference sigil
+    Question,         // ?        — early-return operator
+    QuestionQuestion, // ??       — null-coalescing operator
 
     // =============================================================================
     //         SECTION: META & TRIVIA TOKENS

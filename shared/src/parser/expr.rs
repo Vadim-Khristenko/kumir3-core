@@ -109,6 +109,7 @@ impl Parser {
             left = match op {
                 Token::Pipe => Expr::Pipe(Box::new(left), Box::new(right)),
                 Token::Compose => Expr::Compose(Box::new(left), Box::new(right)),
+                Token::QuestionQuestion => Expr::Coalesce(Box::new(left), Box::new(right)),
                 Token::DoubleDot => Expr::Range {
                     start: Some(Box::new(left)),
                     end: Some(Box::new(right)),

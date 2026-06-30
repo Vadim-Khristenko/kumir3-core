@@ -8,8 +8,8 @@ use crate::types::Token;
 #[inline]
 pub fn binary_precedence(token: &Token) -> Option<u8> {
     Some(match token {
-        // Логические (низший приоритет)
-        Token::Or => 1,
+        // Логические и null-coalescing (низший приоритет)
+        Token::Or | Token::QuestionQuestion => 1,
         Token::And => 2,
 
         // Сравнение
@@ -41,5 +41,5 @@ pub fn binary_precedence(token: &Token) -> Option<u8> {
 /// Проверяет, является ли оператор правоассоциативным.
 #[inline]
 pub fn is_right_associative(token: &Token) -> bool {
-    matches!(token, Token::Power)
+    matches!(token, Token::Power | Token::QuestionQuestion)
 }

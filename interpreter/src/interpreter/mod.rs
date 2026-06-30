@@ -965,4 +965,28 @@ mod tests {
         interpreter.run(source).unwrap();
         assert!(interpreter.get_output().contains("42"));
     }
+
+    #[test]
+    fn test_coalesce_operator() {
+        let mut interpreter = Interpreter::new();
+
+        assert_eq!(
+            interpreter.eval("ничего ?? 42").unwrap(),
+            Value::Number(shared::types::Number::I64(42))
+        );
+        assert_eq!(
+            interpreter.eval("некоторое(5) ?? 42").unwrap(),
+            Value::Number(shared::types::Number::I64(5))
+        );
+    }
+
+    #[test]
+    fn test_coalesce_with_regular_value() {
+        let mut interpreter = Interpreter::new();
+
+        assert_eq!(
+            interpreter.eval("10 ?? 42").unwrap(),
+            Value::Number(shared::types::Number::I64(10))
+        );
+    }
 }

@@ -230,6 +230,7 @@ yield	Yield
 не_реализовано	NotImplemented
 необязательно	OptionalType
 нет	False
+ничего	None
 новый	New
 нц	Loop
 объявить_перечисление	EnumDecl
