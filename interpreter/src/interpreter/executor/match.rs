@@ -4,7 +4,7 @@ use super::super::environment::Environment;
 use super::super::error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
 use super::super::evaluator::ExprEvaluator;
 use super::Executor;
-use shared::types::{Expr, MatchArm, Pattern, Value};
+use shared::types::{Expr, MatchArm, Number, Pattern, Value};
 
 impl Executor {
     // =========================================================================
@@ -19,7 +19,7 @@ impl Executor {
         let value = ExprEvaluator::evaluate(expr, env)?;
 
         for arm in arms {
-            if let Some(bindings) = Self::match_pattern(&arm.pattern, &value)? {
+            if let Some(bindings) = Self::match_pattern(&arm.pattern, &value, env)? {
                 // Проверяем guard если есть
                 if let Some(guard) = &arm.guard {
                     // [KITE 4] Блочная область: guard видит локали алгоритма + привязки.
@@ -58,6 +58,7 @@ impl Executor {
     fn match_pattern(
         pattern: &Pattern,
         value: &Value,
+        env: &mut Environment,
     ) -> RuntimeResult<Option<Vec<(String, Value)>>> {
         match pattern {
             Pattern::Wildcard => Ok(Some(vec![])),
@@ -100,13 +101,82 @@ impl Executor {
             }
 
             Pattern::Range {
-                start: _,
-                end: _,
-                inclusive: _,
+                start,
+                end,
+                inclusive,
+                step,
             } => {
-                // Для чисел проверяем попадание в диапазон
-                // TODO: полная реализация
-                Ok(None)
+                // Для чисел проверяем попадание в диапазон с учётом шага.
+                let n = match value {
+                    Value::Number(Number::I64(v)) => *v,
+                    Value::Number(Number::I32(v)) => *v as i64,
+                    Value::Number(Number::I16(v)) => *v as i64,
+                    Value::Number(Number::I8(v)) => *v as i64,
+                    Value::Number(Number::U64(v)) => *v as i64,
+                    Value::Number(Number::U32(v)) => *v as i64,
+                    Value::Number(Number::U16(v)) => *v as i64,
+                    Value::Number(Number::U8(v)) => *v as i64,
+                    _ => return Ok(None),
+                };
+
+                let mut to_int = |e: &Expr| -> RuntimeResult<i64> {
+                    ExprEvaluator::evaluate(e, env)?
+                        .as_int()
+                        .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))
+                };
+
+                let (start_i, has_start) = match start {
+                    Some(e) => (to_int(e)?, true),
+                    None => (0, false),
+                };
+                let (end_i, has_end) = match end {
+                    Some(e) => (to_int(e)?, true),
+                    None => (0, false),
+                };
+                let step_i = match step {
+                    Some(e) => to_int(e)?,
+                    None => 1,
+                };
+
+                if step_i == 0 {
+                    return Ok(None);
+                }
+
+                let inside = if has_start && has_end {
+                    if step_i > 0 {
+                        n >= start_i && n <= end_i
+                    } else {
+                        n <= start_i && n >= end_i
+                    }
+                } else if has_start {
+                    if step_i > 0 {
+                        n >= start_i
+                    } else {
+                        n <= start_i
+                    }
+                } else if has_end {
+                    if step_i > 0 { n <= end_i } else { n >= end_i }
+                } else {
+                    true
+                };
+
+                if !inside {
+                    return Ok(None);
+                }
+
+                if has_start {
+                    let diff = n - start_i;
+                    if diff % step_i != 0 || diff / step_i < 0 {
+                        return Ok(None);
+                    }
+                } else if has_end {
+                    let diff = end_i - n;
+                    if diff % step_i != 0 || diff / step_i < 0 {
+                        return Ok(None);
+                    }
+                }
+
+                Ok(Some(vec![]))
             }
 
             Pattern::Tuple(patterns) => {
@@ -116,7 +186,7 @@ impl Executor {
                     }
                     let mut all_bindings = vec![];
                     for (p, v) in patterns.iter().zip(values.iter()) {
-                        if let Some(bindings) = Self::match_pattern(p, v)? {
+                        if let Some(bindings) = Self::match_pattern(p, v, env)? {
                             all_bindings.extend(bindings);
                         } else {
                             return Ok(None);
@@ -135,7 +205,7 @@ impl Executor {
 
                     let mut all_bindings = vec![];
                     for (p, v) in elements.iter().zip(values.iter()) {
-                        if let Some(bindings) = Self::match_pattern(p, v)? {
+                        if let Some(bindings) = Self::match_pattern(p, v, env)? {
                             all_bindings.extend(bindings);
                         } else {
                             return Ok(None);
@@ -157,7 +227,7 @@ impl Executor {
 
             Pattern::Or(patterns) => {
                 for p in patterns {
-                    if let Some(bindings) = Self::match_pattern(p, value)? {
+                    if let Some(bindings) = Self::match_pattern(p, value, env)? {
                         return Ok(Some(bindings));
                     }
                 }

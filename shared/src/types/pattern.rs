@@ -83,11 +83,12 @@ pub enum Pattern {
     // =========================================================================
     //         RANGE PATTERNS
     // =========================================================================
-    /// Range: 1..10 or 1..=10
+    /// Range: 1..10 or 1..=10, optionally with step.
     Range {
         start: Option<Box<Expr>>,
         end: Option<Box<Expr>>,
         inclusive: bool,
+        step: Option<Box<Expr>>,
     },
 
     // =========================================================================
@@ -198,11 +199,17 @@ impl Pattern {
     }
 
     /// Creates a range pattern
-    pub fn range(start: Option<Expr>, end: Option<Expr>, inclusive: bool) -> Self {
+    pub fn range(
+        start: Option<Expr>,
+        end: Option<Expr>,
+        inclusive: bool,
+        step: Option<Expr>,
+    ) -> Self {
         Pattern::Range {
             start: start.map(Box::new),
             end: end.map(Box::new),
             inclusive,
+            step: step.map(Box::new),
         }
     }
 

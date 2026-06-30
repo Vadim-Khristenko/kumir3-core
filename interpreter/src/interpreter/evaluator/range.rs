@@ -6,11 +6,12 @@ use super::super::environment::Environment;
 use super::super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
 impl ExprEvaluator {
-    /// [KITE 2] Вычисляет диапазон `начало..конец` (или `..=`) в целочисленное значение.
+    /// [KITE 2/0002] Вычисляет диапазон `начало..конец` (или `..=`) в целочисленное значение.
     pub(crate) fn eval_range(
         start: Option<&Expr>,
         end: Option<&Expr>,
         inclusive: bool,
+        step: Option<&Expr>,
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
         let to_int = |e: &Expr, env: &mut Environment| -> RuntimeResult<i64> {
@@ -36,10 +37,21 @@ impl ExprEvaluator {
                 ));
             }
         };
+        let step_i = match step {
+            Some(e) => to_int(e, env)?,
+            None => 1,
+        };
+        if step_i == 0 {
+            return Err(RuntimeError::new(
+                "Шаг диапазона не может быть равен нулю",
+                RuntimeErrorKind::Other,
+            ));
+        }
         Ok(Value::Range {
             start: s,
             end: en,
             inclusive,
+            step: step_i,
         })
     }
 }

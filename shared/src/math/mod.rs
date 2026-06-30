@@ -522,8 +522,19 @@ impl MathOperators {
                 start,
                 end,
                 inclusive,
+                step,
             } => {
-                format!("R:{}..{}{}", start, if *inclusive { "=" } else { "" }, end)
+                format!(
+                    "R:{}..{}{}{}",
+                    start,
+                    if *inclusive { "=" } else { "" },
+                    end,
+                    if *step != 1 {
+                        format!(":{}", step)
+                    } else {
+                        String::new()
+                    }
+                )
             }
             Value::Bytes(b) => format!("Bytes:{:?}", b),
             Value::Pair(l, r) => format!("P:({},{})", Self::value_key(l), Self::value_key(r)),

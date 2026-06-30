@@ -781,6 +781,101 @@ mod tests {
     }
 
     #[test]
+    fn test_range_value_display_with_step() {
+        // [KITE-0002] Диапазон со шагом печатается как 1..10 шаг 2.
+        let mut interpreter = Interpreter::new();
+        interpreter
+            .run("алг Тест\nнач\n    д := 1..10 шаг 2\n    вывод д\nкон\n")
+            .unwrap();
+        let out = interpreter.get_output();
+        assert!(out.contains("1..10 шаг 2"), "вывод: {}", out);
+    }
+
+    #[test]
+    fn test_range_loop_iteration_with_step() {
+        // [KITE-0002] Итерация по диапазону со шагом: 1+3+5+7+9 = 25.
+        let source = r#"
+алг Тест
+нач
+    цел сумма
+    сумма := 0
+    нц для к в 1..10 шаг 2
+        сумма := сумма + к
+    кц
+    вывод сумма
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("25"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_range_inclusive_loop_iteration_with_step() {
+        // [KITE-0002] Включительный диапазон со шагом: 1+4+7+10 = 22.
+        let source = r#"
+алг Тест
+нач
+    цел сумма
+    сумма := 0
+    нц для к в 1..=10 шаг 3
+        сумма := сумма + к
+    кц
+    вывод сумма
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("22"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_range_pattern_match_with_step() {
+        // [KITE-0002] Сопоставление с образцом диапазона со шагом.
+        let source = r#"
+алг Тест
+нач
+    цел x
+    x := 7
+    совпадение x
+        при 1..10 шаг 2 => вывод "yes"
+        при _ => вывод "no"
+    все
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("yes"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+
+        let source_no = r#"
+алг Тест
+нач
+    цел x
+    x := 8
+    совпадение x
+        при 1..10 шаг 2 => вывод "yes"
+        при _ => вывод "no"
+    все
+кон
+"#;
+        let mut i2 = Interpreter::new();
+        i2.run(source_no).unwrap();
+        assert!(i2.get_output().contains("no"), "вывод: {}", i2.get_output());
+    }
+
+    #[test]
     fn test_builtin_functions() {
         let mut interpreter = Interpreter::new();
 

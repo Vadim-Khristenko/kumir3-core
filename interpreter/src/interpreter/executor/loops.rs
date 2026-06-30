@@ -109,13 +109,31 @@ impl Executor {
                 start,
                 end,
                 inclusive,
+                step,
             } => {
-                let last = if inclusive { end } else { end - 1 };
+                if step == 0 {
+                    return Err(RuntimeError::new(
+                        "Шаг диапазона не может быть равен нулю",
+                        RuntimeErrorKind::Other,
+                    ));
+                }
+                let last = if step > 0 {
+                    if inclusive { end } else { end - 1 }
+                } else {
+                    if inclusive { end } else { end + 1 }
+                };
                 let mut v = Vec::new();
                 let mut i = start;
-                while i <= last {
-                    v.push(Value::Number(Number::I64(i)));
-                    i += 1;
+                if step > 0 {
+                    while i <= last {
+                        v.push(Value::Number(Number::I64(i)));
+                        i += step;
+                    }
+                } else {
+                    while i >= last {
+                        v.push(Value::Number(Number::I64(i)));
+                        i += step;
+                    }
                 }
                 v
             }

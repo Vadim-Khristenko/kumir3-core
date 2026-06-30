@@ -113,14 +113,24 @@ impl Parser {
                     start: Some(Box::new(left)),
                     end: Some(Box::new(right)),
                     inclusive: false,
+                    step: None,
                 },
                 Token::DoubleDotEq => Expr::Range {
                     start: Some(Box::new(left)),
                     end: Some(Box::new(right)),
                     inclusive: true,
+                    step: None,
                 },
                 _ => Expr::BinaryOp(Box::new(left), op, Box::new(right)),
             };
+
+            // [KITE-0002] Optional range step suffix: `1..10 шаг 2`.
+            if let Expr::Range { step, .. } = &mut left
+                && self.match_token(&Token::Step)
+            {
+                let step_expr = self.parse_expr()?;
+                *step = Some(Box::new(step_expr));
+            }
         }
 
         Ok(left)

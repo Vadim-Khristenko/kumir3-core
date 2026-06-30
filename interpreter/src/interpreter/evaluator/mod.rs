@@ -63,12 +63,19 @@ impl ExprEvaluator {
                 Self::eval_new_instance(class_name, args, env)
             }
 
-            // [KITE 2] Диапазон: 1..10 / 1..=10
+            // [KITE 2/0002] Диапазон: 1..10 / 1..=10 [шаг n]
             Expr::Range {
                 start,
                 end,
                 inclusive,
-            } => Self::eval_range(start.as_deref(), end.as_deref(), *inclusive, env),
+                step,
+            } => Self::eval_range(
+                start.as_deref(),
+                end.as_deref(),
+                *inclusive,
+                step.as_deref(),
+                env,
+            ),
 
             // Ссылка на себя (this)
             Expr::SelfRef => env.get_this().cloned().ok_or_else(|| {

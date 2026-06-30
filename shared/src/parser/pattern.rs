@@ -547,11 +547,49 @@ impl Parser {
         // Try to parse end value
         let end_expr = self.try_parse_range_end()?;
 
+        // [KITE-0002] Optional range step suffix: `1..10 шаг 2`.
+        let step_expr = if self.match_token(&Token::Step) {
+            self.try_parse_range_step()?
+        } else {
+            None
+        };
+
         Ok(Pattern::Range {
             start: start_expr.map(Box::new),
             end: end_expr.map(Box::new),
             inclusive,
+            step: step_expr.map(Box::new),
         })
+    }
+
+    /// Tries to parse the step value of a range pattern.
+    fn try_parse_range_step(&mut self) -> ParseResult<Option<Expr>> {
+        match self.peek().clone() {
+            Token::IntLiteral(n) => {
+                self.advance();
+                Ok(Some(Expr::Literal(Value::Number(Number::I64(n)))))
+            }
+            Token::Minus => {
+                self.advance();
+                match self.peek().clone() {
+                    Token::IntLiteral(n) => {
+                        self.advance();
+                        Ok(Some(Expr::Literal(Value::Number(Number::I64(-n)))))
+                    }
+                    _ => Ok(None),
+                }
+            }
+            Token::Ident(_)
+            | Token::VarIdent(_)
+            | Token::FuncIdent(_)
+            | Token::TypeIdent(_)
+            | Token::ClassIdent(_)
+            | Token::NamespaceIdent(_) => {
+                let name = self.expect_ident("range step")?;
+                Ok(Some(Expr::Variable(name)))
+            }
+            _ => Ok(None),
+        }
     }
 
     /// Tries to parse the end value of a range pattern.

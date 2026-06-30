@@ -268,11 +268,13 @@ pub enum Value {
     // Collections
     // -------------------------------------------------------------------------
     Array(Vec<Value>),
-    /// Integer range value: `1..10` (exclusive) or `1..=10` (inclusive).
+    /// Integer range value: `1..10` (exclusive) or `1..=10` (inclusive),
+    /// optionally with step (`1..10 шаг 2`).
     Range {
         start: i64,
         end: i64,
         inclusive: bool,
+        step: i64,
     },
     /// Byte buffer: `байты` (e.g. UTF-8 bytes of a string, file/network data).
     Bytes(Vec<u8>),
@@ -403,12 +405,13 @@ impl Value {
         Value::Array(iter.into_iter().collect())
     }
 
-    /// Creates an integer range value.
-    pub fn range(start: i64, end: i64, inclusive: bool) -> Self {
+    /// Creates an integer range value with the given step.
+    pub fn range(start: i64, end: i64, inclusive: bool, step: i64) -> Self {
         Value::Range {
             start,
             end,
             inclusive,
+            step,
         }
     }
 
@@ -978,11 +981,22 @@ impl Value {
                 start,
                 end,
                 inclusive,
+                step,
             } => {
-                let n = if *inclusive {
-                    end - start + 1
+                if *step == 0 {
+                    return Some(0);
+                }
+                let last = if *step > 0 {
+                    if *inclusive { *end } else { *end - 1 }
                 } else {
-                    end - start
+                    if *inclusive { *end } else { *end + 1 }
+                };
+                let n = if *step > 0 && start <= &last {
+                    (last - start) / step + 1
+                } else if *step < 0 && start >= &last {
+                    (start - last) / (-step) + 1
+                } else {
+                    0
                 };
                 Some(n.max(0) as usize)
             }
@@ -1067,13 +1081,15 @@ impl PartialEq for Value {
                     start: s1,
                     end: e1,
                     inclusive: i1,
+                    step: p1,
                 },
                 Value::Range {
                     start: s2,
                     end: e2,
                     inclusive: i2,
+                    step: p2,
                 },
-            ) => s1 == s2 && e1 == e2 && i1 == i2,
+            ) => s1 == s2 && e1 == e2 && i1 == i2 && p1 == p2,
             (Value::Bytes(a), Value::Bytes(b)) => a == b,
             (Value::Pair(a1, a2), Value::Pair(b1, b2)) => a1 == b1 && a2 == b2,
             (Value::Triple(a1, a2, a3), Value::Triple(b1, b2, b3)) => {
@@ -1315,8 +1331,20 @@ impl fmt::Display for Value {
                 start,
                 end,
                 inclusive,
+                step,
             } => {
-                write!(f, "{}..{}{}", start, if *inclusive { "=" } else { "" }, end)
+                write!(
+                    f,
+                    "{}..{}{}{}",
+                    start,
+                    if *inclusive { "=" } else { "" },
+                    end,
+                    if *step != 1 {
+                        format!(" шаг {}", step)
+                    } else {
+                        String::new()
+                    }
+                )
             }
             Value::Bytes(b) => {
                 write!(f, "байты[")?;

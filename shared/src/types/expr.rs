@@ -238,11 +238,12 @@ pub enum Expr {
     /// Tuple expression: (a, b, c)
     TupleExpr(Vec<Expr>),
 
-    /// Range expression: start..end or start..=end
+    /// Range expression: start..end or start..=end, optionally with step.
     Range {
         start: Option<Box<Expr>>,
         end: Option<Box<Expr>>,
         inclusive: bool,
+        step: Option<Box<Expr>>,
     },
 
     /// Type expression (for reflection): typeof x
