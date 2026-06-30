@@ -385,6 +385,9 @@ pub enum Stmt {
     /// [EXPERIMENTAL] Static assertion (compile-time)
     StaticAssert { condition: Expr, message: String },
 
+    /// Pause execution until user presses Enter (debugger break)
+    Pause,
+
     /// No-op statement
     Nop,
 

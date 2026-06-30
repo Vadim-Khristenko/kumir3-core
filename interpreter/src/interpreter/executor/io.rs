@@ -67,6 +67,23 @@ impl Executor {
         Ok(ControlFlow::None)
     }
 
+    pub(crate) fn execute_pause(_env: &mut Environment) -> RuntimeResult<ControlFlow> {
+        let mut stdout = io::stdout();
+        write!(stdout, "[Пауза] Нажмите Enter для продолжения...")
+            .map_err(|e| RuntimeError::io_error(format!("Ошибка вывода: {}", e)))?;
+        stdout
+            .flush()
+            .map_err(|e| RuntimeError::io_error(format!("Ошибка вывода: {}", e)))?;
+
+        let mut input = String::new();
+        io::stdin()
+            .lock()
+            .read_line(&mut input)
+            .map_err(|e| RuntimeError::io_error(format!("Ошибка ввода: {}", e)))?;
+
+        Ok(ControlFlow::None)
+    }
+
     fn format_value(value: &Value) -> String {
         match value {
             Value::String(s) => s.clone(),

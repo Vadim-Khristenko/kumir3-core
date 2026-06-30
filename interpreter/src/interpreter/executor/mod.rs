@@ -106,6 +106,8 @@ impl Executor {
 
             Stmt::Continue => Ok(ControlFlow::Continue),
 
+            Stmt::Pause => Self::execute_pause(env),
+
             // ===== ОБЪЯВЛЕНИЕ ПЕРЕМЕННЫХ =====
             Stmt::AutoVarDecl { name, init, .. } => {
                 let value = ExprEvaluator::evaluate(init, env)?;

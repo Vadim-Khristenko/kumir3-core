@@ -136,7 +136,7 @@ impl Parser {
             Token::Pause => {
                 self.advance();
                 self.expect_eol()?;
-                Ok(Stmt::Nop) // Pause mapped to no-op at parse level
+                Ok(Stmt::Pause)
             }
 
             // ── Return: вернуть expr ────────────────────────────────
