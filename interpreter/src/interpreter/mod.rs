@@ -856,4 +856,18 @@ mod tests {
         interpreter.run(source).unwrap();
         assert!(interpreter.get_output().contains("перехвачено"));
     }
+
+    #[test]
+    fn test_type_alias_statement() {
+        let source = r#"
+алг Тест
+нач
+    type MyInt = цел
+    вывод 42
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(interpreter.get_output().contains("42"));
+    }
 }

@@ -139,6 +139,16 @@ impl Parser {
                 Ok(Stmt::Pause)
             }
 
+            // ── Type alias: type Name = Type ─────────────────────────
+            Token::TypeAlias => {
+                self.advance();
+                let name = self.expect_ident("имя псевдонима типа")?;
+                self.expect(&Token::Equal, "=")?;
+                let target = self.parse_type()?;
+                self.expect_eol()?;
+                Ok(Stmt::TypeAlias { name, target })
+            }
+
             // ── Return: вернуть expr ────────────────────────────────
             Token::Return => {
                 self.advance();
