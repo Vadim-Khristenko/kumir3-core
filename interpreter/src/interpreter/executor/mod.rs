@@ -221,6 +221,36 @@ impl Executor {
                 value,
             } => Self::execute_field_assignment(object, field, value, env),
 
+            // ===== МЕТА / ОТЛАДКА =====
+            Stmt::TypeAlias { .. } => {
+                // Псевдонимы типов — чисто compile-time конструкция.
+                Ok(ControlFlow::None)
+            }
+
+            Stmt::Debug(expr) => {
+                let value = ExprEvaluator::evaluate(expr, env)?;
+                env.println(&format!("[DEBUG] {}", value));
+                Ok(ControlFlow::None)
+            }
+
+            Stmt::StaticAssert { condition, message } => {
+                let value = ExprEvaluator::evaluate(condition, env)?;
+                if ExprEvaluator::is_truthy(&value) {
+                    Ok(ControlFlow::None)
+                } else {
+                    Err(RuntimeError::new(message.clone(), RuntimeErrorKind::Other))
+                }
+            }
+
+            Stmt::MethodCall {
+                object,
+                method,
+                args,
+            } => {
+                ExprEvaluator::eval_method_call(object, method, args, env)?;
+                Ok(ControlFlow::None)
+            }
+
             // Все остальные инструкции (не реализованы)
             _ => Err(RuntimeError::not_implemented("данная инструкция")),
         }
