@@ -33,7 +33,7 @@ path = "src/interpreter_cli.rs"
 
 [[bin]]
 name = "interpreter-tui"
-path = "src/interpreter_tui.rs"
+path = "src/interpreter_tui/main.rs"
 
 [lints]
 workspace = true
