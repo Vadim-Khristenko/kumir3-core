@@ -188,6 +188,7 @@ fn test_number_errors() {
 }
 
 #[test]
+#[allow(clippy::approx_constant)] // literals are intentional for lexer float testing
 fn test_float_formats() {
     // Различные форматы float
     assert!(matches!(tokens_only("3.14")[0], Token::FloatLiteral(f) if (f - 3.14).abs() < 1e-10));

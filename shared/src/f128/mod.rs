@@ -1225,7 +1225,7 @@ impl F128 {
     }
     #[inline]
     pub fn log10(self) -> Self {
-        self.ln() / Self::from(2.302_585_092_994_046_f64)
+        self.ln() / Self::from(std::f64::consts::LN_10)
     }
 }
 

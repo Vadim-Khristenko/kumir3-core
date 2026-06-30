@@ -68,7 +68,7 @@ pub mod math_constants {
     pub const LOG2_E: f64 = std::f64::consts::LOG2_E;
 
     /// Десятичный логарифм 2 (log₁₀(2))
-    pub const LOG10_2: f64 = 0.3010299956639812;
+    pub const LOG10_2: f64 = std::f64::consts::LOG10_2;
 
     // ========================================================================
     //                    ДРОБИ ПИ
