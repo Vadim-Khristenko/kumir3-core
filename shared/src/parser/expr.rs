@@ -274,6 +274,45 @@ impl Parser {
     fn parse_postfix_expr(&mut self) -> ParseResult<Expr> {
         let mut expr = self.parse_primary_expr()?;
 
+        // [KITE-0002] Short lambda syntax: x => expr | (x, y) => expr
+        if self.check(&Token::FatArrow) {
+            match expr {
+                Expr::Variable(name) => {
+                    self.advance(); // consume =>
+                    let body = self.parse_expr()?;
+                    return Ok(Expr::Lambda {
+                        params: vec![name],
+                        param_types: None,
+                        return_type: None,
+                        body: Box::new(body),
+                    });
+                }
+                Expr::TupleExpr(ref elems) => {
+                    let mut params = Vec::with_capacity(elems.len());
+                    let mut all_vars = true;
+                    for e in elems {
+                        if let Expr::Variable(name) = e {
+                            params.push(name.clone());
+                        } else {
+                            all_vars = false;
+                            break;
+                        }
+                    }
+                    if all_vars {
+                        self.advance(); // consume =>
+                        let body = self.parse_expr()?;
+                        return Ok(Expr::Lambda {
+                            params,
+                            param_types: None,
+                            return_type: None,
+                            body: Box::new(body),
+                        });
+                    }
+                }
+                _ => {}
+            }
+        }
+
         loop {
             match self.peek() {
                 // ── Call: f(args) ────────────────────────────────────

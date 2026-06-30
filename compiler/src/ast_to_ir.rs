@@ -826,6 +826,9 @@ impl AstToIr {
                 Err("Оператор ?? пока не поддерживается компилятором".to_string())
             }
 
+            // [KITE-0002] Lambdas are not yet supported by the compiler backend.
+            Expr::Lambda { .. } => Err("Лямбды пока не поддерживаются компилятором".to_string()),
+
             _ => Err(format!("Неподдерживаемое выражение: {:?}", expr)),
         }
     }

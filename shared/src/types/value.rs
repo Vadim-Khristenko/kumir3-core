@@ -34,6 +34,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
+use super::expr::Expr;
 use super::number::Number;
 use super::registry::TypeId;
 use crate::f128::F128;
@@ -230,15 +231,18 @@ pub struct LambdaValue {
     pub param_types: Vec<Option<TypeKind>>,
     /// Return type (optional)
     pub return_type: Option<TypeKind>,
-    /// Body expression index (points to AST)
-    pub body_id: usize,
+    /// Body expression
+    pub body: Box<Expr>,
     /// Captured variables from enclosing scope
     pub captures: BTreeMap<String, Value>,
 }
 
 impl PartialEq for LambdaValue {
     fn eq(&self, other: &Self) -> bool {
-        self.body_id == other.body_id && self.params == other.params
+        self.params == other.params
+            && self.param_types == other.param_types
+            && self.return_type == other.return_type
+            && self.body == other.body
     }
 }
 

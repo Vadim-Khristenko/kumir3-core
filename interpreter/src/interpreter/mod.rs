@@ -989,4 +989,77 @@ mod tests {
             Value::Number(shared::types::Number::I64(10))
         );
     }
+
+    #[test]
+    fn test_lambda_execution() {
+        let source = r#"
+алг Тест
+нач
+    пусть f := лямбда(x) -> x + 1
+    вывод f(5)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("6"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_short_lambda() {
+        let source = r#"
+алг Тест
+нач
+    пусть f := x => x * 2
+    вывод f(7)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("14"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_short_lambda_multi_param() {
+        let source = r#"
+алг Тест
+нач
+    пусть f := (x, y) => x + y
+    вывод f(3, 4)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("7"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_lambda_capture() {
+        let source = r#"
+алг Тест
+нач
+    пусть a := 10
+    пусть f := x => x + a
+    вывод f(5)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("15"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
 }

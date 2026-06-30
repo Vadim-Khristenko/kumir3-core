@@ -1,6 +1,6 @@
 use super::ExprEvaluator;
 
-use shared::types::{Algorithm, Expr, Value};
+use shared::types::{Algorithm, Expr, LambdaValue, Value};
 
 use super::super::builtins::Builtins;
 use super::super::environment::Environment;
@@ -19,6 +19,11 @@ impl ExprEvaluator {
         // Сначала пробуем встроенные функции
         if let Some(result) = Builtins::try_call(name, args, env)? {
             return Ok(result);
+        }
+
+        // Пробуем вызвать значение-лямбду, хранящееся в переменной
+        if let Ok(Value::Lambda(lambda)) = env.get_variable(name).cloned() {
+            return Self::call_lambda(lambda.as_ref(), args, env);
         }
 
         // Проверяем перегруженные алгоритмы
@@ -167,5 +172,47 @@ impl ExprEvaluator {
             Ok(_) => Ok(return_value.unwrap_or(Value::Null)),
             Err(e) => Err(e),
         }
+    }
+
+    /// Вызывает лямбда-значение с заданными аргументами.
+    pub(crate) fn call_lambda(
+        lambda: &LambdaValue,
+        args: &[Expr],
+        env: &mut Environment,
+    ) -> RuntimeResult<Value> {
+        if args.len() != lambda.params.len() {
+            return Err(RuntimeError::argument_count(
+                "lambda",
+                lambda.params.len(),
+                args.len(),
+            ));
+        }
+
+        // Аргументы вычисляются в среде вызывающего.
+        let mut arg_values: Vec<Value> = Vec::with_capacity(args.len());
+        for arg in args {
+            arg_values.push(Self::evaluate(arg, env)?);
+        }
+
+        // Новый кадр для лямбды.
+        env.push_frame("lambda")?;
+
+        // Захваченные переменные.
+        for (name, value) in &lambda.captures {
+            env.define_local(name.clone(), value.clone());
+        }
+
+        // Параметры.
+        for (i, param) in lambda.params.iter().enumerate() {
+            env.define_local(param.clone(), arg_values[i].clone());
+        }
+
+        // Выполняем тело лямбды.
+        let result = Self::evaluate(&lambda.body, env);
+
+        // Удаляем кадр независимо от результата.
+        env.pop_frame();
+
+        result
     }
 }

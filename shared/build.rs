@@ -25,7 +25,7 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
     // ---- ADVANCED TYPES (KUMIR 3) ----
     ("PointerType", "указатель", &["pointer", "ptr"]),
     ("EnumType", "перечисление", &["enum"]),
-    ("AutoType", "авто", &["auto", "var"]),
+    ("AutoType", "авто", &["auto", "var", "пусть"]),
     ("NoneType", "пустота", &["void", "unit"]),
     (
         "OptionalType",

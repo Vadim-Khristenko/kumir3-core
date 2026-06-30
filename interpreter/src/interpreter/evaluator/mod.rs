@@ -17,7 +17,10 @@ mod range;
 mod string;
 mod unary;
 
-use shared::types::{Expr, TypeKind, Value};
+use std::collections::{BTreeMap, HashSet};
+use std::iter::FromIterator;
+
+use shared::types::{Expr, LambdaValue, TypeKind, Value};
 
 use super::environment::Environment;
 use super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
@@ -130,10 +133,30 @@ impl ExprEvaluator {
 
             // Лямбда-выражение
             Expr::Lambda {
-                params, body: _, ..
+                params,
+                param_types,
+                return_type,
+                body,
             } => {
-                // Создаём замыкание (пока упрощённая реализация)
-                Ok(Value::String(format!("lambda({:?})", params)))
+                let mut captures = BTreeMap::new();
+                let bound = HashSet::from_iter(params.iter().cloned());
+                let free = body.free_vars(&bound);
+                for name in free {
+                    if let Ok(value) = env.get_variable(&name) {
+                        captures.insert(name, value.clone());
+                    }
+                }
+                let param_types = param_types
+                    .as_ref()
+                    .map(|types| types.iter().map(|t| Some(t.clone())).collect())
+                    .unwrap_or_else(|| params.iter().map(|_| None).collect());
+                Ok(Value::Lambda(Box::new(LambdaValue {
+                    params: params.clone(),
+                    param_types,
+                    return_type: return_type.clone(),
+                    body: body.clone(),
+                    captures,
+                })))
             }
 
             // Pipe-выражение: x |> f

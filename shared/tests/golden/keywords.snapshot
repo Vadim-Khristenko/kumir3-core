@@ -256,6 +256,7 @@ yield	Yield
 публичное	Public
 пусто	None
 пустота	NoneType
+пусть	AutoType
 разыменовать	Deref
 расширяет	Extends
 реализация	Impl
