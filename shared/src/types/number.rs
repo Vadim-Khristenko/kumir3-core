@@ -52,25 +52,6 @@ pub enum Number {
 }
 
 impl Number {
-    /// Converts number to string representation
-    pub fn to_string(&self) -> String {
-        match self {
-            Number::I8(v) => v.to_string(),
-            Number::I16(v) => v.to_string(),
-            Number::I32(v) => v.to_string(),
-            Number::I64(v) => v.to_string(),
-            Number::I128(v) => v.to_string(),
-            Number::U8(v) => v.to_string(),
-            Number::U16(v) => v.to_string(),
-            Number::U32(v) => v.to_string(),
-            Number::U64(v) => v.to_string(),
-            Number::U128(v) => v.to_string(),
-            Number::F32(x) => x.to_string(),
-            Number::F64(x) => x.to_string(),
-            Number::F128(x) => x.to_string(),
-        }
-    }
-
     /// Converts to i64 (if possible without loss of significant digits)
     pub fn to_i64(&self) -> Option<i64> {
         match self {

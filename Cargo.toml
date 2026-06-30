@@ -12,7 +12,6 @@ unreachable_patterns = "allow"
 
 [workspace.lints.clippy]
 derived_hash_with_manual_eq = "allow"   # Value: ручной PartialEq + Hash согласованы через to_string
-inherent_to_string_shadow_display = "allow"
 too_many_lines = "allow"
 
 [workspace.dependencies]
