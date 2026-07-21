@@ -107,6 +107,8 @@ impl ExprEvaluator {
         match result {
             Ok(super::super::error::ControlFlow::Return(value)) => Ok(value.unwrap_or(Value::Null)),
             Ok(_) => Ok(return_value.unwrap_or(Value::Null)),
+            // [KITE-0002] Сигнал оператора `?`: ранний возврат этого значения.
+            Err(e) if e.is_propagation() => Ok(*e.propagate.expect("propagation carries a value")),
             Err(e) => Err(e),
         }
     }
@@ -170,6 +172,8 @@ impl ExprEvaluator {
         match result {
             Ok(super::super::error::ControlFlow::Return(value)) => Ok(value.unwrap_or(Value::Null)),
             Ok(_) => Ok(return_value.unwrap_or(Value::Null)),
+            // [KITE-0002] Сигнал оператора `?`: ранний возврат этого значения.
+            Err(e) if e.is_propagation() => Ok(*e.propagate.expect("propagation carries a value")),
             Err(e) => Err(e),
         }
     }
@@ -213,6 +217,10 @@ impl ExprEvaluator {
         // Удаляем кадр независимо от результата.
         env.pop_frame();
 
-        result
+        // [KITE-0002] Сигнал оператора `?` внутри тела лямбды — ранний возврат.
+        match result {
+            Err(e) if e.is_propagation() => Ok(*e.propagate.expect("propagation carries a value")),
+            other => other,
+        }
     }
 }

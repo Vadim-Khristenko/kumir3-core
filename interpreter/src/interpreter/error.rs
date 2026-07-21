@@ -3,6 +3,7 @@
 //! Модуль содержит типы ошибок, возникающих во время выполнения программы.
 
 use shared::codegen::RustCodeBlockError;
+use shared::types::Value;
 use std::fmt;
 
 /// Ошибка времени выполнения.
@@ -16,6 +17,16 @@ pub struct RuntimeError {
     pub context: Option<String>,
     /// Тип ошибки
     pub kind: RuntimeErrorKind,
+    /// [KITE-0002] Носитель раннего возврата оператора `?`.
+    ///
+    /// Когда `expr?` применяется к «ошибочному»/«отсутствующему» значению,
+    /// вычислитель возвращает `Err` с заполненным `propagate`, неся исходное
+    /// значение. На границе объемлющего алгоритма (см. `call.rs`, `method.rs`,
+    /// `instance.rs`, `run.rs`) этот сигнал перехватывается и превращается в
+    /// ранний возврат этого значения — как если бы был выполнен `возврат`.
+    /// Это НЕ настоящая ошибка выполнения; поля `message`/`kind` служат лишь
+    /// диагностикой, если сигнал случайно достигнет вершины программы.
+    pub propagate: Option<Box<Value>>,
 }
 
 /// Тип ошибки времени выполнения.
@@ -57,7 +68,27 @@ impl RuntimeError {
             line: None,
             context: None,
             kind,
+            propagate: None,
         }
+    }
+
+    /// [KITE-0002] Создаёт сигнал раннего возврата для оператора `?`.
+    ///
+    /// Несёт значение, которое станет результатом объемлющего алгоритма.
+    pub fn propagation(value: Value) -> Self {
+        Self {
+            message: "распространение ошибки оператором '?'".to_string(),
+            line: None,
+            context: None,
+            kind: RuntimeErrorKind::Other,
+            propagate: Some(Box::new(value)),
+        }
+    }
+
+    /// Является ли этот `Err` сигналом раннего возврата оператора `?`.
+    #[inline]
+    pub fn is_propagation(&self) -> bool {
+        self.propagate.is_some()
     }
 
     /// Добавляет номер строки.

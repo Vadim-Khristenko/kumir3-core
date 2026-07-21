@@ -254,6 +254,10 @@ pub enum Expr {
     /// Tuple expression: (a, b, c)
     TupleExpr(Vec<Expr>),
 
+    /// Array literal: `[a, b, c]`. Elements are arbitrary expressions,
+    /// evaluated at runtime (not restricted to compile-time literals).
+    ArrayLiteral(Vec<Expr>),
+
     /// Range expression: start..end or start..=end, optionally with step.
     Range {
         start: Option<Box<Expr>>,
@@ -420,7 +424,7 @@ impl Expr {
             Expr::NotImplemented(_) => {}
             Expr::NotAvailable(_) => {}
             Expr::Deprecated(_) => {}
-            Expr::TupleExpr(elems) => {
+            Expr::TupleExpr(elems) | Expr::ArrayLiteral(elems) => {
                 for e in elems {
                     result.extend(e.free_vars(bound));
                 }
