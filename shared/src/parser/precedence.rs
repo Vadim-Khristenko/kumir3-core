@@ -23,7 +23,7 @@ pub fn binary_precedence(token: &Token) -> Option<u8> {
         Token::Plus | Token::Minus => 6,
 
         // Мультипликативные
-        Token::Star | Token::Slash | Token::Percent => 7,
+        Token::Star | Token::Slash | Token::IntDiv | Token::Percent => 7,
 
         // Степень (правоассоциативный)
         Token::Power => 8,

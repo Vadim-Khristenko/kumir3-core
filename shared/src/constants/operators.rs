@@ -30,7 +30,7 @@ pub fn operator_precedence(token: &Token) -> u8 {
         Token::DoubleDot | Token::DoubleDotEq => 5,
         Token::Pipe => 6,
         Token::Plus | Token::Minus => 7,
-        Token::Star | Token::Slash | Token::Percent => 8,
+        Token::Star | Token::Slash | Token::IntDiv | Token::Percent => 8,
         Token::Power => 9,
         Token::Compose => 10,
         Token::Dot | Token::DoubleColon => 11,
@@ -47,6 +47,7 @@ pub fn is_binary_operator(token: &Token) -> bool {
             | Token::Minus
             | Token::Star
             | Token::Slash
+            | Token::IntDiv
             | Token::Percent
             | Token::Power
             | Token::Equal

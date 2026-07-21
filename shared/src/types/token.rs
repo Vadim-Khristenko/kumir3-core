@@ -229,7 +229,8 @@ pub enum Token {
     Plus,    // +        — addition
     Minus,   // -        — subtraction
     Star,    // *        — multiplication
-    Slash,   // /        — division
+    Slash,   // /        — division (floating-point)
+    IntDiv,  // див      — integer division (integer quotient)
     Percent, // %        — modulo
     Power,   // **       — exponentiation
 

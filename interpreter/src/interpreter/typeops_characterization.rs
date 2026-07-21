@@ -61,6 +61,43 @@ fn char_binary_mod_percent() {
 }
 
 #[test]
+fn char_binary_intdiv_keyword() {
+    // `див` is the integer-division operator (keyword lexed to Token::IntDiv):
+    // the integer quotient, truncated toward zero (mirrors Rust `/` on ints).
+    assert_eq!(eval("7 див 2").unwrap(), Value::Number(Number::I64(3)));
+    assert_eq!(eval("10 див 3").unwrap(), Value::Number(Number::I64(3)));
+    assert_eq!(eval("20 див 5").unwrap(), Value::Number(Number::I64(4)));
+}
+
+#[test]
+fn char_binary_intdiv_mod_identity() {
+    // Identity: (a див b) * b + (a мод b) == a, for a few (a, b) pairs.
+    for (a, b) in [(7_i64, 2_i64), (10, 3), (20, 5), (17, 4), (100, 7)] {
+        let q = eval(&format!("{a} див {b}")).unwrap();
+        let r = eval(&format!("{a} мод {b}")).unwrap();
+        let (q, r) = match (q, r) {
+            (Value::Number(Number::I64(q)), Value::Number(Number::I64(r))) => (q, r),
+            other => panic!("expected I64 quotient/remainder, got {:?}", other),
+        };
+        assert_eq!(q * b + r, a, "identity failed for {a} див/мод {b}");
+    }
+}
+
+#[test]
+fn char_binary_intdiv_negative_truncates_toward_zero() {
+    // Convention implemented: truncation toward zero (Rust `/`).
+    // -7 див 2 == -3 (not floor -4).
+    assert_eq!(eval("-7 див 2").unwrap(), Value::Number(Number::I64(-3)));
+    assert_eq!(eval("7 див -2").unwrap(), Value::Number(Number::I64(-3)));
+}
+
+#[test]
+fn char_binary_intdiv_by_zero_is_error() {
+    // Division by zero must be a clear runtime error, never a panic.
+    assert!(eval("5 див 0").is_err());
+}
+
+#[test]
 fn char_binary_power() {
     let v = eval("2 ** 3").unwrap();
     match v {
