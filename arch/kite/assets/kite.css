@@ -1,60 +1,113 @@
 /* =============================================================================
- * KITE — SHARED STYLESHEET (Enhanced Original)
+ * KITE — SHARED STYLESHEET
  * =============================================================================
- * Default theme: KITE Original (Premium Editorial Edition)
- * Theme overrides: load assets/themes/kite-<name>.css after this file.
+ * Living-standard lane: a modern technical-specification aesthetic for the
+ * Kumir 3 language standard. Monospace-anchored structural voice, warm graphite
+ * dark surfaces, amber (saffron/chalk-warm) primary signal, cool cyan for
+ * interactive affordances. Reads like a beautifully-engineered standard.
  *
- * Vocabulary: kite-header, kite-meta, kite-status, kite-toc, kite-section,
- * kite-callout, kite-code, kite-table, kite-badge, kite-grid/kite-card,
- * kite-footer, kite-theme-bar (injected by kite.js).
+ * Default theme lives here. Alt themes override the --kite-* custom properties
+ * (and a few selectors) via assets/themes/kite-<name>.css loaded AFTER this
+ * file. Never rename the custom-property contract below — the alt themes and
+ * kite.js depend on it.
+ *
+ * Vocabulary (all injected/consumed by kite.js — keep every class styled):
+ *   kite-header, kite-eyebrow, kite-meta, kite-status, kite-toc, kite-section,
+ *   kite-callout, kite-callout-title, kite-code, kite-table, kite-badge,
+ *   kite-grid/kite-card, kite-footer, kite-search, kite-hit, kite-empty,
+ *   kite-theme-bar/-swatch/-sep/-custom-btn/-panel (injected by kite.js).
  * ========================================================================= */
 
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
-/* ── Variables: KITE Original ──────────────────────────────────────────── */
+/* ── Variables: KITE Standard (default) ────────────────────────────────────
+ * Palette expressed in OKLCH for perceptual evenness; committed warm-graphite
+ * dark with amber primary + cool-cyan secondary. Contrast verified ≥6.5:1 for
+ * all foreground roles against both --kite-bg and --kite-surface.
+ * ------------------------------------------------------------------------- */
 .kite {
-    /* Palette — warm dark editorial (Мягкие, глубокие благородные оттенки) */
-    --kite-bg: #0d0b09;
-    --kite-surface: #15120e;
-    --kite-surface-2: #1e1a14;
-    --kite-border: #2e2720;
-    --kite-text: #ddd4c5;
-    --kite-text-dim: #8a7e70;
-    --kite-heading: #f4ede2;
+    /* Surfaces — warm near-black graphite (neutral-warm, very low chroma) */
+    --kite-bg: oklch(0.178 0.005 60); /* #13110f */
+    --kite-surface: oklch(0.216 0.007 64); /* #1c1916 */
+    --kite-surface-2: oklch(0.255 0.009 66); /* #26221e */
+    --kite-border: oklch(0.305 0.01 66); /* #332e2a */
 
-    /* Смягченные акценты, не режущие глаза в темноте */
-    --kite-accent: #bf4e28; /* Дорогой терракотовый */
-    --kite-accent-2: #5f998c; /* Спокойный шалфейный */
-    --kite-pink: #b56d8d; /* Пыльная роза */
+    /* Ink — warm off-white, headings brighter */
+    --kite-text: oklch(0.9 0.01 75); /* #e2ddd7 · 14:1 on bg */
+    --kite-text-dim: oklch(0.68 0.013 72); /* #9d9790 · 6.5:1 on bg */
+    --kite-heading: oklch(0.965 0.008 80); /* #f6f3ee · 17:1 on bg */
 
-    --kite-green: #599c62;
-    --kite-yellow: #b8953f;
-    --kite-orange: #b86e38;
-    --kite-red: #b34646;
+    /* Signals — saffron amber is the primary structural voice; a quiet, muted
+     * signal-blue is reserved for links/interactive affordances only. They are
+     * never mixed into one gradient — warmth leads, cool supports. */
+    --kite-accent: oklch(0.795 0.125 72); /* #eeae5a saffron amber */
+    --kite-accent-2: oklch(0.72 0.095 245); /* #70abdc muted signal-blue */
+    --kite-pink: oklch(0.76 0.115 350); /* #e892bb dusty pink */
+
+    /* Semantic status — retuned into the new palette */
+    --kite-green: oklch(0.775 0.115 155); /* #76cc95 */
+    --kite-yellow: oklch(0.82 0.12 92); /* #e0c262 */
+    --kite-orange: oklch(0.755 0.14 52); /* #f49455 */
+    --kite-red: oklch(0.695 0.165 25); /* #f26d67 */
+
+    /* Derived tints (added; not part of the override contract) */
+    --kite-accent-soft: color-mix(in oklab, var(--kite-accent) 14%, transparent);
+    --kite-accent-2-soft: color-mix(
+        in oklab,
+        var(--kite-accent-2) 16%,
+        transparent
+    );
+    --kite-ring: color-mix(in oklab, var(--kite-accent-2) 55%, transparent);
+    --kite-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 28px rgba(0, 0, 0, 0.28);
 
     /* Shape */
-    --kite-radius: 4px;
-    --kite-radius-sm: 2px;
-    --kite-gap: 1.5rem;
+    --kite-radius: 10px;
+    --kite-radius-sm: 6px;
+    --kite-gap: 1.25rem;
+
+    /* ── Icon set ──────────────────────────────────────────────────────────
+     * Cohesive line icons: 24×24 viewBox, 1.5px stroke, round caps/joins,
+     * fill:none. Consumed as CSS masks so each icon paints in currentColor
+     * (see .kite-icon technique below). URL-encoded data-URIs — never put a
+     * raw '#' or '<' here or the CSS will break. */
+    --icon-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cline x1='12' y1='11' x2='12' y2='16.5'/%3E%3Ccircle cx='12' cy='7.75' r='0.4'/%3E%3C/svg%3E");
+    --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8 12.2l2.6 2.6L16 9.4'/%3E%3C/svg%3E");
+    --icon-warning: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.6L21.2 19.5a1 1 0 0 1-.87 1.5H3.67a1 1 0 0 1-.87-1.5z'/%3E%3Cline x1='12' y1='9.5' x2='12' y2='14'/%3E%3Ccircle cx='12' cy='17.2' r='0.4'/%3E%3C/svg%3E");
+    --icon-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5l2.6 5.27 5.82.85-4.21 4.1.99 5.79L12 16.78l-5.2 2.73.99-5.79-4.21-4.1 5.82-.85z'/%3E%3C/svg%3E");
+    --icon-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cline x1='15.5' y1='15.5' x2='20' y2='20'/%3E%3C/svg%3E");
+    --icon-bullet: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='8' y='8' width='8' height='8' rx='1.6'/%3E%3C/svg%3E");
+    --icon-section: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='9.5' y1='4.5' x2='7.5' y2='19.5'/%3E%3Cline x1='16.5' y1='4.5' x2='14.5' y2='19.5'/%3E%3Cline x1='4.5' y1='9' x2='19' y2='9'/%3E%3Cline x1='4' y1='15' x2='18.5' y2='15'/%3E%3C/svg%3E");
+    --icon-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='4' y1='12' x2='19' y2='12'/%3E%3Cpolyline points='13 6 19 12 13 18'/%3E%3C/svg%3E");
 
     /* Typography */
-    --kite-font: "Fraunces", Georgia, "Times New Roman", serif;
-    --kite-font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
-    --kite-mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    --kite-font: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
+    --kite-font-sans: "Hanken Grotesk", system-ui, sans-serif;
+    --kite-mono: "JetBrains Mono", "Fira Code", "SFMono-Regular", Consolas,
+        monospace;
+
+    /* Fluid modular scale (ratio ≈ 1.25, viewport 360→1120) */
+    --step--1: clamp(0.79rem, 0.76rem + 0.14vw, 0.86rem);
+    --step-0: clamp(0.94rem, 0.9rem + 0.18vw, 1rem);
+    --step-1: clamp(1.13rem, 1.05rem + 0.35vw, 1.33rem);
+    --step-2: clamp(1.4rem, 1.25rem + 0.68vw, 1.86rem);
+    --step-3: clamp(1.75rem, 1.5rem + 1.15vw, 2.61rem);
+    --step-4: clamp(2.18rem, 1.75rem + 1.95vw, 3.64rem);
 
     /* Layout */
     color-scheme: dark;
     box-sizing: border-box;
-    max-width: 980px;
+    max-width: 68rem;
     margin: 0 auto;
-    padding: 3rem 2rem 5rem;
+    padding: clamp(1.5rem, 1rem + 2.4vw, 3.25rem) clamp(1rem, 0.4rem + 3vw, 2.5rem)
+        5rem;
     background: var(--kite-bg);
     color: var(--kite-text);
     font-family: var(--kite-font-sans);
-    font-size: 16px;
-    line-height: 1.75;
+    font-size: var(--step-0);
+    line-height: 1.72;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }
 
 .kite *,
@@ -68,16 +121,24 @@ html:has(> body > .kite),
 body:has(> .kite) {
     margin: 0;
     min-height: 100vh;
-    background: #0d0b09; /* keep in sync with --kite-bg */
+    background: #13110f; /* keep in sync with --kite-bg */
 }
 body:has(> .kite) > .kite {
-    max-width: 1120px;
+    max-width: 72rem;
 }
 
-/* Focus styling for enhancement accessibility */
-.kite :focus-visible {
-    outline: 2px solid var(--kite-accent-2);
-    outline-offset: 3px;
+/* Focus ring — cool signal, consistent everywhere */
+.kite :focus-visible,
+.kite-theme-bar :focus-visible,
+.kite-theme-panel :focus-visible {
+    outline: 2px solid var(--kite-ring, #70abdc);
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+
+::selection {
+    background: color-mix(in oklab, #eeae5a 30%, transparent);
+    color: #f6f3ee;
 }
 
 /* ── Typography ─────────────────────────────────────────────────────────── */
@@ -87,61 +148,75 @@ body:has(> .kite) > .kite {
 .kite h4 {
     font-family: var(--kite-font);
     color: var(--kite-heading);
-    line-height: 1.25;
+    line-height: 1.12;
     font-weight: 700;
-    margin: 2.5rem 0 1rem;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 2.75rem 0 1rem;
 }
 .kite h1 {
-    font-size: 2.2rem;
+    font-size: var(--step-4);
+    font-weight: 800;
+    letter-spacing: -0.04em;
     margin-top: 0;
-    letter-spacing: -0.02em;
 }
 .kite h2 {
-    font-size: 1.55rem;
-    padding-bottom: 0.7rem;
-    position: relative;
+    font-size: var(--step-2);
+    letter-spacing: -0.03em;
+    margin-top: 3rem;
+    padding-bottom: 0.6rem;
     border-bottom: 1px solid var(--kite-border);
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
 }
-.kite h2::after {
+/* Amber section marker — a leading glyph, not a left border-stripe */
+.kite-section > h2::before {
     content: "";
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    width: 2.5rem;
-    height: 2px;
-    background: var(--kite-accent);
-    border-radius: 2px;
+    display: inline-block;
+    width: 0.82em;
+    height: 0.82em;
+    color: var(--kite-accent);
+    background-color: currentColor;
+    -webkit-mask: var(--icon-section) center / contain no-repeat;
+    mask: var(--icon-section) center / contain no-repeat;
+    transform: translateY(0.06em);
+    flex-shrink: 0;
 }
 .kite h3 {
-    font-family: var(--kite-font-sans);
-    font-size: 0.82rem;
+    font-family: var(--kite-mono);
+    font-size: var(--step--1);
     font-weight: 600;
-    letter-spacing: 0.11em;
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    text-transform: none;
     color: var(--kite-accent-2);
-    margin-top: 2rem;
+    margin-top: 2.25rem;
 }
 .kite h4 {
     font-family: var(--kite-font-sans);
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: var(--step-0);
+    font-weight: 700;
+    letter-spacing: -0.01em;
     color: var(--kite-heading);
+    margin-top: 1.75rem;
 }
 .kite p {
     margin: 0.9rem 0;
+    max-width: 70ch;
+    text-wrap: pretty;
 }
 .kite a {
     color: var(--kite-accent-2);
     text-decoration: none;
     border-bottom: 1px solid
-        color-mix(in srgb, var(--kite-accent-2) 30%, transparent);
+        color-mix(in oklab, var(--kite-accent-2) 32%, transparent);
     transition:
-        color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-        border-bottom-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        color 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+        border-bottom-color 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .kite a:hover {
-    color: var(--kite-accent);
-    border-bottom-color: var(--kite-accent);
+    color: color-mix(in oklab, var(--kite-accent-2) 82%, white);
+    border-bottom-color: currentColor;
 }
 .kite strong {
     color: var(--kite-heading);
@@ -152,32 +227,38 @@ body:has(> .kite) > .kite {
 }
 .kite ul,
 .kite ol {
-    padding-left: 1.5rem;
+    padding-left: 1.4rem;
+    max-width: 70ch;
 }
 .kite li {
-    margin: 0.45rem 0;
+    margin: 0.4rem 0;
+}
+.kite li::marker {
+    color: var(--kite-accent);
+}
+.kite ul li::marker {
+    color: color-mix(in oklab, var(--kite-accent) 70%, var(--kite-text-dim));
 }
 .kite hr {
     border: 0;
     height: 1px;
-    /* Улучшен плавный уход в прозрачность без серых стыков */
     background: linear-gradient(
         90deg,
         var(--kite-accent) 0%,
-        var(--kite-border) 40%,
-        color-mix(in srgb, var(--kite-bg) 0%, transparent) 100__
+        var(--kite-border) 42%,
+        transparent 100%
     );
-    margin: 2.5rem 0;
+    margin: 2.75rem 0;
 }
 .kite kbd {
     font-family: var(--kite-mono);
     font-size: 0.82em;
-    color: var(--kite-text);
+    color: var(--kite-heading);
     background: var(--kite-surface-2);
     border: 1px solid var(--kite-border);
     border-bottom-width: 2px;
-    border-radius: var(--kite-radius);
-    padding: 0.15em 0.45em;
+    border-radius: var(--kite-radius-sm);
+    padding: 0.12em 0.45em;
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -186,83 +267,88 @@ body:has(> .kite) > .kite {
     border: 1px solid var(--kite-border);
     border-radius: var(--kite-radius);
     background: var(--kite-surface);
-    padding: 2rem 2.2rem;
+    padding: clamp(1.5rem, 1rem + 2vw, 2.4rem);
     margin-bottom: 2.5rem;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--kite-shadow);
 }
-/* Смягченный градиент верхней полосы */
+/* Top hairline — a single amber signal that fades out. No two-tone gradient. */
 .kite-header::before {
     content: "";
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+    inset: 0 0 auto 0;
     height: 2px;
     background: linear-gradient(
         90deg,
         var(--kite-accent) 0%,
-        var(--kite-accent-2) 45%,
-        color-mix(in srgb, var(--kite-surface) 0%, transparent) 100%
+        color-mix(in oklab, var(--kite-accent) 55%, transparent) 32%,
+        transparent 82%
     );
 }
-/* Более мягкое и глубокое свечение в углу */
+/* Faint corner glow — atmospheric, not decorative noise */
 .kite-header::after {
     content: "";
     position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 140px;
-    height: 140px;
+    bottom: -40px;
+    right: -40px;
+    width: 220px;
+    height: 220px;
     background: radial-gradient(
-        circle at bottom right,
-        color-mix(in srgb, var(--kite-accent) 15%, transparent) 0%,
-        transparent 70%
+        circle at center,
+        var(--kite-accent-soft) 0%,
+        transparent 68%
     );
     pointer-events: none;
 }
-
 .kite-eyebrow {
     font-family: var(--kite-mono);
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     font-weight: 500;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--kite-accent);
     display: inline-flex;
     align-items: center;
-    gap: 0.6em;
+    gap: 0.55em;
 }
 .kite-eyebrow::before {
     content: "";
     display: inline-block;
-    width: 1.4em;
-    height: 1px;
+    width: 1.5em;
+    height: 2px;
     background: currentColor;
-    opacity: 0.4;
+    border-radius: 2px;
+    opacity: 0.85;
     flex-shrink: 0;
 }
 .kite-header h1 {
-    margin: 0.6rem 0 1.2rem;
-    font-size: 2.1rem;
-    letter-spacing: -0.025em;
+    margin: 0.75rem 0 1.25rem;
+    max-width: 20ch;
+}
+.kite-header > p {
+    max-width: 62ch;
+    color: var(--kite-text);
+    font-size: var(--step-1);
+    line-height: 1.5;
 }
 
+/* ── Meta (definition list) ─────────────────────────────────────────────── */
 .kite-meta {
     display: grid;
     grid-template-columns: max-content 1fr;
-    gap: 0.35rem 1.5rem;
+    gap: 0.4rem 1.6rem;
     margin: 0;
-    font-family: var(--kite-font-sans);
-    font-size: 0.88rem;
+    font-size: 0.9rem;
 }
 .kite-meta dt {
+    font-family: var(--kite-mono);
     color: var(--kite-text-dim);
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.68rem;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.07em;
-    padding-top: 0.1em;
+    letter-spacing: 0.08em;
+    padding-top: 0.18em;
+    white-space: nowrap;
 }
 .kite-meta dd {
     margin: 0;
@@ -277,110 +363,138 @@ body:has(> .kite) > .kite {
     font-family: var(--kite-mono);
     font-size: 0.72rem;
     font-weight: 500;
-    padding: 0.2em 0.75em;
+    padding: 0.22em 0.72em;
     border-radius: 999px;
-    border: 1px solid currentColor;
+    border: 1px solid color-mix(in oklab, currentColor 45%, transparent);
     letter-spacing: 0.02em;
-    background: rgba(255, 255, 255, 0.01);
+    color: var(--kite-text-dim);
+    background: color-mix(in oklab, currentColor 8%, transparent);
+    white-space: nowrap;
 }
 .kite-status::before {
     content: "";
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: currentColor;
+    box-shadow: 0 0 0 3px color-mix(in oklab, currentColor 22%, transparent);
     flex-shrink: 0;
 }
 .kite-status.is-stable {
     color: var(--kite-green);
-    background: color-mix(in srgb, var(--kite-green) 5%, transparent);
 }
 .kite-status.is-experimental {
     color: var(--kite-yellow);
-    background: color-mix(in srgb, var(--kite-yellow) 5%, transparent);
 }
 .kite-status.is-draft {
     color: var(--kite-orange);
-    background: color-mix(in srgb, var(--kite-orange) 5%, transparent);
 }
 
-/* ── Table of Contents ──────────────────────────────────────────────────── */
+/* ── Table of Contents ──────────────────────────────────────────────────────
+ * Full 1px border + subtle surface. No left accent stripe (::before is a label
+ * marker only, positioned inline — never a colored side-rail). */
 .kite-toc {
     position: relative;
     background: var(--kite-surface);
     border: 1px solid var(--kite-border);
     border-radius: var(--kite-radius);
-    padding: 1.3rem 1.5rem 1.3rem 1.8rem;
+    padding: 1.4rem 1.6rem;
     margin: 0 0 2.5rem;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--kite-shadow);
 }
 .kite-toc::before {
-    content: "";
-    position: absolute;
-    top: 1.2rem;
-    bottom: 1.2rem;
-    left: 0;
-    width: 2px;
-    background: linear-gradient(
-        to bottom,
-        var(--kite-accent),
-        var(--kite-accent-2)
-    );
-    border-radius: 0 2px 2px 0;
+    content: none; /* explicitly kill any inherited left-stripe */
 }
 .kite-toc h2 {
-    font-family: var(--kite-font-sans);
-    font-size: 0.72rem;
+    font-family: var(--kite-mono);
+    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.13em;
+    letter-spacing: 0.14em;
     color: var(--kite-text-dim);
     border: 0;
-    margin: 0 0 0.8rem;
     padding: 0;
+    margin: 0 0 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.55em;
 }
-.kite-toc h2::after {
-    display: none;
+.kite-toc h2::before {
+    content: "";
+    width: 0.55em;
+    height: 0.55em;
+    border: 1.5px solid var(--kite-accent);
+    border-radius: 2px;
+    flex-shrink: 0;
 }
 .kite-toc ol {
     margin: 0;
-    padding-left: 1.3rem;
+    padding: 0;
+    list-style: none;
+    counter-reset: kite-toc;
+    columns: 2;
+    column-gap: 2rem;
 }
 .kite-toc li {
-    margin: 0.3rem 0;
+    margin: 0;
+    counter-increment: kite-toc;
+    break-inside: avoid;
 }
 .kite-toc a {
     color: var(--kite-text);
     border-bottom: none;
     font-family: var(--kite-font-sans);
-    font-size: 0.88rem;
+    font-size: 0.9rem;
+    display: flex;
+    gap: 0.6em;
+    align-items: baseline;
+    padding: 0.32rem 0.55rem 0.32rem 0.5rem;
+    border-radius: var(--kite-radius-sm);
     transition:
-        color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-        transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    display: inline-block;
+        color 0.18s ease-out,
+        background-color 0.18s ease-out;
+}
+.kite-toc a::before {
+    content: counter(kite-toc, decimal-leading-zero);
+    font-family: var(--kite-mono);
+    font-size: 0.72em;
+    font-weight: 500;
+    color: var(--kite-text-dim);
+    flex-shrink: 0;
+    transition: color 0.18s ease-out;
 }
 .kite-toc a:hover {
+    color: var(--kite-heading);
+    background: var(--kite-surface-2);
+}
+.kite-toc a:hover::before {
     color: var(--kite-accent);
-    transform: translateX(3px);
 }
 .kite-toc a.is-active {
     color: var(--kite-accent);
     font-weight: 600;
+    background: var(--kite-accent-soft);
+}
+.kite-toc a.is-active::before {
+    color: var(--kite-accent);
 }
 
 /* ── Sections ───────────────────────────────────────────────────────────── */
 .kite-section {
     margin: 3rem 0;
+    scroll-margin-top: 1.5rem;
 }
 
-/* ── Callouts ───────────────────────────────────────────────────────────── */
+/* ── Callouts ────────────────────────────────────────────────────────────────
+ * Full 1px border + subtle tint + a leading labelled icon. NO side stripe.
+ * The icon (a glyph before the title) is the non-color signal for a11y. */
 .kite-callout {
-    border-left: 3px solid var(--kite-accent);
     background: var(--kite-surface);
-    border-radius: 0 var(--kite-radius) var(--kite-radius) 0;
-    padding: 1.1rem 1.4rem;
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius);
+    padding: 1.15rem 1.4rem;
     margin: 1.8rem 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 .kite-callout > :first-child {
     margin-top: 0;
@@ -389,99 +503,173 @@ body:has(> .kite) > .kite {
     margin-bottom: 0;
 }
 .kite-callout-title {
-    font-family: var(--kite-font-sans);
+    font-family: var(--kite-mono);
     font-weight: 600;
-    font-size: 0.79rem;
+    font-size: 0.76rem;
     text-transform: uppercase;
-    letter-spacing: 0.07em;
+    letter-spacing: 0.06em;
     display: flex;
     align-items: center;
-    gap: 0.5em;
-    margin-bottom: 0.6rem;
+    gap: 0.55em;
+    margin-bottom: 0.65rem;
     color: var(--kite-heading);
 }
+/* Leading icon token: a tinted rounded chip carrying a centered line glyph.
+ * The chip tint is a real background layer; the glyph is a mask so it inherits
+ * the title's currentColor (keeping the per-type accent + alt-theme contract).
+ * Because a mask would clip the whole element, the chip is drawn on ::before
+ * and the glyph on ::after — both stacked in the same 1.5em box via flex+order,
+ * so the mask only clips the glyph, never the chip tint. */
+.kite-callout-title::before {
+    content: "";
+    display: inline-block;
+    width: 1.5em;
+    height: 1.5em;
+    border-radius: 6px;
+    background: color-mix(in oklab, currentColor 16%, transparent);
+    flex-shrink: 0;
+    /* pull the following glyph on top of this chip */
+    margin-right: -1.5em;
+}
+.kite-callout-title::after {
+    content: "";
+    display: inline-block;
+    width: 1.5em;
+    height: 1.5em;
+    background-color: currentColor;
+    -webkit-mask: var(--_ico, var(--icon-bullet)) center / 0.95em no-repeat;
+    mask: var(--_ico, var(--icon-bullet)) center / 0.95em no-repeat;
+    flex-shrink: 0;
+    order: -1;
+}
+/* NOTE — cool/informational */
 .kite-callout.is-note {
-    border-left-color: var(--kite-accent-2);
-    background: color-mix(
-        in srgb,
-        var(--kite-accent-2) 3%,
-        var(--kite-surface)
-    );
+    background: color-mix(in oklab, var(--kite-accent-2) 6%, var(--kite-surface));
+    border-color: color-mix(in oklab, var(--kite-accent-2) 30%, var(--kite-border));
 }
 .kite-callout.is-note .kite-callout-title {
     color: var(--kite-accent-2);
 }
+.kite-callout.is-note .kite-callout-title::before {
+    background: color-mix(in oklab, currentColor 18%, transparent);
+}
+.kite-callout.is-note .kite-callout-title::after {
+    --_ico: var(--icon-info);
+}
+/* TIP — success/green */
 .kite-callout.is-tip {
-    border-left-color: var(--kite-green);
-    background: color-mix(in srgb, var(--kite-green) 3%, var(--kite-surface));
+    background: color-mix(in oklab, var(--kite-green) 6%, var(--kite-surface));
+    border-color: color-mix(in oklab, var(--kite-green) 28%, var(--kite-border));
 }
 .kite-callout.is-tip .kite-callout-title {
     color: var(--kite-green);
 }
+.kite-callout.is-tip .kite-callout-title::before {
+    background: color-mix(in oklab, currentColor 18%, transparent);
+}
+.kite-callout.is-tip .kite-callout-title::after {
+    --_ico: var(--icon-check);
+}
+/* WARNING — orange */
 .kite-callout.is-warning {
-    border-left-color: var(--kite-orange);
-    background: color-mix(in srgb, var(--kite-orange) 3%, var(--kite-surface));
+    background: color-mix(in oklab, var(--kite-orange) 7%, var(--kite-surface));
+    border-color: color-mix(in oklab, var(--kite-orange) 32%, var(--kite-border));
 }
 .kite-callout.is-warning .kite-callout-title {
     color: var(--kite-orange);
 }
+.kite-callout.is-warning .kite-callout-title::before {
+    background: color-mix(in oklab, currentColor 18%, transparent);
+}
+.kite-callout.is-warning .kite-callout-title::after {
+    --_ico: var(--icon-warning);
+}
+/* IMPORTANT — pink/high-signal */
 .kite-callout.is-important {
-    border-left-color: var(--kite-pink);
-    background: color-mix(in srgb, var(--kite-pink) 3%, var(--kite-surface));
+    background: color-mix(in oklab, var(--kite-pink) 7%, var(--kite-surface));
+    border-color: color-mix(in oklab, var(--kite-pink) 32%, var(--kite-border));
 }
 .kite-callout.is-important .kite-callout-title {
     color: var(--kite-pink);
+}
+.kite-callout.is-important .kite-callout-title::before {
+    background: color-mix(in oklab, currentColor 18%, transparent);
+}
+.kite-callout.is-important .kite-callout-title::after {
+    --_ico: var(--icon-star);
 }
 
 /* ── Code ───────────────────────────────────────────────────────────────── */
 .kite code {
     font-family: var(--kite-mono);
-    font-size: 0.84em;
-    color: var(--kite-accent-2);
+    font-size: 0.85em;
+    color: color-mix(in oklab, var(--kite-accent-2) 88%, var(--kite-heading));
     background: var(--kite-surface-2);
     border: 1px solid var(--kite-border);
-    border-radius: var(--kite-radius);
-    padding: 0.15em 0.42em;
+    border-radius: 5px;
+    padding: 0.12em 0.42em;
+    word-break: break-word;
 }
 .kite-code {
     position: relative;
-    background: var(--kite-surface);
+    background: color-mix(in oklab, var(--kite-surface) 80%, var(--kite-bg));
     border: 1px solid var(--kite-border);
     border-radius: var(--kite-radius);
     margin: 1.8rem 0;
     overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 .kite-code pre {
     margin: 0;
-    padding: 1.3rem 1.5rem;
+    padding: 1.35rem 1.5rem;
+    padding-top: 2.6rem;
     overflow-x: auto;
     color: var(--kite-text);
+    scrollbar-width: thin;
+    scrollbar-color: var(--kite-border) transparent;
 }
 .kite-code code {
     color: var(--kite-text);
     background: none;
     border: 0;
     padding: 0;
-    font-size: 0.875rem;
-    line-height: 1.65;
+    font-size: 0.86rem;
+    line-height: 1.7;
+    word-break: normal;
 }
+/* Language tag — a terminal-style ribbon along the top edge */
 .kite-code[data-lang]::before {
     content: attr(data-lang);
     position: absolute;
-    top: 0;
-    right: 0;
+    inset: 0 0 auto 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    height: 2rem;
+    padding: 0 1.5rem;
     font-family: var(--kite-mono);
-    font-size: 0.63rem;
+    font-size: 0.66rem;
     font-weight: 500;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--kite-accent);
-    background: var(--kite-surface-2);
-    border-left: 1px solid var(--kite-border);
+    color: var(--kite-text-dim);
+    background: color-mix(in oklab, var(--kite-surface-2) 70%, var(--kite-bg));
     border-bottom: 1px solid var(--kite-border);
-    border-radius: 0 var(--kite-radius) 0 var(--kite-radius-sm);
-    padding: 0.3em 0.9em;
+}
+/* Amber "prompt" dot leading the language ribbon */
+.kite-code[data-lang]::after {
+    content: "";
+    position: absolute;
+    top: calc(1rem - 3px);
+    left: 1.5rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--kite-accent);
+    opacity: 0.9;
+}
+.kite-code[data-lang]::before {
+    text-indent: 1em;
 }
 
 /* ── Tables ─────────────────────────────────────────────────────────────── */
@@ -490,6 +678,10 @@ body:has(> .kite) > .kite {
     margin: 1.8rem 0;
     overflow-x: auto;
     display: block;
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius);
+    scrollbar-width: thin;
+    scrollbar-color: var(--kite-border) transparent;
 }
 .kite-table table {
     width: 100%;
@@ -500,21 +692,32 @@ body:has(> .kite) > .kite {
 .kite-table th,
 .kite-table td {
     text-align: left;
-    padding: 0.75rem 1rem;
+    padding: 0.7rem 1rem;
     color: var(--kite-text);
     border-bottom: 1px solid var(--kite-border);
+    vertical-align: top;
+}
+.kite-table tbody tr:last-child td {
+    border-bottom: 0;
 }
 .kite-table thead th {
+    position: sticky;
+    top: 0;
     color: var(--kite-text-dim);
+    font-family: var(--kite-mono);
     font-weight: 600;
-    font-size: 0.73rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
-    letter-spacing: 0.09em;
-    border-bottom: 1px solid var(--kite-accent);
-    padding-bottom: 0.7rem;
+    letter-spacing: 0.06em;
+    background: var(--kite-surface-2);
+    border-bottom: 1px solid
+        color-mix(in oklab, var(--kite-accent) 45%, var(--kite-border));
+}
+.kite-table tbody tr {
+    transition: background-color 0.12s ease-out;
 }
 .kite-table tbody tr:hover {
-    background: var(--kite-surface-2);
+    background: color-mix(in oklab, var(--kite-accent) 5%, transparent);
 }
 .kite-table code {
     white-space: nowrap;
@@ -526,35 +729,33 @@ body:has(> .kite) > .kite {
     align-items: center;
     gap: 0.35em;
     font-family: var(--kite-mono);
-    font-size: 0.69rem;
+    font-size: 0.7rem;
     font-weight: 500;
     line-height: 1;
-    padding: 0.25em 0.65em;
-    border-radius: 999px;
-    border: 1px solid currentColor;
+    padding: 0.28em 0.62em;
+    border-radius: 6px;
+    color: var(--kite-text-dim);
+    border: 1px solid color-mix(in oklab, currentColor 40%, transparent);
+    background: color-mix(in oklab, currentColor 10%, transparent);
     white-space: nowrap;
 }
 .kite-badge.is-available {
     color: var(--kite-green);
-    background: color-mix(in srgb, var(--kite-green) 6%, transparent);
 }
 .kite-badge.is-experimental {
     color: var(--kite-yellow);
-    background: color-mix(in srgb, var(--kite-yellow) 6%, transparent);
 }
 .kite-badge.is-proposed {
     color: var(--kite-orange);
-    background: color-mix(in srgb, var(--kite-orange) 6%, transparent);
 }
 .kite-badge.is-deprecated {
     color: var(--kite-red);
-    background: color-mix(in srgb, var(--kite-red) 6%, transparent);
 }
 
-/* ── Grid / Cards ───────────────────────────────────────────────────────── */
+/* ── Grid / Cards (generic feature grid inside docs) ────────────────────── */
 .kite-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
     gap: var(--kite-gap);
     margin: 2rem 0;
 }
@@ -563,49 +764,23 @@ body:has(> .kite) > .kite {
     background: var(--kite-surface);
     border: 1px solid var(--kite-border);
     border-radius: var(--kite-radius);
-    padding: 1.4rem 1.6rem;
-    overflow: hidden;
+    padding: 1.4rem 1.5rem;
     transition:
-        box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-        transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-        border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-/* Мягкий скользящий акцент без резкого скачка */
-.kite-card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(
-        90deg,
-        var(--kite-accent),
-        var(--kite-accent-2)
-    );
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.kite-card:hover::before {
-    transform: scaleX(1);
+        border-color 0.22s ease-out,
+        background-color 0.22s ease-out,
+        transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .kite-card:hover {
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-    transform: translateY(-3px);
-    border-color: color-mix(
-        in srgb,
-        var(--kite-border) 150%,
-        var(--kite-text-dim)
-    );
+    border-color: color-mix(in oklab, var(--kite-accent) 40%, var(--kite-border));
+    background: color-mix(in oklab, var(--kite-surface-2) 55%, var(--kite-surface));
 }
 .kite-card h3 {
-    font-family: var(--kite-font-sans);
-    font-size: 0.98rem;
-    font-weight: 600;
+    font-family: var(--kite-font);
+    font-size: 1.02rem;
+    font-weight: 700;
     text-transform: none;
-    letter-spacing: 0;
-    margin-top: 0.4rem;
+    letter-spacing: -0.01em;
+    margin: 0.35rem 0 0.4rem;
     color: var(--kite-heading);
 }
 .kite-card .kite-card-icon {
@@ -617,7 +792,123 @@ body:has(> .kite) > .kite {
     font-family: var(--kite-font-sans);
     color: var(--kite-text-dim);
     font-size: 0.88rem;
-    margin-bottom: 0;
+    line-height: 1.55;
+    margin: 0.35rem 0 0;
+    max-width: none;
+}
+.kite-card .kite-card-num {
+    font-family: var(--kite-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--kite-accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: block;
+}
+.kite-card a.kite-card-link {
+    color: inherit;
+    border: 0;
+    display: block;
+}
+
+/* ── Index register (index.html — the KITE document sequence) ─────────────────
+ * A designed enumerated register, NOT a uniform clone grid. Each row is a
+ * .kite-card (so kite.js search keeps filtering it), styled as a spec-list row
+ * with a large monospace number, title, type eyebrow, summary and status pill. */
+.kite-register {
+    margin: 2.5rem 0 0;
+    border: 1px solid var(--kite-border);
+    border-radius: var(--kite-radius);
+    overflow: hidden;
+    background: var(--kite-surface);
+    box-shadow: var(--kite-shadow);
+}
+.kite-register .kite-card {
+    border: 0;
+    border-top: 1px solid var(--kite-border);
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    transition: background-color 0.18s ease-out;
+}
+.kite-register .kite-card:first-child {
+    border-top: 0;
+}
+.kite-register .kite-card:hover {
+    background: color-mix(in oklab, var(--kite-accent) 5%, transparent);
+    transform: none;
+}
+.kite-register .kite-card.is-hidden {
+    display: none;
+}
+.kite-register .kite-card-link {
+    display: grid;
+    grid-template-columns: 3.4rem 1fr auto;
+    align-items: baseline;
+    gap: 0.35rem 1.4rem;
+    padding: 1.15rem clamp(1rem, 0.5rem + 1.5vw, 1.7rem);
+}
+/* Big sequence number — the register's earned numbered treatment */
+.kite-register .kite-card-num {
+    grid-row: 1 / span 2;
+    align-self: center;
+    font-family: var(--kite-mono);
+    font-size: 1.55rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--kite-text-dim);
+    text-transform: none;
+    transition: color 0.18s ease-out;
+    font-variant-numeric: tabular-nums;
+}
+.kite-register .kite-card:hover .kite-card-num {
+    color: var(--kite-accent);
+}
+.kite-register .kite-card h3 {
+    grid-column: 2;
+    font-family: var(--kite-font);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0;
+    color: var(--kite-heading);
+}
+.kite-register .kite-card .kite-card-type {
+    font-family: var(--kite-mono);
+    font-size: 0.64rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--kite-accent);
+    margin-left: 0.6rem;
+    white-space: nowrap;
+}
+.kite-register .kite-card p {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 0.25rem 0 0;
+    color: var(--kite-text-dim);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-width: 68ch;
+}
+.kite-register .kite-card .kite-status {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    align-self: center;
+    justify-self: end;
+}
+.kite-register .kite-card-link::after {
+    content: "";
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    width: 1.1em;
+    height: 1.1em;
+    background-color: currentColor;
+    -webkit-mask: var(--icon-arrow-right) center / contain no-repeat;
+    mask: var(--icon-arrow-right) center / contain no-repeat;
+    display: none;
 }
 
 /* ── Footer ─────────────────────────────────────────────────────────────── */
@@ -626,8 +917,9 @@ body:has(> .kite) > .kite {
     padding-top: 1.5rem;
     border-top: 1px solid var(--kite-border);
     color: var(--kite-text-dim);
-    font-family: var(--kite-font-sans);
-    font-size: 0.83rem;
+    font-family: var(--kite-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem 1.5rem;
@@ -636,21 +928,36 @@ body:has(> .kite) > .kite {
 
 /* ── Search box (injected by kite.js) ───────────────────────────────────── */
 .kite-search {
-    margin: 0 0 1rem;
+    position: relative;
+    margin: 0 0 1.25rem;
+}
+.kite-search::before {
+    content: "";
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.05rem;
+    height: 1.05rem;
+    color: var(--kite-text-dim);
+    background-color: currentColor;
+    -webkit-mask: var(--icon-search) center / contain no-repeat;
+    mask: var(--icon-search) center / contain no-repeat;
+    pointer-events: none;
 }
 .kite-search input {
     width: 100%;
     font-family: var(--kite-font-sans);
-    font-size: 0.88rem;
+    font-size: 0.92rem;
     color: var(--kite-text);
-    background: var(--kite-surface-2);
+    background: var(--kite-surface);
     border: 1px solid var(--kite-border);
     border-radius: var(--kite-radius-sm);
-    padding: 0.55rem 0.9rem;
+    padding: 0.62rem 0.9rem 0.62rem 2.5rem;
     outline: none;
     transition:
-        border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-        box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        border-color 0.18s ease-out,
+        box-shadow 0.18s ease-out;
     -webkit-appearance: none;
     appearance: none;
 }
@@ -659,19 +966,18 @@ body:has(> .kite) > .kite {
 }
 .kite-search input:focus {
     border-color: var(--kite-accent-2);
-    box-shadow: 0 0 0 3px
-        color-mix(in srgb, var(--kite-accent-2) 15%, transparent);
+    box-shadow: 0 0 0 3px var(--kite-accent-2-soft);
 }
 
+/* ── Search / filter state ──────────────────────────────────────────────── */
 .kite-section.is-hidden,
 .kite-card.is-hidden,
 .kite-toc li.is-hidden {
     display: none;
 }
-
 .kite-hit {
-    background: color-mix(in srgb, var(--kite-accent) 24%, transparent);
-    border-radius: 2px;
+    background: color-mix(in oklab, var(--kite-accent) 30%, transparent);
+    border-radius: 3px;
     color: var(--kite-heading);
     padding: 0 1px;
 }
@@ -686,24 +992,7 @@ body:has(> .kite) > .kite {
     display: block;
 }
 
-/* Index / landing page card links */
-.kite-card a.kite-card-link {
-    color: inherit;
-    border: 0;
-    display: block;
-}
-.kite-card .kite-card-num {
-    font-family: var(--kite-mono);
-    font-size: 0.69rem;
-    font-weight: 500;
-    color: var(--kite-accent);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    display: block;
-    margin-bottom: 0.1rem;
-}
-
-/* ── Theme Bar (injected by kite.js into <body>, position:fixed) ────────── */
+/* ── Theme Bar (injected by kite.js into <body>, position:fixed) ──────────── */
 .kite-theme-bar {
     position: fixed;
     top: 1rem;
@@ -712,21 +1001,21 @@ body:has(> .kite) > .kite {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    background: var(--kite-surface);
-    border: 1px solid var(--kite-border);
+    background: color-mix(in oklab, #1c1916 82%, transparent);
+    border: 1px solid #332e2a;
     border-radius: 999px;
-    padding: 0.35rem 0.75rem;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-    /* Fallback colors for when .kite vars aren't in scope on body */
-    background-color: #15120e;
-    border-color: #2e2720;
+    padding: 0.4rem 0.8rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    backdrop-filter: blur(14px) saturate(1.2);
+    background-color: #1c1916; /* fallback when backdrop-filter unsupported */
 }
 .kite-theme-label {
     font-family: "JetBrains Mono", "Fira Code", monospace;
     font-size: 0.6rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #8a7e70;
+    color: #9d9790;
     user-select: none;
     padding-right: 0.1rem;
 }
@@ -736,39 +1025,39 @@ body:has(> .kite) > .kite {
     gap: 0.45rem;
 }
 .kite-theme-swatch {
-    width: 12px;
-    height: 12px;
+    width: 13px;
+    height: 13px;
     border-radius: 50%;
     border: 1.5px solid transparent;
     cursor: pointer;
     padding: 0;
     outline: none;
     transition:
-        transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-        box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.18s ease-out;
     flex-shrink: 0;
 }
 .kite-theme-swatch:hover {
-    transform: scale(1.35);
+    transform: scale(1.3);
 }
 .kite-theme-swatch.is-active {
     box-shadow:
-        0 0 0 2px #15120e,
+        0 0 0 2px #1c1916,
         0 0 0 3.5px currentColor;
 }
 .kite-theme-sep {
     width: 1px;
-    height: 10px;
-    background: #2e2720;
+    height: 12px;
+    background: #332e2a;
     flex-shrink: 0;
 }
 .kite-theme-custom-btn {
-    width: 14px;
-    height: 14px;
+    width: 15px;
+    height: 15px;
     border-radius: 50%;
-    border: 1.5px solid #2e2720;
+    border: 1.5px solid #332e2a;
     background: transparent;
-    color: #8a7e70;
+    color: #9d9790;
     font-size: 10px;
     line-height: 1;
     cursor: pointer;
@@ -778,32 +1067,32 @@ body:has(> .kite) > .kite {
     padding: 0;
     outline: none;
     transition:
-        border-color 0.2s,
-        color 0.2s,
-        transform 0.2s;
+        border-color 0.18s ease-out,
+        color 0.18s ease-out,
+        transform 0.18s ease-out;
     flex-shrink: 0;
 }
 .kite-theme-custom-btn:hover {
-    border-color: #8a7e70;
-    color: #f4ede2;
-    transform: scale(1.1);
+    border-color: #9d9790;
+    color: #f6f3ee;
+    transform: scale(1.12);
 }
 .kite-theme-custom-btn.is-active {
-    border-color: var(--kite-accent-2, #5f998c);
-    color: var(--kite-accent-2, #5f998c);
+    border-color: var(--kite-accent-2, #70abdc);
+    color: var(--kite-accent-2, #70abdc);
 }
 
 /* Custom theme panel (dropdown) */
 .kite-theme-panel {
     position: fixed;
-    top: 3.4rem;
+    top: 3.5rem;
     right: 1.2rem;
-    width: 290px;
-    background: #15120e;
-    border: 1px solid #2e2720;
-    border-radius: 6px;
+    width: 292px;
+    background: #1c1916;
+    border: 1px solid #332e2a;
+    border-radius: 12px;
     padding: 1.1rem 1.2rem;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
     z-index: 9001;
     display: none;
 }
@@ -811,98 +1100,130 @@ body:has(> .kite) > .kite {
     display: block;
 }
 .kite-theme-panel-label {
-    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-    font-size: 0.76rem;
-    color: #8a7e70;
+    font-family: "Hanken Grotesk", system-ui, sans-serif;
+    font-size: 0.72rem;
+    color: #9d9790;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.55rem;
 }
 .kite-theme-panel input[type="url"] {
     width: 100%;
     font-family: "JetBrains Mono", monospace;
     font-size: 0.78rem;
-    color: #ddd4c5;
-    background: #1e1a14;
-    border: 1px solid #2e2720;
-    border-radius: 3px;
-    padding: 0.5rem 0.7rem;
-    margin-bottom: 0.6rem;
+    color: #e2ddd7;
+    background: #13110f;
+    border: 1px solid #332e2a;
+    border-radius: 6px;
+    padding: 0.55rem 0.7rem;
+    margin-bottom: 0.65rem;
     outline: none;
     transition:
-        border-color 0.2s,
-        box-shadow 0.2s;
+        border-color 0.18s ease-out,
+        box-shadow 0.18s ease-out;
     -webkit-appearance: none;
     appearance: none;
 }
 .kite-theme-panel input[type="url"]:focus {
-    border-color: #5f998c;
-    box-shadow: 0 0 0 2px rgba(95, 153, 140, 0.15);
+    border-color: #70abdc;
+    box-shadow: 0 0 0 2px rgba(95, 189, 240, 0.18);
 }
 .kite-theme-panel input[type="url"]::placeholder {
-    color: #4a4137;
+    color: #6f675e;
 }
 .kite-theme-panel-actions {
     display: flex;
     gap: 0.5rem;
 }
 .kite-theme-panel-apply {
-    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-    font-size: 0.8rem;
+    font-family: "Hanken Grotesk", system-ui, sans-serif;
+    font-size: 0.82rem;
     font-weight: 600;
-    color: #ede4d4;
-    background: var(--kite-accent, #bf4e28);
+    color: #211a10;
+    background: var(--kite-accent, #eeae5a);
     border: none;
-    border-radius: 3px;
-    padding: 0.45rem 1rem;
+    border-radius: 6px;
+    padding: 0.48rem 1rem;
     cursor: pointer;
     transition:
-        opacity 0.2s,
-        transform 0.1s;
+        filter 0.18s ease-out,
+        transform 0.1s ease-out;
 }
 .kite-theme-panel-apply:hover {
-    opacity: 0.9;
+    filter: brightness(1.06);
 }
 .kite-theme-panel-apply:active {
     transform: scale(0.98);
 }
 .kite-theme-panel-clear {
-    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-    font-size: 0.8rem;
+    font-family: "Hanken Grotesk", system-ui, sans-serif;
+    font-size: 0.82rem;
     font-weight: 500;
-    color: #8a7e70;
-    background: #1e1a14;
-    border: 1px solid #2e2720;
-    border-radius: 3px;
-    padding: 0.45rem 0.85rem;
+    color: #9d9790;
+    background: #26221e;
+    border: 1px solid #332e2a;
+    border-radius: 6px;
+    padding: 0.48rem 0.9rem;
     cursor: pointer;
     transition:
-        color 0.2s,
-        border-color 0.2s,
-        background 0.2s;
+        color 0.18s ease-out,
+        border-color 0.18s ease-out,
+        background 0.18s ease-out;
 }
 .kite-theme-panel-clear:hover {
-    color: #f4ede2;
-    border-color: #8a7e70;
-    background: #231e17;
+    color: #f6f3ee;
+    border-color: #9d9790;
+    background: #2c2722;
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+    .kite-toc ol {
+        columns: 1;
+    }
+}
 @media (max-width: 640px) {
     .kite {
         padding: 1.5rem 1rem 3rem;
     }
     .kite-meta {
         grid-template-columns: 1fr;
-        gap: 0.15rem;
+        gap: 0.1rem;
     }
     .kite-meta dt {
         margin-top: 0.5rem;
     }
+    .kite-register .kite-card-link {
+        grid-template-columns: 2.6rem 1fr;
+        gap: 0.25rem 1rem;
+    }
+    .kite-register .kite-card .kite-status {
+        grid-column: 2;
+        grid-row: auto;
+        justify-self: start;
+        margin-top: 0.5rem;
+    }
+    .kite-register .kite-card-num {
+        font-size: 1.3rem;
+    }
     .kite-theme-bar,
     .kite-theme-panel {
         display: none !important;
+    }
+}
+
+/* ── Motion preferences ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .kite *,
+    .kite *::before,
+    .kite *::after,
+    .kite-theme-bar *,
+    .kite-theme-panel * {
+        transition-duration: 0.001ms !important;
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
     }
 }

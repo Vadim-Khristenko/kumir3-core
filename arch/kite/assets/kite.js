@@ -211,7 +211,7 @@
 
   // --- THEME SYSTEM ---
   const THEMES = [
-    { id: "original",     label: "KITE Original",       accent: "#bf4e28", path: null },
+    { id: "original",     label: "KITE Standard",       accent: "#ebb353", path: null },
     { id: "material1",    label: "Material Design 1",    accent: "#FF7043", path: "themes/kite-material1.css" },
     { id: "material2",    label: "Material Design 2",    accent: "#FFAB91", path: "themes/kite-material2.css" },
     { id: "material3",    label: "Material You (M3)",    accent: "#ffb59f", path: "themes/kite-material3.css" },
@@ -304,7 +304,11 @@
     bar.appendChild(swatchRow);
     bar.appendChild(el("span", "kite-theme-sep"));
 
-    const customBtn = el("button", "kite-theme-custom-btn", "+");
+    const customBtn = el(
+      "button",
+      "kite-theme-custom-btn",
+      '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    );
     customBtn.title = "Своя тема (CSS URL)";
     customBtn.setAttribute("aria-label", "Загрузить свою тему");
 
