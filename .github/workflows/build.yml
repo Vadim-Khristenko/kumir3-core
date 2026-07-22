@@ -90,19 +90,12 @@ jobs:
       # sccache-кэш для компилятора (доп. к rust-cache); можно убрать если не нужен.
       - uses: mozilla-actions/sccache-action@v0.0.10
 
-      # NASM ставим нативно, без Node-экшенов — быстрее и без варнингов о legacy Node20.
+      # NASM нужен только под Windows: aws-lc-sys собирает там ассемблерные вставки,
+      # а на Linux и macOS обходится компилятором C. Ставим нативно, без Node-экшенов.
       - name: Install NASM (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: choco install nasm -y --no-progress
-
-      - name: Install NASM (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y nasm
-
-      - name: Install NASM (macOS)
-        if: runner.os == 'macOS'
-        run: brew install nasm
 
       # Быстрый прогон бинарных тестов + отдельно доктесты (nextest их не поддерживает).
       - name: Install cargo-nextest
@@ -183,14 +176,6 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: choco install nasm -y --no-progress
-
-      - name: Install NASM (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y nasm
-
-      - name: Install NASM (macOS)
-        if: runner.os == 'macOS'
-        run: brew install nasm
 
       # Для обычных прогонов — thin LTO (быстрее линковка).
       # Для релизного тега — fat LTO + strip, ценой более долгой сборки, но лучшего рантайма.
