@@ -14,7 +14,11 @@ impl fmt::Display for Value {
             Value::Number(n) => write!(f, "{}", n),
             Value::String(s) => write!(f, "{}", s),
             Value::Boolean(b) => write!(f, "{}", if *b { "да" } else { "нет" }),
-            Value::Char(c) => write!(f, "'{}'", c),
+            // Символ печатается сам по себе, без кавычек — как и строка выше.
+            // Кавычки — запись символа в исходном тексте, а не его значение:
+            // с ними `вывод 'а'` показывал бы `'а'`, а `'а' как лит` давало бы
+            // строку из трёх символов.
+            Value::Char(c) => write!(f, "{}", c),
             Value::Array(a) => {
                 write!(f, "[")?;
                 for (i, v) in a.iter().enumerate() {
