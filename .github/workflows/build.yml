@@ -23,9 +23,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   CARGO_INCREMENTAL: 0
-  CARGO_PROFILE_RELEASE_LTO: true
 
-# Наименьшие права по умолчанию; job, которому нужно больше, просит явно.
 permissions:
   contents: read
 
@@ -40,23 +38,29 @@ jobs:
     if: ${{ !inputs.rebuild_only }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      # Версия берётся из rust-toolchain.toml — она же и у разработчика.
-      - name: Установить закреплённый Rust
-        run: rustup show active-toolchain || rustup toolchain install
-
-      - uses: Swatinem/rust-cache@v2
+      # Ставит тулчейн из rust-toolchain.toml, сам подключает rust-cache,
+      # даёт GitHub-аннотации ошибок cargo/clippy/rustfmt прямо в диффе PR.
+      - name: Установить Rust (с problem matchers)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          shared-key: lint
+          components: clippy, rustfmt
+          cache-key: lint
 
       - name: cargo fmt --check
-        run: cargo fmt --all -- --check
+        run: |
+          echo "::group::cargo fmt --check"
+          cargo fmt --all -- --check
+          echo "::endgroup::"
 
       - name: cargo clippy
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: |
+          echo "::group::cargo clippy"
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          echo "::endgroup::"
 
   # ───────────────────────────── Тесты на трёх системах ─────────────────────────────
   test:
@@ -67,24 +71,56 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    # sccache включается только там, где он поставлен: RUSTC_WRAPPER на уровне
+    # workflow достался бы и линтерам с аудитом, где sccache нет, — и cargo
+    # упал бы, не найдя обёртку.
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Установить закреплённый Rust
-        run: rustup show active-toolchain || rustup toolchain install
-
-      - uses: Swatinem/rust-cache@v2
+      - name: Установить Rust (с problem matchers)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          shared-key: test-${{ matrix.os }}
+          cache-key: test-${{ matrix.os }}
 
+      # sccache-кэш для компилятора (доп. к rust-cache); можно убрать если не нужен.
+      - uses: mozilla-actions/sccache-action@v0.0.10
+
+      # NASM ставим нативно, без Node-экшенов — быстрее и без варнингов о legacy Node20.
       - name: Install NASM (Windows)
         if: runner.os == 'Windows'
-        uses: ilammy/setup-nasm@v1
+        shell: pwsh
+        run: choco install nasm -y --no-progress
 
-      - name: cargo test
-        run: cargo test --workspace --locked
+      - name: Install NASM (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y nasm
+
+      - name: Install NASM (macOS)
+        if: runner.os == 'macOS'
+        run: brew install nasm
+
+      # Быстрый прогон бинарных тестов + отдельно доктесты (nextest их не поддерживает).
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: cargo nextest run
+        run: |
+          echo "::group::cargo nextest run"
+          cargo nextest run --workspace --locked
+          echo "::endgroup::"
+
+      - name: cargo test --doc
+        run: |
+          echo "::group::cargo test --doc"
+          cargo test --doc --workspace --locked
+          echo "::endgroup::"
 
   # ──────────────────────── Аудит зависимостей ────────────────────────
   audit:
@@ -92,7 +128,7 @@ jobs:
     if: ${{ !inputs.rebuild_only }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -119,27 +155,53 @@ jobs:
             target: aarch64-apple-darwin
             archive: kumir3-macos-arm64.tar.gz
     runs-on: ${{ matrix.os }}
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Установить закреплённый Rust
-        run: |
-          rustup show active-toolchain || rustup toolchain install
-          rustup target add ${{ matrix.target }}
-
-      - uses: Swatinem/rust-cache@v2
+      - name: Установить Rust (с problem matchers)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          shared-key: build-${{ matrix.os }}
+          target: ${{ matrix.target }}
+          cache-key: build-${{ matrix.os }}
         if: ${{ !inputs.force_clean }}
+
+      - name: Установить Rust (без кэша, force_clean)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: ${{ matrix.target }}
+          cache: false
+        if: ${{ inputs.force_clean }}
+
+      - uses: mozilla-actions/sccache-action@v0.0.10
 
       - name: Install NASM (Windows)
         if: runner.os == 'Windows'
-        uses: ilammy/setup-nasm@v1
+        shell: pwsh
+        run: choco install nasm -y --no-progress
 
+      - name: Install NASM (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y nasm
+
+      - name: Install NASM (macOS)
+        if: runner.os == 'macOS'
+        run: brew install nasm
+
+      # Для обычных прогонов — thin LTO (быстрее линковка).
+      # Для релизного тега — fat LTO + strip, ценой более долгой сборки, но лучшего рантайма.
       - name: Build release
-        run: cargo build --release --workspace --locked --target ${{ matrix.target }}
+        env:
+          CARGO_PROFILE_RELEASE_LTO: ${{ startsWith(github.ref, 'refs/tags/v') && 'fat' || 'thin' }}
+          CARGO_PROFILE_RELEASE_STRIP: ${{ startsWith(github.ref, 'refs/tags/v') && 'symbols' || 'none' }}
+        run: |
+          echo "::group::cargo build --release"
+          cargo build --release --workspace --locked --target ${{ matrix.target }}
+          echo "::endgroup::"
 
       - name: Package (Unix)
         if: runner.os != 'Windows'
@@ -181,7 +243,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      # Подпись происхождения: подтверждает, что архивы собрал именно этот workflow.
       id-token: write
       attestations: write
     steps:
@@ -200,3 +261,7 @@ jobs:
         with:
           files: artifacts/**/*
           generate_release_notes: true
+          # Тег с суффиксом (v1.2.3-alpha.4) — предварительный выпуск: он не
+          # становится «последним релизом» и не подсовывается тем, кому нужен
+          # стабильный.
+          prerelease: ${{ contains(github.ref_name, '-') }}
