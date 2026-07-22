@@ -11,14 +11,27 @@ impl ExprEvaluator {
     //                    ДОСТУП К МАССИВАМ
     // =========================================================================
 
+    /// Индексирование по имени переменной: `а[и]`.
     pub(crate) fn eval_array_access(
         name: &str,
         indices: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
         let array = env.get_variable(name)?.clone();
+        Self::index_value(array, indices, env)
+    }
 
-        match array {
+    /// Индексирование произвольного значения.
+    ///
+    /// Отделено от [`Self::eval_array_access`], потому что индексировать можно
+    /// не только переменную: `разобрать_iso(д)["год"]` и `[1, 2, 3][0]` —
+    /// такие же обращения по индексу, и вести себя обязаны одинаково.
+    pub(crate) fn index_value(
+        container: Value,
+        indices: &[Expr],
+        env: &mut Environment,
+    ) -> RuntimeResult<Value> {
+        match container {
             Value::Array(elements) => {
                 if indices.len() != 1 {
                     return Err(RuntimeError::not_implemented("многомерные массивы"));
