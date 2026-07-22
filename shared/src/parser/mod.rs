@@ -22,7 +22,7 @@ mod error;
 mod expr;
 mod oop;
 mod pattern;
-mod precedence;
+pub mod precedence;
 mod stmt;
 mod types;
 
