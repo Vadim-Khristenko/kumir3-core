@@ -15,7 +15,7 @@
       <dt>Тип</dt>              <dd>Спецификация</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
       <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
-      <dt>Версия документа</dt> <dd>0.3.0</dd>
+      <dt>Версия документа</dt> <dd>0.4.0</dd>
       <dt>Создан</dt>           <dd>2026-07-22</dd>
       <dt>Обновлён</dt>         <dd>2026-07-22</dd>
     </dl>
@@ -156,6 +156,32 @@
       Группировка видов по семействам и типизированный перехват —
       <span class="kite-badge is-proposed">предложено</span> (§&nbsp;3.3).
     </p>
+    <h4>Ошибки вычислений</h4>
+    <p>
+      Сбой арифметики ДОЛЖЕН сохранять свой вид на всём пути до программы: деление на ноль —
+      это <code>DivisionByZero</code>, а не <code>Other</code>, независимо от того, записано
+      ли оно оператором (<code>a / 0</code>, <code>a див 0</code>, <code>a мод 0</code>) или
+      вызовом встроенной функции.
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Сбой вычисления</th><th>Вид</th></tr></thead>
+        <tbody>
+          <tr><td>Деление или остаток на ноль</td><td><code>DivisionByZero</code></td></tr>
+          <tr><td>Выход за диапазон самого широкого целого; переполнение вещественного</td><td><code>Overflow</code></td></tr>
+          <tr><td>Операция над несовместимыми типами</td><td><code>TypeMismatch</code></td></tr>
+          <tr><td>Нарушение области определения: <code>корень(-1)</code>, <code>ln(0)</code>, отрицательное основание с дробной степенью</td><td><code>Other</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Известный пробел</span>
+      Нарушение области определения не имеет собственного вида и попадает в <code>Other</code>,
+      хотя это отдельное и вполне узнаваемое семейство сбоев. Отдельный вид
+      <code>DomainError</code> — <span class="kite-badge is-proposed">предложено</span>;
+      до его появления программа НЕ ДОЛЖНА полагаться на то, что <code>Other</code> означает
+      именно математическую ошибку.
+    </div>
 
     <h3 id="isklyucheniya">3.3. Исключения: <code>попытка</code> / <code>перехват</code> /
       <code>бросить</code> / <code>наконец</code>
