@@ -289,14 +289,37 @@ impl Environment {
     /// Определяет класс.
     pub fn define_class(&mut self, class: ClassDef) {
         let name = class.name.to_string();
+        self.warn_if_destructor(&name, &class);
         self.register_class_identity(&name);
         self.classes.insert(name, class);
     }
 
     /// Определяет класс с заданным именем (для импортов с префиксом модуля).
     pub fn define_class_with_name(&mut self, name: &str, class: ClassDef) {
+        self.warn_if_destructor(name, &class);
         self.register_class_identity(name);
         self.classes.insert(name.to_string(), class);
+    }
+
+    /// [W0][KITE-0011] Деструкторы разбираются, но НЕ исполняются.
+    ///
+    /// В текущей объектной модели значение-объект (`Value::Object`) —
+    /// обычное значение с семантикой копирования: нет ни идентичности
+    /// экземпляра, ни подсчёта ссылок, ни момента «последнего владельца».
+    /// Детерминированной точки разрушения, в которой деструктор можно было бы
+    /// вызвать ровно один раз, попросту не существует — вызов «на выходе из
+    /// кадра» исполнял бы `деструктор` для каждой копии и для возвращаемых
+    /// объектов. Изобретать такую семантику здесь нельзя, но и молчать тоже:
+    /// объявление деструктора порождает явное предупреждение.
+    fn warn_if_destructor(&mut self, name: &str, class: &ClassDef) {
+        if class.destructor.is_some() {
+            self.warnings.push(format!(
+                "деструктор класса '{}' объявлен, но не будет исполнен: \
+                 детерминированная точка разрушения объекта не определена \
+                 (KITE-0011); освобождайте ресурсы явным методом",
+                name
+            ));
+        }
     }
 
     /// [KITE 11] Регистрирует класс в реестре типов для стабильной идентичности

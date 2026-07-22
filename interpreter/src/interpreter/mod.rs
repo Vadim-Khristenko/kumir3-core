@@ -1346,4 +1346,282 @@ mod tests {
             interpreter.get_output()
         );
     }
+
+    // =====================================================================
+    //   [W0] «Разбирается, но ничего не делает» — закрытие пробелов
+    // =====================================================================
+
+    #[test]
+    fn test_module_access_double_colon_call() {
+        // [KITE-0015] `Модуль::алг(...)` разрешается так же, как `Модуль.алг(...)`.
+        let source = r#"
+модуль Математика
+    алг цел Удвоить(арг цел x)
+    нач
+        знач := x * 2
+    кон
+кон
+
+алг Тест
+нач
+    вывод Математика::Удвоить(21)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("42"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_module_access_dot_call_still_works() {
+        // Точечная форма не должна пострадать.
+        let source = r#"
+модуль Математика
+    алг цел Удвоить(арг цел x)
+    нач
+        знач := x * 2
+    кон
+кон
+
+алг Тест
+нач
+    вывод Математика.Удвоить(21)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("42"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_module_access_unknown_member_error() {
+        // Несуществующий член модуля — ясная ошибка, называющая модуль и член.
+        let source = r#"
+модуль Математика
+    алг цел Удвоить(арг цел x)
+    нач
+        знач := x * 2
+    кон
+кон
+
+алг Тест
+нач
+    вывод Математика::Утроить(21)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        let err = interpreter.run(source).unwrap_err();
+        assert!(
+            err.message.contains("Математика") && err.message.contains("Утроить"),
+            "ошибка должна называть модуль и член: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn test_enum_variant_double_colon() {
+        // `Перечисление::Вариант` — значение перечисления (тоже идёт через `::`).
+        let source = r#"
+перечисление Цвет
+Красный
+Зелёный
+Синий
+кон
+
+алг Тест
+нач
+    ц := Цвет::Зелёный
+    вывод ц
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("Зелёный"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_module_access_bare_algorithm_is_clear_error() {
+        // Голая ссылка `Модуль::алг` без вызова — не значение: ясная ошибка.
+        let source = r#"
+модуль Математика
+    алг цел Удвоить(арг цел x)
+    нач
+        знач := x * 2
+    кон
+кон
+
+алг Тест
+нач
+    ф := Математика::Удвоить
+    вывод ф
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        let err = interpreter.run(source).unwrap_err();
+        assert!(
+            err.message.contains("Удвоить") && err.message.contains("("),
+            "ошибка должна подсказывать вызов: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn test_bare_super_ref_is_clear_error() {
+        // [KITE-0011] Голый `предок` — не значение; ясная ошибка с подсказкой.
+        let source = r#"
+класс Базовый
+открытый:
+конструктор()
+нач
+кон
+алг цел Значение
+нач
+    знач := 1
+кон
+кон
+
+класс Производный расширяет Базовый
+открытый:
+конструктор()
+нач
+кон
+алг цел Значение
+нач
+    знач := предок
+кон
+кон
+
+алг Тест
+нач
+    пусть o := новый Производный()
+    вывод o.Значение()
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        let err = interpreter.run(source).unwrap_err();
+        assert!(
+            err.message.contains("предок.метод"),
+            "ошибка должна подсказывать форму вызова: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn test_destructor_declaration_warns() {
+        // [KITE-0011] Деструкторы не исполняются (детерминированной точки
+        // разрушения в текущей объектной модели нет) — но молчать нельзя.
+        let source = r#"
+класс Ресурс
+открытый:
+конструктор()
+нач
+кон
+деструктор
+нач
+    вывод "закрыто"
+кон
+кон
+
+алг Тест
+нач
+    пусть r := новый Ресурс()
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter
+                .warnings()
+                .iter()
+                .any(|w| w.contains("деструктор") && w.contains("Ресурс")),
+            "ожидалось предупреждение о деструкторе: {:?}",
+            interpreter.warnings()
+        );
+        // И тело деструктора действительно не исполняется.
+        assert!(
+            !interpreter.get_output().contains("закрыто"),
+            "деструктор не должен исполняться: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_compose_operator() {
+        // [KITE-0013] `f >> g` — композиция: сначала f, затем g.
+        let source = r#"
+алг цел Удвоить(арг цел x)
+нач
+    знач := x * 2
+кон
+
+алг цел Плюс1(арг цел x)
+нач
+    знач := x + 1
+кон
+
+алг Тест
+нач
+    ф := Удвоить >> Плюс1
+    вывод ф(5)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("11"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_compose_operator_with_lambdas() {
+        let source = r#"
+алг Тест
+нач
+    ф := лямбда(x) -> x * 2
+    г := лямбда(x) -> x + 1
+    к := ф >> г
+    вывод к(5)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("11"),
+            "вывод: {}",
+            interpreter.get_output()
+        );
+    }
+
+    #[test]
+    fn test_compose_operator_rejects_non_function() {
+        let source = r#"
+алг Тест
+нач
+    ц := 5
+    ф := ц >> ц
+    вывод ф(1)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        let err = interpreter.run(source).unwrap_err();
+        assert!(
+            err.message.contains(">>"),
+            "ошибка должна называть оператор: {}",
+            err.message
+        );
+    }
 }

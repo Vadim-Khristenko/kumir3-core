@@ -16,6 +16,21 @@ impl ExprEvaluator {
         args: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
+        // [KITE-0015] Квалифицированный вызов `Модуль::член(...)`: парсер склеивает
+        // имя через `::`, а импорт/`модуль` регистрируют член как `Модуль.член`.
+        // Разрешаем его тем же путём, что и точечную форму.
+        if let Some((module, member)) = name.rsplit_once("::") {
+            return Self::eval_qualified_call(module, member, name, args, env);
+        }
+        Self::eval_plain_call(name, args, env)
+    }
+
+    /// Вызов по простому (неквалифицированному) имени.
+    pub(crate) fn eval_plain_call(
+        name: &str,
+        args: &[Expr],
+        env: &mut Environment,
+    ) -> RuntimeResult<Value> {
         // Сначала пробуем встроенные функции
         if let Some(result) = Builtins::try_call(name, args, env)? {
             return Ok(result);

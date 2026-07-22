@@ -12,6 +12,7 @@ mod field;
 mod instance;
 mod r#match;
 mod method;
+mod module;
 mod pipe;
 mod range;
 mod string;
@@ -110,8 +111,18 @@ impl ExprEvaluator {
                 )
             }),
 
-            // Ссылка на предка (super)
-            Expr::SuperRef => Err(RuntimeError::not_implemented("super (предок)")),
+            // [KITE-0011] Ссылка на предка (super).
+            //
+            // Голый `предок` НЕ является значением: объект Кумира — единая
+            // плоская запись полей (`Value::Object`), отдельного «объекта-предка»
+            // в модели не существует, поэтому сформировать значение-предок
+            // нечем. Единственная осмысленная форма — вызов метода предка,
+            // о чём и сообщает ошибка (раньше здесь был not_implemented).
+            Expr::SuperRef => Err(RuntimeError::new(
+                "'предок' можно использовать только как вызов метода предка: \
+                 'предок.метод(...)' — самостоятельным значением он не является",
+                RuntimeErrorKind::TypeMismatch,
+            )),
 
             // Приведение типа
             Expr::Cast { expr, target_type } => Self::eval_cast(expr, target_type, env),
@@ -119,11 +130,9 @@ impl ExprEvaluator {
             // Проверка типа
             Expr::TypeCheck { expr, check_type } => Self::eval_type_check(expr, check_type, env),
 
-            // Доступ к модулю
-            Expr::ModuleAccess(module, name) => Err(RuntimeError::not_implemented(&format!(
-                "доступ к модулю {}::{}",
-                module, name
-            ))),
+            // [KITE-0015] Доступ к члену модуля: `Модуль::член`
+            // (разрешается так же, как точечная форма `Модуль.член`).
+            Expr::ModuleAccess(module, name) => Self::eval_module_access(module, name, env),
 
             // Создание значения перечисления
             Expr::EnumConstruct {
@@ -183,6 +192,9 @@ impl ExprEvaluator {
 
             // Pipe-выражение: x |> f
             Expr::Pipe(value, func) => Self::eval_pipe(value, func, env),
+
+            // [KITE-0013] Композиция функций: f >> g  ≡  лямбда(x) -> g(f(x))
+            Expr::Compose(left, right) => Self::eval_compose(left, right, env),
 
             // Условное выражение
             Expr::IfExpr {

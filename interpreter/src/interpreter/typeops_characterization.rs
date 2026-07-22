@@ -227,10 +227,42 @@ fn char_cast_string_to_float() {
     }
 }
 
+// FIXED (W0): `как сим` is now supported.
+//   * integer  → the character with that Unicode code point;
+//   * 1-char string → that character;
+//   * a char   → itself;
+//   * anything else → a clear runtime error (never a silent no-op).
 #[test]
-fn char_cast_to_char_is_unsupported() {
-    // сим (Char) is NOT a supported cast target today.
-    assert!(eval("65 как сим").is_err());
+fn char_cast_int_to_char() {
+    assert_eq!(eval("65 как сим").unwrap(), Value::Char('A'));
+}
+
+#[test]
+fn char_cast_one_char_string_to_char() {
+    assert_eq!(eval("\"Я\" как сим").unwrap(), Value::Char('Я'));
+}
+
+#[test]
+fn char_cast_multi_char_string_to_char_errors() {
+    let err = eval("\"AB\" как сим").unwrap_err();
+    assert!(err.message.contains("сим"), "сообщение: {}", err.message);
+}
+
+#[test]
+fn char_cast_empty_string_to_char_errors() {
+    assert!(eval("\"\" как сим").is_err());
+}
+
+#[test]
+fn char_cast_invalid_code_point_to_char_errors() {
+    // 0xD800 is a surrogate — not a valid Unicode scalar value.
+    let err = eval("55296 как сим").unwrap_err();
+    assert!(err.message.contains("сим"), "сообщение: {}", err.message);
+}
+
+#[test]
+fn char_cast_bool_to_char_errors() {
+    assert!(eval("да как сим").is_err());
 }
 
 // =============================================================================
