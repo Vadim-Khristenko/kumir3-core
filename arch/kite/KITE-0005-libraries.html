@@ -57,11 +57,13 @@
           <tr><td><code>время</code> / time</td><td>Дата/время, форматирование, таймеры, паузы.</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>система</code> / syscall</td><td>Окружение, пути, процессы, сведения о системе.</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>файлы</code> / files</td><td>Чтение/запись, операции с файлами, каталоги, метаданные.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>сеть</code> / net</td><td>Сетевое взаимодействие: TCP и UDP.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>сеть</code> / net</td><td>Сетевое взаимодействие: TCP- и UDP-сокеты, HTTP-запросы, URL-кодирование, Base64, DNS.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
         </tbody>
       </table>
     </div>
-    <p>Математические функции доступны как часть ядра. Набор встроенных библиотек расширяется.</p>
+    <p>Математические функции доступны как часть ядра. Набор встроенных библиотек расширяется.
+       Пофункциональный состав встроенных библиотек нормируется в
+       <a href="./KITE-0016-stdlib.html">KITE 16</a>.</p>
   </section>
 
   <!-- 3 -->
@@ -148,6 +150,29 @@ stable = true</code></pre>
         </tbody>
       </table>
     </div>
+    <h3>Обращение к членам библиотеки</h3>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Форма</th><th>Смысл</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td><code>Библиотека.функция(…)</code></td><td>Точечная форма — единственная работающая.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>Модуль::член</code></td><td>Двойное двоеточие. Парсится, но <strong>не исполняется</strong>: обращение через <code>::</code> даёт ошибку «не реализовано».</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Объявление модуля и <code>экспорт</code></span>
+      Блок <code>модуль Имя … кон</code> разбирается и исполняется, но инструкция <code>экспорт …</code>
+      внутри него — <strong>пустая операция</strong>: список экспортируемых имён нигде не учитывается,
+      видимость членов модуля она не ограничивает. Единственный работающий способ ограничить
+      публичный API — поле <code>exports</code> в <code>kumir.toml</code> (раздел 4).
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Норматив</span>
+      Правила разрешения имён при импорте, семантика модулей и целевая судьба <code>::</code>
+      и <code>экспорт</code> нормируются в <a href="./KITE-0015-modules.html">KITE 15</a>;
+      грамматика форм импорта — в <a href="./KITE-0012-grammar.html">KITE 12</a>.
+    </div>
   </section>
 
   <!-- 6 -->
@@ -170,6 +195,12 @@ stable = true</code></pre>
       <li><strong>Резолвер зависимостей</strong> строит граф и разрешает версии. <span class="kite-badge is-experimental">🧪</span></li>
       <li><strong>Виртуальные окружения</strong> изолируют наборы версий библиотек на проект. <span class="kite-badge is-experimental">🧪</span></li>
     </ul>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Оговорка</span>
+      Спецификации версий <em>парсятся</em> (точная версия, диапазоны SemVer, алиасы), но полнота
+      проверки версии при импорте не подтверждена тестами — оба пункта с
+      <span class="kite-badge is-experimental">🧪</span> помечены к верификации.
+    </div>
   </section>
 
   <!-- 8 -->
@@ -190,7 +221,7 @@ stable = true</code></pre>
       (C, C++, Rust), которые экспортируют функции и типы в интерпретатор. Это путь к высокой
       производительности и переиспользованию существующих нативных библиотек.
     </p>
-    <p>Основа уже есть в ядре: нативные функции (<code>NativeFn</code>), которыми пользуются встроенные библиотеки, и тип <code>@native</code> для нативных объектов (см. <a href="./KITE-0002-type-system.html">KITE 2</a>). Расширения обобщают этот механизм на внешние модули.</p>
+    <p>Основа уже есть в ядре: нативные <strong>функции</strong> (<code>NativeFn</code>), которыми пользуются встроенные библиотеки. Тип <code>@нативный</code> для нативных <strong>объектов</strong> объявлен в системе типов (см. <a href="./KITE-0002-type-system.html">KITE 2</a>), но такие значения сегодня нигде не создаются <span class="kite-badge is-proposed">📋</span>. Расширения обобщают механизм нативных функций на внешние модули.</p>
     <div class="kite-table">
       <table>
         <thead><tr><th>Язык</th><th>Как подключается</th><th>Доступность</th></tr></thead>
@@ -237,7 +268,8 @@ stable = true</code></pre>
     </ul>
     <div class="kite-callout is-tip">
       <span class="kite-callout-title">Связано</span>
-      Инструменты экосистемы перечислены в <a href="./KITE-0001-language-overview.html">KITE 1</a>; типы — в <a href="./KITE-0002-type-system.html">KITE 2</a>.
+      Инструменты экосистемы перечислены в <a href="./KITE-0001-language-overview.html">KITE 1</a>; типы — в <a href="./KITE-0002-type-system.html">KITE 2</a>;
+      модули и разрешение имён — в <a href="./KITE-0015-modules.html">KITE 15</a>; состав стандартной библиотеки — в <a href="./KITE-0016-stdlib.html">KITE 16</a>.
     </div>
   </section>
 

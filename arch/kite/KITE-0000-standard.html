@@ -94,7 +94,18 @@
       <li><span class="kite-status is-draft">Draft</span> — черновик, обсуждается, может сильно измениться.</li>
       <li><span class="kite-status is-experimental">Experimental</span> — принят, но интерфейс ещё может меняться.</li>
       <li><span class="kite-status is-stable">Active</span> — действующий, стабильный стандарт.</li>
+      <li><span class="kite-status is-withdrawn">Withdrawn</span> — отозван: описанная возможность признана нежелательной и изымается из языка.
+        Документ (или его раздел) сохраняется как исторический след, но <strong>не является нормой</strong>
+        и не должен рекламировать возможность как будущую. Применяется к «мёртвым» конструкциям — тем,
+        что присутствуют в лексике или AST, но никогда не получат семантики.</li>
     </ul>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Отозвано ≠ Устарело</span>
+      <span class="kite-status is-withdrawn">Withdrawn</span> — это статус <em>документа или раздела</em>:
+      возможность никогда не станет частью языка. Бейдж
+      <span class="kite-badge is-deprecated">⚠&nbsp;Устарело</span> — про <em>возможность, которая работает</em>,
+      но её использование не рекомендуется.
+    </div>
     <div class="kite-callout is-important">
       <span class="kite-callout-title">Реализовано ≠ Предложено</span>
       Внутри спецификаций каждая возможность помечается бейджем доступности:
@@ -103,6 +114,9 @@
       <span class="kite-badge is-proposed">📋&nbsp;Предложено</span>
       <span class="kite-badge is-deprecated">⚠&nbsp;Устарело</span>.
       Бейдж <em>Предложено</em> означает: описано в стандарте, но ещё не реализовано в движке.
+      <br><strong>Правило синхронизации:</strong> изменение поведения движка без обновления
+      соответствующего бейджа — блокер ревью. Периодически проводится «пас правды» —
+      сплошная сверка бейджей с кодом (<code>file:line</code> на каждое утверждение).
     </div>
   </section>
 
@@ -143,7 +157,7 @@
         <tbody>
           <tr><td><code>kite</code></td><td>Корневой <code>&lt;article&gt;</code>.</td></tr>
           <tr><td><code>kite-header</code> / <code>kite-meta</code></td><td>Шапка: номер, заголовок, статус, автор, версия, дата.</td></tr>
-          <tr><td><code>kite-status</code> <code>.is-stable/.is-experimental/.is-draft</code></td><td>Пилюля статуса документа.</td></tr>
+          <tr><td><code>kite-status</code> <code>.is-stable/.is-experimental/.is-draft/.is-withdrawn</code></td><td>Пилюля статуса документа.</td></tr>
           <tr><td><code>kite-toc</code></td><td>Содержание.</td></tr>
           <tr><td><code>kite-section</code></td><td>Смысловой раздел.</td></tr>
           <tr><td><code>kite-callout</code> <code>.is-note/.is-tip/.is-warning/.is-important</code></td><td>Выноска-врезка.</td></tr>
@@ -204,6 +218,13 @@
           <tr><td>KITE 9</td><td>Циклы разработки и отладка</td><td>Информационный</td><td><span class="kite-status is-stable">Active</span></td></tr>
           <tr><td>KITE 10</td><td>Архитектура движка типов</td><td>Спецификация</td><td><span class="kite-status is-experimental">Experimental</span></td></tr>
           <tr><td>KITE 11</td><td>Объектная модель (ООП)</td><td>Спецификация / Дизайн</td><td><span class="kite-status is-draft">Draft</span></td></tr>
+          <tr><td>KITE 12</td><td><a href="./KITE-0012-grammar.html">Формальная грамматика (EBNF)</a></td><td>Спецификация</td><td><span class="kite-status is-draft">Draft</span></td></tr>
+          <tr><td>KITE 13</td><td><a href="./KITE-0013-expression-semantics.html">Семантика выражений и модель вычисления</a></td><td>Спецификация</td><td><span class="kite-status is-draft">Draft</span></td></tr>
+          <tr><td>KITE 14</td><td><a href="./KITE-0014-error-handling.html">Обработка ошибок</a></td><td>Спецификация / Дизайн</td><td><span class="kite-status is-draft">Draft</span></td></tr>
+          <tr><td>KITE 15</td><td><a href="./KITE-0015-modules.html">Модули, импорты и пространства имён</a></td><td>Спецификация</td><td><span class="kite-status is-draft">Draft</span></td></tr>
+          <tr><td>KITE 16</td><td><a href="./KITE-0016-stdlib.html">Каталог стандартной библиотеки</a></td><td>Спецификация / Справочник</td><td><span class="kite-status is-draft">Draft</span></td></tr>
+          <tr><td>KITE 17</td><td><a href="./KITE-0017-executors.html">Исполнители</a></td><td>Спецификация / Дизайн</td><td><span class="kite-status is-draft">Draft</span></td></tr>
+          <tr><td>KITE 18</td><td><a href="./KITE-0018-testing.html">Тестирование и учебный корпус программ</a></td><td>Спецификация / Процесс</td><td><span class="kite-status is-draft">Draft</span></td></tr>
         </tbody>
       </table>
     </div>

@@ -103,10 +103,16 @@
     <h2>5. Работа с типами</h2>
     <ul>
       <li>Указывай типы <strong>на границах</strong> (параметры, возврат); внутри допустимо <code>авто</code>.</li>
-      <li>Для «может не быть значения» используй <code>T?</code> вместо <code>пусто</code>/null.</li>
-      <li>Для операций, которые могут не удаться, — <code>T!E</code> вместо исключений (см. <a href="./KITE-0002-type-system.html">KITE 2</a>).</li>
-      <li>Не приводи типы молча — сужающие преобразования делай явно.</li>
+      <li>Для «может не быть значения» используй необязательный тип вместо <code>пусто</code>/null. <strong>Рабочая запись сегодня — <code>может T</code> / <code>Необязательно&lt;T&gt;</code></strong>; краткая форма <code>T?</code> пока не разбирается парсером (см. <a href="./KITE-0002-type-system.html">KITE 2</a>, <a href="./KITE-0012-grammar.html">KITE 12</a>). <span class="kite-badge is-available">✅</span></li>
+      <li>Для операций, которые могут не удаться, целевая запись — <code>T!E</code>. <span class="kite-badge is-proposed">📋</span> <strong>Синтаксиса <code>T!E</code> в языке пока нет</strong>, поэтому в учебном и рабочем коде <em>сегодня</em> используй исключения (<code>попытка</code>/<code>перехват</code>/<code>бросить</code>) — см. §7 и <a href="./KITE-0014-error-handling.html">KITE 14</a>.</li>
+      <li>Не приводи типы молча — сужающие преобразования делай явно (правила приведения — <a href="./KITE-0013-expression-semantics.html">KITE 13</a>).</li>
     </ul>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Гайд не советует ненаписуемое</span>
+      Рекомендации с бейджем <span class="kite-badge is-proposed">📋</span> — <strong>перспективные</strong>: они описывают
+      целевой стиль, но соответствующий синтаксис ещё не реализован. Нормативный документ по модели ошибок —
+      <a href="./KITE-0014-error-handling.html">KITE 14</a>; он же фиксирует порядок появления <code>T!E</code>.
+    </div>
   </section>
 
   <!-- 6 -->
@@ -115,17 +121,20 @@
     <ul>
       <li>Длинные <code>если-иначе-если</code> заменяй на <code>совпадение</code> (match) с охранами <code>когда</code>.</li>
       <li>Выходи рано: проверяй ошибочные случаи в начале, а не вкладывай счастливый путь глубоко.</li>
-      <li>Цепочки преобразований оформляй конвейером <code>|&gt;</code>.</li>
+      <li>Цепочки преобразований оформляй конвейером <code>|&gt;</code> (семантика — <a href="./KITE-0013-expression-semantics.html">KITE 13</a>).</li>
     </ul>
   </section>
 
   <!-- 7 -->
   <section class="kite-section" id="oshibki">
     <h2>7. Ошибки и инварианты</h2>
+    <p>Нормативная доктрина ошибок — <a href="./KITE-0014-error-handling.html">KITE 14</a>. Кратко, по состоянию на сегодня:</p>
     <ul>
-      <li>Возвращай <code>T!E</code> и пробрасывай ошибку оператором <code>?</code>.</li>
-      <li>Инварианты, которые «не должны нарушаться», проверяй через <code>утв</code> (assert).</li>
-      <li>Сообщения об ошибках пиши понятно — их прочитает ученик.</li>
+      <li><strong>Основной рабочий механизм — исключения:</strong> <code>бросить</code> для сигнала об ошибке, <code>попытка</code>/<code>перехват</code>/<code>наконец</code> для обработки. Это единственная полностью исполняемая модель ошибок. <span class="kite-badge is-available">✅</span></li>
+      <li><strong>Оператор <code>?</code></strong> разворачивает «удачное» значение и делает ранний возврат из алгоритма при «неудачном» (<code>Ничего</code>/<code>пусто</code>/ошибка). Работает; уместен там, где вызов уже возвращает необязательное значение. <span class="kite-badge is-available">✅</span></li>
+      <li><strong>Возврат <code>T!E</code> вместо исключений</strong> — целевой стиль для <em>ожидаемых</em> ошибок, но записать такой тип пока нечем: синтаксиса <code>T!E</code> не существует. Не строй на нём учебный код, пока <a href="./KITE-0014-error-handling.html">KITE 14</a> не переведёт его в «Доступно». <span class="kite-badge is-proposed">📋</span></li>
+      <li>Инварианты, которые «не должны нарушаться», проверяй через <code>утв</code> (assert). <span class="kite-badge is-available">✅</span></li>
+      <li>Сообщения об ошибках пиши понятно — их прочитает ученик (см. также <a href="./KITE-0009-dev-cycle-debugging.html">KITE 9</a> о чтении ошибок).</li>
     </ul>
   </section>
 
@@ -163,7 +172,7 @@
           <tr><td>Гигантские алгоритмы</td><td>Разбей на маленькие с одной задачей.</td></tr>
           <tr><td>Опора на динамическую видимость</td><td>Явная передача через параметры.</td></tr>
           <tr><td>Лишняя мутабельность</td><td><code>конст</code> по умолчанию.</td></tr>
-          <tr><td>null/<code>пусто</code> повсюду</td><td><code>T?</code> и <code>T!E</code>.</td></tr>
+          <tr><td>null/<code>пусто</code> повсюду</td><td>Необязательный тип (<code>может T</code>) с <code>??</code>/<code>?.</code>/<code>?</code>; для ошибок — исключения, в перспективе <code>T!E</code> <span class="kite-badge is-proposed">📋</span>.</td></tr>
           <tr><td>Глубокая вложенность</td><td>Ранний выход, <code>совпадение</code>.</td></tr>
         </tbody>
       </table>

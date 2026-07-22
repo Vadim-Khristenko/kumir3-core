@@ -389,6 +389,12 @@ body:has(> .kite) > .kite {
 .kite-status.is-draft {
     color: var(--kite-orange);
 }
+/* Отозвано (KITE 0 §4): возможность никогда не станет частью языка —
+   намеренно приглушённый, «выведенный из обращения» вид. */
+.kite-status.is-withdrawn {
+    color: var(--kite-text-dim);
+    opacity: 0.85;
+}
 
 /* ── Table of Contents ──────────────────────────────────────────────────────
  * Full 1px border + subtle surface. No left accent stripe (::before is a label

@@ -60,7 +60,10 @@
         </tbody>
       </table>
     </div>
-    <p>Движок чист (без зависимостей от интерпретатора) и связывает первые два слоя.</p>
+    <p>Движок чист (без зависимостей от интерпретатора) и связывает первые два слоя. Внутренние виды типов
+      богаче того, что можно записать в исходном тексте: поверхностный синтаксис типов нормирует
+      <a href="./KITE-0012-grammar.html">KITE 12</a>, и часть <code>TypeKind</code> (например, размерные числовые виды)
+      существует только внутри движка.</p>
     <p>Код разбит для чистоты: <code>typesys/mod.rs</code> — движок и базовые типы (<code>Conformance</code>, <code>TypeError</code>, <code>TypeOp</code>, <code>Coercion</code>), <code>typesys/rules.rs</code> — правила, <code>typesys/tests.rs</code> — тесты.</p>
   </section>
 
@@ -134,6 +137,14 @@ ts.unify(&amp;Array(Int16), &amp;Array(Int64)) // Some(Array(Int64))</code></pre
       <li>Сравнения (<code>=</code>, <code>&lt;</code>, …) совместимых типов → <code>лог</code>.</li>
       <li>Логические (<code>и</code>, <code>или</code>) над <code>лог</code> → <code>лог</code>; иначе — ошибка типа.</li>
     </ul>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Движок ≠ сегодняшний рантайм</span>
+      Это типизация <em>по модели движка</em>. Фактическое поведение операций во время выполнения
+      пока считается независимо от <code>TypeSystem</code> (см. точки сшивки в §10) — например,
+      <code>7/2</code> всегда даёт вещественное. Нормативный документ по тому, что реально
+      происходит при вычислении выражений, — <a href="./KITE-0013-expression-semantics.html">KITE 13</a>;
+      расхождения между ним и этой главой снимаются по мере адопции движка.
+    </div>
   </section>
 
   <!-- 8 -->
@@ -182,8 +193,13 @@ ts.register_rule(Arc::new(МоёПравило));   // и оно сразу уч
     <h2>10. План интеграции</h2>
     <ol>
       <li>✅ Движок и набор правил с тестами в модуле <code>shared/src/typesys/</code>.</li>
-      <li>✅ Делегированы движку: приведение (<code>coercion</code>), значения по умолчанию, проверка подтипа.</li>
-      <li>Перевести проверки присваивания/операций интерпретатора на <code>TypeSystem</code>.</li>
+      <li>✅ Делегированы движку: приведение (<code>coercion</code>), значения по умолчанию, проверка подтипа.
+        Адоптировано интерпретатором пока только <code>default_value</code> (<code>ops/defaults.rs</code>).</li>
+      <li>Перевести проверки присваивания/операций интерпретатора на <code>TypeSystem</code>.
+        Точки сшивки уже помечены в коде: <code>ops/binary.rs</code> (бинарные операции),
+        <code>ops/cast.rs</code> (приведения, две точки), <code>ops/predicates.rs</code> (проверки типа).
+        Порядок внедрения — по этому списку; нормативное поведение до и после перехода
+        фиксирует <a href="./KITE-0013-expression-semantics.html">KITE 13</a>.</li>
       <li>Добавить статический проход проверки типов в компиляторе.</li>
       <li>Связать <code>TypeKind</code> ↔ <code>TypeRegistry</code> для номинальных типов из пользовательского кода.</li>
       <li>✅ Старые <code>is_assignable_from</code>/<code>common_type</code> делегируют движку — дубля логики нет.</li>

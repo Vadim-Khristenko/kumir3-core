@@ -75,9 +75,9 @@
     </div>
     <ul>
       <li><strong>Консольный</strong> — терминал (stdin/stdout/stderr ОС).</li>
-      <li><strong>Файловый</strong> — поверх библиотеки <code>файлы</code> (см. <a href="./KITE-0005-libraries.html">KITE 5</a>).</li>
-      <li><strong>Памяти</strong> — пишет/читает в строку/буфер (тесты, песочница).</li>
-      <li><strong>Сетевой</strong> — поверх <code>сеть</code> (TCP/UDP).</li>
+      <li><strong>Файловый</strong> — поверх библиотеки <code>файлы</code> (см. <a href="./KITE-0005-libraries.html">KITE 5</a>, каталог функций — <a href="./KITE-0016-stdlib.html">KITE 16</a>).</li>
+      <li><strong>Памяти</strong> — пишет/читает в строку/буфер (тесты, песочница; см. <a href="./KITE-0018-testing.html">KITE 18</a>).</li>
+      <li><strong>Сетевой</strong> — поверх <code>сеть</code> (TCP/UDP, а также HTTP и утилиты кодирования — см. <a href="./KITE-0016-stdlib.html">KITE 16</a>).</li>
     </ul>
   </section>
 
@@ -101,13 +101,14 @@
   <section class="kite-section" id="vyvod">
     <h2>5. Вывод и форматирование</h2>
     <ul>
-      <li>Единый форматтер: ширина/выравнивание, точность вещественных, системы счисления.</li>
-      <li>Интерполяция строк <code>"…{выражение}…"</code> (связь с сахаром из <a href="./KITE-0002-type-system.html">KITE 2</a>).</li>
+      <li>Единый форматтер: ширина/выравнивание, точность вещественных, системы счисления. <span class="kite-badge is-proposed">📋</span></li>
+      <li>Интерполяция строк — <strong>обязателен префикс <code>f</code></strong>: <code>f"…{выражение}…"</code>. Обычные строки <em>не</em> интерполируются (лексика — <a href="./KITE-0012-grammar.html">KITE 12</a>, семантика конкатенации — <a href="./KITE-0013-expression-semantics.html">KITE 13</a>, сахар — <a href="./KITE-0002-type-system.html">KITE 2</a>). <span class="kite-badge is-available">✅</span></li>
       <li>Любое значение приводится к строке по правилам отображения типов.</li>
     </ul>
     <div class="kite-code" data-lang="kumir">
-<pre><code>вывод "Привет, {имя}!"          | интерполяция
-стдошибки.вывод "Ошибка: ", код  | диагностика — в поток ошибок</code></pre>
+<pre><code>вывод f"Привет, {имя}!"          | интерполяция: префикс f обязателен
+вывод "Привет, {имя}!"           | БЕЗ f — выведется буквально, со скобками
+стдошибки.вывод "Ошибка: ", код  | 📋 диагностика — в поток ошибок</code></pre>
     </div>
   </section>
 
@@ -117,7 +118,7 @@
     <ul>
       <li>Чтение строки, токена (через пробелы) и всего потока.</li>
       <li>Типизированный разбор: прочитать <code>цел</code>/<code>вещ</code>/<code>лог</code> напрямую.</li>
-      <li>Безопасный ввод: результат как <code>T!E</code> (ошибка вместо паники), корректная обработка конца ввода (EOF).</li>
+      <li>Безопасный ввод: результат как <code>T!E</code> (ошибка вместо паники), корректная обработка конца ввода (EOF). <span class="kite-badge is-proposed">📋</span> — синтаксиса типа <code>T!E</code> сегодня <strong>не существует</strong>; доктрина ошибок и целевой вид этой записи — <a href="./KITE-0014-error-handling.html">KITE 14</a>. До её реализации ошибки ввода выражаются исключениями (<code>перехват</code>).</li>
     </ul>
   </section>
 
@@ -145,6 +146,9 @@
         <thead><tr><th>Подсистема</th><th>Связь</th></tr></thead>
         <tbody>
           <tr><td>Файлы (<a href="./KITE-0005-libraries.html">KITE 5</a>)</td><td>Файловые потоки реализуют те же трейты Читатель/Писатель.</td></tr>
+          <tr><td>Стандартная библиотека (<a href="./KITE-0016-stdlib.html">KITE 16</a>)</td><td>Нормативный каталог существующих функций ввода-вывода (<code>вывод</code>, <code>ввод</code>, библиотеки <code>файлы</code>/<code>сеть</code>) — до перехода на потоковую модель именно он описывает то, что реально доступно.</td></tr>
+          <tr><td>Ошибки (<a href="./KITE-0014-error-handling.html">KITE 14</a>)</td><td>Ошибки ввода-вывода и EOF: сегодня — исключения, целевая модель — <code>T!E</code> с оператором <code>?</code>.</td></tr>
+          <tr><td>Тестирование (<a href="./KITE-0018-testing.html">KITE 18</a>)</td><td>Захват вывода в поток памяти — основа golden-тестов (<code>| КЕЙС</code> / <code>| ОЖИДАЕМЫЙ ВЫВОД</code>).</td></tr>
           <tr><td>Сеть</td><td>Сокеты — это потоки; одинаковый API чтения/записи.</td></tr>
           <tr><td>Async (<a href="./KITE-0003-async-runtime.html">KITE 3</a>)</td><td>Неблокирующий ввод-вывод — те же интерфейсы с точками приостановки.</td></tr>
           <tr><td>Совместимость (<a href="./KITE-0006-kumir2-compatibility.html">KITE 6</a>)</td><td>Семантика <code>ввод</code>/<code>вывод</code> и кодировка КуМир 2.</td></tr>

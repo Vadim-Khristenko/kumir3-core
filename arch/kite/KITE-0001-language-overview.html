@@ -42,7 +42,8 @@
       алгоритмического языка <em>КуМир</em>, полностью переписанная на <strong>Rust</strong>.
       Язык сохраняет главную черту оригинала — обучение программированию на русском языке без
       боли — но добавляет всё, что нужно для настоящих проектов: строгую и гибкую типизацию,
-      владение и заимствование, ООП, функциональный стиль, асинхронность и прямой мост в Rust.
+      ООП, функциональный стиль, модули и библиотеки, а в планах — модель владения,
+      полноценную асинхронность и прямой мост в Rust.
     </p>
     <div class="kite-callout is-note">
       <span class="kite-callout-title">Двуязычность</span>
@@ -109,8 +110,12 @@
       </div>
       <div class="kite-card">
         <span class="kite-card-icon">🛡️</span>
-        <h3>Владение и заимствование</h3>
-        <p><code>измен</code>, <code>перемещение</code>, <code>заимствовать</code>, <code>клонировать</code> — безопасная работа с ресурсами.</p>
+        <h3>Владение и изменяемость</h3>
+        <p><code>измен</code>/<code>конст</code> — изменяемость значений <span class="kite-badge is-available">✅</span>.
+        Полная модель владения (<code>перемещение</code>, <code>заимствовать</code>, <code>клонировать</code>)
+        сегодня <strong>не исполняется</strong>: лексемы разбираются, семантики нет —
+        <span class="kite-badge is-proposed">📋&nbsp;Предложено</span>. См.
+        <a href="./KITE-0002-type-system.html#vladenie">KITE 2 §6</a>.</p>
       </div>
       <div class="kite-card">
         <span class="kite-card-icon">🧩</span>
@@ -125,7 +130,9 @@
       <div class="kite-card">
         <span class="kite-card-icon">⚙️</span>
         <h3>Интерпретатор + компилятор</h3>
-        <p>Быстрый запуск через интерпретатор и компиляция в Rust / IR / WASM.</p>
+        <p>Быстрый запуск через интерпретатор <span class="kite-badge is-available">✅</span>;
+        компиляция в Rust / IR / WASM — <span class="kite-badge is-experimental">🧪</span>
+        (не основная тропа исполнения).</p>
       </div>
       <div class="kite-card">
         <span class="kite-card-icon">📦</span>
@@ -135,7 +142,12 @@
       <div class="kite-card">
         <span class="kite-card-icon">🔢</span>
         <h3>Богатые числа</h3>
-        <p>Целые и вещественные 8…128 бит, включая <code>вещ_128</code> высокой точности.</p>
+        <p>Движок чисел умеет ширины 8…128 бит, включая повышенную точность.
+        Поверхностный синтаксис пока даёт <code>цел</code> (64) и <code>вещ</code> (64)
+        <span class="kite-badge is-available">✅</span>; размерные имена
+        (<code>цел_8</code>…<code>вещ_128</code>, <code>нат</code>) —
+        <span class="kite-badge is-proposed">📋&nbsp;Предложено</span>. См.
+        <a href="./KITE-0002-type-system.html#chisla">KITE 2 §2</a>.</p>
       </div>
     </div>
   </section>
@@ -147,8 +159,17 @@
       <li><strong>Процедурная:</strong> алгоритмы, аргументы <code>арг</code>/<code>рез</code>/<code>аргрез</code>, циклы <code>нц…кц</code>.</li>
       <li><strong>ООП:</strong> <code>класс</code>, <code>структура</code>, <code>интерфейс</code>, <code>свойство</code> (trait), <code>реализация</code>, видимость, наследование.</li>
       <li><strong>Функциональная:</strong> <code>лямбда</code>, <code>совпадение</code> (match), охранные выражения <code>когда</code>, конвейер <code>|&gt;</code>.</li>
-      <li><strong>Асинхронная:</strong> <code>асинх</code>/<code>ждать</code>, <code>запустить</code>, <code>уступить</code>, каналы.</li>
+      <li><strong>Асинхронная:</strong> <code>асинх</code>/<code>ждать</code>, <code>запустить</code>, <code>уступить</code>, каналы
+        (<span class="kite-badge is-experimental">🧪</span> — исполняется синхронно, см. <a href="./KITE-0003-async-runtime.html">KITE 3</a>).</li>
     </ul>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Где искать нормы</span>
+      Форма записи — <a href="./KITE-0012-grammar.html">KITE 12 (грамматика)</a>;
+      смысл выражений и операций — <a href="./KITE-0013-expression-semantics.html">KITE 13</a>;
+      ошибки — <a href="./KITE-0014-error-handling.html">KITE 14</a>;
+      модули и импорты — <a href="./KITE-0015-modules.html">KITE 15</a>;
+      стандартная библиотека — <a href="./KITE-0016-stdlib.html">KITE 16</a>.
+    </div>
   </section>
 
   <!-- 7 -->
@@ -156,11 +177,11 @@
     <h2>7. Инструменты</h2>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Инструмент</th><th>Назначение</th></tr></thead>
+        <thead><tr><th>Инструмент</th><th>Назначение</th><th>Доступность</th></tr></thead>
         <tbody>
-          <tr><td><code>interpreter-cli</code></td><td>Запуск <code>.kum</code>-программ.</td></tr>
-          <tr><td><code>interpreter-tui</code></td><td>Текстовый интерактивный интерфейс.</td></tr>
-          <tr><td><code>kumir3-compiler</code></td><td>Компиляция в Rust / IR / WASM с уровнями оптимизации.</td></tr>
+          <tr><td><code>interpreter-cli</code></td><td>Запуск <code>.kum</code>-программ.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>interpreter-tui</code></td><td>Текстовый интерактивный интерфейс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>kumir3-compiler</code></td><td>Компиляция в Rust / IR / WASM с уровнями оптимизации.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -196,7 +217,8 @@
     <div class="kite-callout is-tip">
       <span class="kite-callout-title">Плавный переход</span>
       Можно начать с чистого КуМир 2 и постепенно добавлять типы, ООП и функциональные приёмы —
-      без переписывания с нуля.
+      без переписывания с нуля. Подробности режима — <a href="./KITE-0006-kumir2-compatibility.html">KITE 6</a>;
+      школьные исполнители (Робот, Чертёжник и другие) — <a href="./KITE-0017-executors.html">KITE 17</a>.
     </div>
   </section>
 
@@ -228,10 +250,12 @@
   <section class="kite-section" id="roadmap">
     <h2>10. Дорожная карта</h2>
     <ol>
-      <li>✅ Стабильное ядро (лексер, парсер, AST/IR, интерпретатор, компилятор).</li>
+      <li>✅ Стабильное ядро исполнения: лексер, парсер, AST, интерпретатор.</li>
+      <li>🧪 Компилятор (Rust / IR / WASM) — экспериментальный, не основная тропа исполнения.</li>
       <li>📦 Пакетный менеджер и реестр библиотек.</li>
       <li>🛠 API для плагинов IDE.</li>
-      <li>📚 Полная база учебных материалов и задач.</li>
+      <li>📚 Полная база учебных материалов и задач
+        (учебный корпус и golden-тесты — <a href="./KITE-0018-testing.html">KITE 18</a>).</li>
       <li>📐 Стандартизация языка через серию KITE.</li>
     </ol>
   </section>

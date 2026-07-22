@@ -22,6 +22,13 @@ Kumir 3 (аналог Python PEP). Документы — это семанти�
 | KITE 9 | [Циклы разработки и отладка](KITE-0009-dev-cycle-debugging.html)        | Информационный | Active       |
 | KITE 10 | [Архитектура движка типов](KITE-0010-type-engine.html)                | Спецификация   | Experimental |
 | KITE 11 | [Объектная модель (ООП)](KITE-0011-oop.html)                          | Дизайн         | Draft        |
+| KITE 12 | [Формальная грамматика (EBNF)](KITE-0012-grammar.html)                | Спецификация   | Draft        |
+| KITE 13 | [Семантика выражений и модель вычисления](KITE-0013-expression-semantics.html) | Спецификация | Draft |
+| KITE 14 | [Обработка ошибок](KITE-0014-error-handling.html)                     | Спецификация / Дизайн | Draft |
+| KITE 15 | [Модули, импорты и пространства имён](KITE-0015-modules.html)         | Спецификация   | Draft        |
+| KITE 16 | [Каталог стандартной библиотеки](KITE-0016-stdlib.html)               | Спецификация / Справочник | Draft |
+| KITE 17 | [Исполнители](KITE-0017-executors.html)                               | Спецификация / Дизайн | Draft |
+| KITE 18 | [Тестирование и учебный корпус программ](KITE-0018-testing.html)      | Спецификация / Процесс | Draft |
 
 ## Как устроено
 
