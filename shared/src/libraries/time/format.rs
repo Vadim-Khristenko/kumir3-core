@@ -103,71 +103,43 @@ pub fn parse_iso(s: &str) -> Result<(i32, u8, u8, u8, u8, u8), String> {
     Ok((year, month, day, hour, minute, second))
 }
 
+/// Раскладывает дату-время в словарь.
+///
+/// Каждое поле кладётся под русским ключом и под английским: русский —
+/// основной, английский оставлен для программ, писавшихся до перевода.
+/// Раньше пары были неполными (`день_недели` и `день_года` существовали
+/// только по-английски), из-за чего словарь приходилось читать на двух языках
+/// сразу.
 fn parts_to_value_map(parts: &DateTimeParts) -> Value {
+    let fields: [(&str, &str, Value); 9] = [
+        ("год", "year", Value::Number(Number::I32(parts.year))),
+        ("месяц", "month", Value::Number(Number::U8(parts.month))),
+        ("день", "day", Value::Number(Number::U8(parts.day))),
+        ("час", "hour", Value::Number(Number::U8(parts.hour))),
+        ("минута", "minute", Value::Number(Number::U8(parts.minute))),
+        ("секунда", "second", Value::Number(Number::U8(parts.second))),
+        (
+            "день_недели",
+            "weekday",
+            Value::Number(Number::U8(parts.weekday)),
+        ),
+        (
+            "день_года",
+            "yearday",
+            Value::Number(Number::U16(parts.yearday)),
+        ),
+        ("iso", "iso", Value::String(format_iso_utc(parts))),
+    ];
+
     let mut map = BTreeMap::new();
-    map.insert(
-        Value::String("year".into()),
-        Value::Number(Number::I32(parts.year)),
-    );
-    map.insert(
-        Value::String("month".into()),
-        Value::Number(Number::U8(parts.month)),
-    );
-    map.insert(
-        Value::String("day".into()),
-        Value::Number(Number::U8(parts.day)),
-    );
-    map.insert(
-        Value::String("hour".into()),
-        Value::Number(Number::U8(parts.hour)),
-    );
-    map.insert(
-        Value::String("minute".into()),
-        Value::Number(Number::U8(parts.minute)),
-    );
-    map.insert(
-        Value::String("second".into()),
-        Value::Number(Number::U8(parts.second)),
-    );
-    map.insert(
-        Value::String("weekday".into()),
-        Value::Number(Number::U8(parts.weekday)),
-    );
-    map.insert(
-        Value::String("yearday".into()),
-        Value::Number(Number::U16(parts.yearday)),
-    );
-    map.insert(
-        Value::String("год".into()),
-        Value::Number(Number::I32(parts.year)),
-    );
-    map.insert(
-        Value::String("месяц".into()),
-        Value::Number(Number::U8(parts.month)),
-    );
-    map.insert(
-        Value::String("день".into()),
-        Value::Number(Number::U8(parts.day)),
-    );
-    map.insert(
-        Value::String("час".into()),
-        Value::Number(Number::U8(parts.hour)),
-    );
-    map.insert(
-        Value::String("минута".into()),
-        Value::Number(Number::U8(parts.minute)),
-    );
-    map.insert(
-        Value::String("секунда".into()),
-        Value::Number(Number::U8(parts.second)),
-    );
-    map.insert(
-        Value::String("iso".into()),
-        Value::String(format_iso_utc(parts)),
-    );
+    for (ru, en, value) in fields {
+        map.insert(Value::String(ru.into()), value.clone());
+        if en != ru {
+            map.insert(Value::String(en.into()), value);
+        }
+    }
     Value::Map(map)
 }
-
 fn expect_number(args: &[Value], idx: usize, what: &str) -> Result<i64, String> {
     let v = args
         .get(idx)
