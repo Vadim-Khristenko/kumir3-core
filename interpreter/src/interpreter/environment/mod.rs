@@ -66,6 +66,14 @@ pub struct Environment {
     /// Режим отладки
     debug_mode: bool,
 
+    /// [W0] Строгий режим: присваивание необъявленной переменной — ошибка,
+    /// а не молчаливое создание (по умолчанию выключен).
+    strict: bool,
+
+    /// [W0] Собранные предупреждения (например, о необъявленных переменных).
+    /// Не попадают в буфер вывода (`вывод`/stdout программы).
+    warnings: Vec<String>,
+
     /// Максимальная глубина вызова (защита от бесконечной рекурсии)
     max_call_depth: usize,
 
@@ -96,6 +104,8 @@ impl Environment {
             type_registry: Arc::new(RwLock::new(TypeRegistry::new())),
             output_buffer: Vec::new(),
             debug_mode: false,
+            strict: false,
+            warnings: Vec::new(),
             max_call_depth: 1000,
             library_manager: None,
             file_importer: None,
@@ -195,7 +205,22 @@ impl Environment {
             }
         }
 
-        // Переменная не найдена — создаём локальную в текущей области.
+        // [W0] Переменная не найдена нигде в цепочке областей видимости —
+        // присваивание пытается ввести НОВУЮ, ранее необъявленную переменную.
+        // Это распространённый учебный «подводный камень» (например, опечатка
+        // `хyz := 5`). Легитимные неявные имена (параметры арг/рез/аргрез,
+        // `знач`, переменные циклов `для`, привязки совпадений/`for-each`) сюда
+        // НЕ попадают: они создаются через `define_local`/`set_result_value`
+        // ещё до присваивания, поэтому уже присутствуют в области видимости.
+        if self.strict {
+            return Err(RuntimeError::new(
+                format!("переменная '{}' используется без объявления", name),
+                super::error::RuntimeErrorKind::UndefinedVariable,
+            ));
+        }
+        self.warnings
+            .push(format!("переменная '{}' используется без объявления", name));
+        // Мягкий режим: поведение как прежде — создаём локальную переменную.
         self.define_local(name.to_string(), value);
         Ok(())
     }
@@ -577,6 +602,26 @@ impl Environment {
         self.debug_mode
     }
 
+    /// [W0] Включает/выключает строгий режим (необъявленная переменная — ошибка).
+    pub fn set_strict(&mut self, enabled: bool) {
+        self.strict = enabled;
+    }
+
+    /// [W0] Проверяет, включён ли строгий режим.
+    pub fn is_strict(&self) -> bool {
+        self.strict
+    }
+
+    /// [W0] Возвращает собранные предупреждения (не попадают в вывод программы).
+    pub fn warnings(&self) -> &[String] {
+        &self.warnings
+    }
+
+    /// [W0] Очищает собранные предупреждения.
+    pub fn clear_warnings(&mut self) {
+        self.warnings.clear();
+    }
+
     /// Устанавливает максимальную глубину вызова.
     pub fn set_max_call_depth(&mut self, depth: usize) {
         self.max_call_depth = depth;
@@ -720,6 +765,8 @@ impl Clone for Environment {
             type_registry: Arc::clone(&self.type_registry),
             output_buffer: self.output_buffer.clone(),
             debug_mode: self.debug_mode,
+            strict: self.strict,
+            warnings: self.warnings.clone(),
             max_call_depth: self.max_call_depth,
             library_manager: self.library_manager.clone(),
             file_importer: self.file_importer.clone(),

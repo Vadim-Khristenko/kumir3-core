@@ -41,6 +41,10 @@ fn main() {
         interpreter.set_debug_mode(true);
     }
 
+    if cli.strict {
+        interpreter.set_strict(true);
+    }
+
     // Выполняем
     let start = Instant::now();
     match interpreter.run(&source) {
@@ -49,6 +53,12 @@ fn main() {
             let output = interpreter.get_output();
             if !output.is_empty() {
                 print!("{}", output);
+            }
+
+            // [W0] Предупреждения (например, о необъявленных переменных)
+            // печатаем в stderr, чтобы не смешивать с выводом программы.
+            for warning in interpreter.warnings() {
+                eprintln!("Предупреждение: {}", warning);
             }
 
             if cli.time {
