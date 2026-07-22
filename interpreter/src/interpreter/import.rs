@@ -15,13 +15,7 @@ impl Interpreter {
     /// - Стандартные библиотеки: `использовать время`
     /// - Файловые импорты: `подключить "./модуль.kum"`
     pub(crate) fn process_import(&mut self, stmt: &Stmt) -> RuntimeResult<()> {
-        if let Stmt::Import {
-            path,
-            alias,
-            items: _,
-            ..
-        } = stmt
-        {
+        if let Stmt::Import { path, alias, .. } = stmt {
             // Проверяем, это файл .kum, директория с библиотекой, или встроенная библиотека
             let path_obj = std::path::Path::new(path);
 

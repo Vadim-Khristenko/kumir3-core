@@ -274,10 +274,7 @@ impl ExprEvaluator {
             {
                 return Some((class.clone(), m.clone()));
             }
-            match &class.parent {
-                Some(p) => current = p.to_string(),
-                None => return None,
-            }
+            current = class.parent.as_ref()?.to_string();
         }
     }
 
@@ -312,10 +309,7 @@ impl ExprEvaluator {
                 return Some((current, m));
             }
             let class = env.get_class(&current).ok()?.clone();
-            match &class.parent {
-                Some(p) => current = p.to_string(),
-                None => return None,
-            }
+            current = class.parent.as_ref()?.to_string();
         }
     }
 
