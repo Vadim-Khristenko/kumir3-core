@@ -12,6 +12,7 @@ use super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 use super::evaluator::ExprEvaluator;
 
 pub mod array;
+pub mod functional;
 pub mod io;
 pub mod math;
 pub mod string;
@@ -31,6 +32,11 @@ impl Builtins {
         args: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Option<Value>> {
+        // Функции высшего порядка — первыми: остальные категории начинают с
+        // вычисления всех аргументов, а имя функции-аргумента вычислять нельзя.
+        if let Some(v) = Self::try_call_functional(name, args, env)? {
+            return Ok(Some(v));
+        }
         if let Some(v) = Self::try_call_math(name, args, env)? {
             return Ok(Some(v));
         }
