@@ -16,10 +16,13 @@ mod interpreter;
 
 mod ast;
 mod check;
+mod editor;
 mod file_runner;
 mod info;
 mod repl;
+mod syntax;
 mod terminal;
+mod theme;
 mod ui;
 
 use cli::{Cli, Commands};

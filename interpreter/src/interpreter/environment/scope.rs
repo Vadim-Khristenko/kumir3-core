@@ -52,6 +52,17 @@ impl Scope {
     }
 
     /// Проверяет, является ли переменная константой.
+    /// Перебирает всё содержимое области: имя, значение и признак константы.
+    ///
+    /// Нужен интерактивному режиму, показывающему состояние программы: без
+    /// перебора имена переменных приходилось бы угадывать.
+    pub fn entries(&self) -> impl Iterator<Item = (&String, &Value, bool)> {
+        self.constants
+            .iter()
+            .map(|(n, v)| (n, v, true))
+            .chain(self.variables.iter().map(|(n, v)| (n, v, false)))
+    }
+
     pub fn is_const(&self, name: &str) -> bool {
         self.constants.contains_key(name)
     }

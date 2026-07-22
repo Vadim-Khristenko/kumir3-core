@@ -708,6 +708,28 @@ impl Environment {
         self.library_manager.as_ref()
     }
 
+    /// Все глобальные имена со значениями, отсортированные по имени.
+    ///
+    /// Служит интерактивному режиму: он показывает состояние программы, а
+    /// перебрать его иначе было нечем. Порядок задан, чтобы список не
+    /// перетасовывался при каждой перерисовке.
+    pub fn globals_snapshot(&self) -> Vec<(String, Value, bool)> {
+        let mut items: Vec<(String, Value, bool)> = self
+            .globals
+            .entries()
+            .map(|(name, value, is_const)| (name.clone(), value.clone(), is_const))
+            .collect();
+        items.sort_by(|a, b| a.0.cmp(&b.0));
+        items
+    }
+
+    /// Имена определённых алгоритмов, отсортированные.
+    pub fn algorithm_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.algorithms.keys().cloned().collect();
+        names.sort();
+        names
+    }
+
     /// Известно ли имя как функция подключённой библиотеки.
     ///
     /// Без менеджера (или при отравленной блокировке) отвечает «нет»: вызов
