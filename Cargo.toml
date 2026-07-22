@@ -26,7 +26,6 @@ serde_json = "1.0.148"
 tokio-rustls = "0.26.4"
 rustls = "0.23.36"
 webpki-roots = "1.0.5"
-rustls-pemfile = "2.2.0"
 clap = { version = "4.5", features = ["derive", "color"] }
 colored = "3.1"
 ratatui = "0.30.0"

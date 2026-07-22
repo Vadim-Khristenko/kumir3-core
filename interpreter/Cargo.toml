@@ -10,7 +10,7 @@ readme = "README.md"
 keywords = ["kumir3", "kumir", "kumir3-interpreter","interpreter"]
 
 [dependencies]
-shared = {path = "../shared"}
+shared = { path = "../shared", version = "0.2.0-alpha.1" }
 once_cell = {workspace = true}
 lazy_static = {workspace = true}
 dirs = {workspace = true}
@@ -21,7 +21,6 @@ serde_json = {workspace = true}
 tokio-rustls = {workspace = true}
 rustls = {workspace = true}
 webpki-roots = {workspace = true}
-rustls-pemfile = {workspace = true}
 clap = {workspace = true}
 colored = {workspace = true}
 ratatui = {workspace = true}

@@ -10,7 +10,7 @@ readme = "README.md"
 keywords = ["kumir3", "kumir", "kumir3-compiler", "compiler"]
 
 [dependencies]
-shared = { path = "../shared" }
+shared = { path = "../shared", version = "0.2.0-alpha.1" }
 clap = { version = "4.5", features = ["derive"] }
 
 [lints]
