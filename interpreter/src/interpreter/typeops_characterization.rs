@@ -177,6 +177,141 @@ fn char_cmp_eq_strings() {
 }
 
 // =============================================================================
+//   TYPE-ENGINE SEAM — binary operations consult shared::typesys
+// =============================================================================
+//
+// `TypeOps::binary` now asks the type engine (`shared::typesys::default_engine`,
+// `result_of_binop`) whether the operation is defined for the operand types
+// BEFORE handing the computation to `MathOperators`. Nothing that worked before
+// changed value; what changed is the DIAGNOSTIC for operations that were already
+// errors: instead of the kernel's generic "Несовместимые типы операндов:
+// операция сложения" they now name the operator and both operand types in
+// Russian, and carry `RuntimeErrorKind::TypeMismatch` instead of `Other`.
+
+/// The engine's verdict message: operator + both Russian type names.
+fn assert_type_verdict(src: &str, op: &str, left: &str, right: &str) {
+    let err = eval(src).unwrap_err();
+    assert_eq!(
+        err.kind,
+        crate::interpreter::RuntimeErrorKind::TypeMismatch,
+        "{src}: {}",
+        err.message
+    );
+    assert_eq!(
+        err.message,
+        format!("Операция '{op}' не определена для типов '{left}' и '{right}'"),
+        "{src}"
+    );
+}
+
+#[test]
+fn char_binary_engine_rejects_number_over_string() {
+    // Previously: kernel error "Несовместимые типы операндов: операция деления"
+    // (kind Other). Now the engine rejects it before computing.
+    assert_type_verdict("1 / \"строка\"", "/", "цел", "лит");
+}
+
+#[test]
+fn char_binary_engine_rejects_bool_arithmetic() {
+    assert_type_verdict("5 + да", "+", "цел", "лог");
+    assert_type_verdict("да + да", "+", "лог", "лог");
+}
+
+#[test]
+fn char_binary_engine_rejects_null_arithmetic() {
+    assert_type_verdict("пусто + 1", "+", "пусто", "цел");
+}
+
+#[test]
+fn char_binary_engine_rejects_option_arithmetic() {
+    assert_type_verdict("некоторое(5) + 1", "+", "цел?", "цел");
+}
+
+#[test]
+fn char_binary_engine_names_intdiv_by_its_own_spelling() {
+    // The engine has a single `TypeOp::Div` for both `/` and `див`; the
+    // interpreter re-renders the message with the operator as written.
+    assert_type_verdict("\"a\" див 2", "див", "лит", "цел");
+}
+
+#[test]
+fn char_binary_engine_rejects_incomparable_operands() {
+    // Ordering comparisons used to report the vague "ожидался сравнимые типы".
+    assert_type_verdict("5 < \"x\"", "<", "цел", "лит");
+}
+
+#[test]
+fn char_binary_engine_rejects_mod_and_pow_on_strings() {
+    assert_type_verdict("5 мод \"x\"", "мод", "цел", "лит");
+    assert_type_verdict("5 ** \"x\"", "**", "цел", "лит");
+}
+
+// --- the engine must NOT veto what the computation kernel defines ------------
+//
+// `shared::math` deliberately gives `+ - * /` non-numeric meanings that the
+// engine's structural rules do not model. These stay working.
+
+#[test]
+fn char_binary_array_concat_and_difference_survive() {
+    assert_eq!(
+        eval("[1, 2] + [3]").unwrap(),
+        Value::Array(vec![
+            Value::Number(Number::I64(1)),
+            Value::Number(Number::I64(2)),
+            Value::Number(Number::I64(3)),
+        ])
+    );
+    assert_eq!(
+        eval("[1, 2] - [1]").unwrap(),
+        Value::Array(vec![Value::Number(Number::I64(2))])
+    );
+}
+
+#[test]
+fn char_binary_string_repeat_and_substring_removal_survive() {
+    assert_eq!(
+        eval("\"ab\" * 3").unwrap(),
+        Value::String("ababab".to_string())
+    );
+    assert_eq!(
+        eval("\"abcabc\" - \"a\"").unwrap(),
+        Value::String("bcbc".to_string())
+    );
+}
+
+#[test]
+fn char_binary_string_split_survives() {
+    // `лит / цел` chunks the string; the result is an array of pieces.
+    assert_eq!(
+        eval("\"abc\" / 2").unwrap(),
+        Value::Array(vec![
+            Value::String("ab".to_string()),
+            Value::String("c".to_string()),
+        ])
+    );
+}
+
+#[test]
+fn char_binary_equality_across_types_is_total() {
+    // Structural equality stays defined for ANY pair — the engine considers
+    // `цел`/`лит` incomparable, but `=`/`<>` must not become an error.
+    assert_eq!(eval("5 = \"x\"").unwrap(), Value::Boolean(false));
+    assert_eq!(eval("5 <> \"x\"").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_binary_division_by_zero_still_reaches_the_kernel() {
+    // The engine approves `цел див цел`, so the kernel's division-by-zero
+    // diagnostic is the one that surfaces.
+    let err = eval("5 див 0").unwrap_err();
+    assert!(
+        err.message.contains("Деление на ноль"),
+        "got {}",
+        err.message
+    );
+}
+
+// =============================================================================
 //                    UNARY
 // =============================================================================
 

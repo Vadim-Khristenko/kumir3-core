@@ -1,7 +1,7 @@
 //! Слой операций над значениями: единая точка типовых операций интерпретатора.
-//! Извлечён из ExprEvaluator (strangler). Консультируется с shared::typesys там,
-//! где это безопасно (default_value); прочие typesys-точки помечены [typesys-seam]
-//! для будущего среза 2b.
+//! Извлечён из ExprEvaluator (strangler). Консультируется с shared::typesys:
+//! `default_value` (defaults) и типовой вердикт бинарных операций (binary);
+//! оставшиеся typesys-точки помечены [typesys-seam].
 pub struct TypeOps;
 
 mod binary;
