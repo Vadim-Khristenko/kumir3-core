@@ -11,7 +11,12 @@
 ///
 /// Provides detailed error messages for various math operation failures,
 /// including division by zero, domain errors, and type mismatches.
-#[derive(Debug, Clone)]
+///
+/// Ошибка ядра НЕСЁТ СВОЙ ВИД: она передаётся вызывающему как значение
+/// (а не как строка), чтобы интерпретатор мог сопоставить каждую разновидность
+/// со своим `RuntimeErrorKind` (KITE-0014 § 3.2) — `DivisionByZero`,
+/// `Overflow`, `TypeMismatch` и т. д.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MathErr {
     DivisionByZero,
     NegativeSqrt,
@@ -27,31 +32,43 @@ pub enum MathErr {
 impl MathErr {
     /// [STABLE] Returns a human-readable error message for the error variant.
     ///
+    /// Текст — обычная русская фраза без служебных маркеров: вид ошибки
+    /// передаётся отдельно (самим значением [`MathErr`]), а не префиксом
+    /// в сообщении.
+    ///
     /// # Returns
     /// * `String` - Localized error message describing the mathematical error.
     pub fn msg(&self) -> String {
         match self {
             MathErr::DivisionByZero =>
-                "[MathErr] Деление на ноль не определено".to_string(),
+                "Деление на ноль не определено".to_string(),
             MathErr::NegativeSqrt =>
-                "[MathErr] Квадратный корень из отрицательного числа не определён".to_string(),
+                "Квадратный корень из отрицательного числа не определён".to_string(),
             MathErr::NegativeRoot =>
-                "[MathErr] Корень чётной степени из отрицательного числа не определён".to_string(),
+                "Корень чётной степени из отрицательного числа не определён".to_string(),
             MathErr::NotRealOneSqrt =>
-                "[MathErr] Мнимая еденица! К сожалению пока что мы не поддерживаем такие 'Жёские вычисления', а так-то результат i".to_string(),
+                "Мнимая еденица! К сожалению пока что мы не поддерживаем такие 'Жёские вычисления', а так-то результат i".to_string(),
             MathErr::NegativePowNonInteger =>
-                "[MathErr] Отрицательное основание допускается только с целой степенью".to_string(),
+                "Отрицательное основание допускается только с целой степенью".to_string(),
             MathErr::Overflow =>
-                "[MathErr] Переполнение числа".to_string(),
+                "Переполнение числа".to_string(),
             MathErr::FloatOverflow =>
-                "[MathErr] Переполнение числа (вещественный тип)".to_string(),
+                "Переполнение числа (вещественный тип)".to_string(),
             MathErr::DomainError(m) =>
-                format!("[MathErr] Нарушение области определения: {}", m),
+                format!("Нарушение области определения: {}", m),
             MathErr::TypeMismatch(m) =>
-                format!("[MathErr] Несовместимые типы операндов: {}", m),
+                format!("Несовместимые типы операндов: {}", m),
         }
     }
 }
+
+impl std::fmt::Display for MathErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.msg())
+    }
+}
+
+impl std::error::Error for MathErr {}
 
 /// [STABLE] Warning message for automatic type widening on overflow.
 ///

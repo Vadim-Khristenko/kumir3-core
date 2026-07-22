@@ -3,6 +3,7 @@
 //! Модуль содержит типы ошибок, возникающих во время выполнения программы.
 
 use shared::codegen::RustCodeBlockError;
+use shared::math::MathErr;
 use shared::types::Value;
 use std::fmt;
 
@@ -205,6 +206,41 @@ impl From<RustCodeBlockError> for RuntimeError {
     }
 }
 impl std::error::Error for RuntimeError {}
+
+// ============================================================================
+// Ошибки математического ядра (`shared::math`)
+// ============================================================================
+
+/// Вид ошибки времени выполнения для ошибки ядра.
+///
+/// Ядро сообщает, ЧТО именно пошло не так ([`MathErr`]); здесь эта
+/// разновидность сопоставляется с видом ошибки выполнения из KITE-0014 § 3.2.
+/// Раньше любая ошибка арифметики схлопывалась в [`RuntimeErrorKind::Other`],
+/// из-за чего `DivisionByZero` и `Overflow` были недостижимы на практике.
+impl From<MathErr> for RuntimeErrorKind {
+    fn from(err: MathErr) -> Self {
+        match err {
+            MathErr::DivisionByZero => RuntimeErrorKind::DivisionByZero,
+            MathErr::Overflow | MathErr::FloatOverflow => RuntimeErrorKind::Overflow,
+            MathErr::TypeMismatch(_) => RuntimeErrorKind::TypeMismatch,
+            // Нарушения области определения (корень из отрицательного,
+            // отрицательное основание с дробной степенью, …) — не переполнение
+            // и не рассогласование типов; отдельного вида для них в KITE-0014
+            // нет, поэтому они остаются `Other`.
+            MathErr::NegativeSqrt
+            | MathErr::NegativeRoot
+            | MathErr::NotRealOneSqrt
+            | MathErr::NegativePowNonInteger
+            | MathErr::DomainError(_) => RuntimeErrorKind::Other,
+        }
+    }
+}
+
+impl From<MathErr> for RuntimeError {
+    fn from(err: MathErr) -> Self {
+        Self::new(err.msg(), RuntimeErrorKind::from(err))
+    }
+}
 
 /// Результат выполнения интерпретатора.
 pub type RuntimeResult<T> = Result<T, RuntimeError>;

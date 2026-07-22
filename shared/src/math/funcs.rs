@@ -25,11 +25,11 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Square root result
-    /// * `Err(String)` - Error message (negative input, overflow)
-    pub fn sqrt(a: Value, fo_e: bool) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message (negative input, overflow)
+    pub fn sqrt(a: Value, fo_e: bool) -> Result<Value, MathErr> {
         match a {
             Value::Number(n) => Self::num_sqrt(n, fo_e),
-            _ => Err(MathErr::TypeMismatch("sqrt ожидает число").msg()),
+            _ => Err(MathErr::TypeMismatch("sqrt ожидает число")),
         }
     }
 
@@ -42,8 +42,8 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Nth root result
-    /// * `Err(String)` - Error message
-    pub fn root(a: Value, n: Value, fo_e: bool) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message
+    pub fn root(a: Value, n: Value, fo_e: bool) -> Result<Value, MathErr> {
         let n_int = match n {
             Value::Number(Number::I32(v)) => v as i64,
             Value::Number(Number::I64(v)) => v,
@@ -51,17 +51,17 @@ impl MathOperators {
                 if v >= i64::MIN as i128 && v <= i64::MAX as i128 {
                     v as i64
                 } else {
-                    return Err(MathErr::DomainError("слишком большая степень корня").msg());
+                    return Err(MathErr::DomainError("слишком большая степень корня"));
                 }
             }
-            _ => return Err(MathErr::TypeMismatch("root ожидает целую степень").msg()),
+            _ => return Err(MathErr::TypeMismatch("root ожидает целую степень")),
         };
         if n_int == 0 {
-            return Err(MathErr::DomainError("корень нулевой степени не определён").msg());
+            return Err(MathErr::DomainError("корень нулевой степени не определён"));
         }
         match a {
             Value::Number(num) => Self::num_root(num, n_int, fo_e),
-            _ => Err(MathErr::TypeMismatch("root ожидает число").msg()),
+            _ => Err(MathErr::TypeMismatch("root ожидает число")),
         }
     }
 
@@ -75,24 +75,24 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Rounded value
-    /// * `Err(String)` - Error message
+    /// * `Err(MathErr)` - Error message
     pub fn round(
         a: Value,
         b: Option<Value>,
         rf: Option<Value>,
         _fo_e: bool,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, MathErr> {
         let prec: i32 = match b {
             Some(Value::Number(nb)) => match Self::to_i128(&nb) {
                 Some(v) => v as i32,
                 None => {
-                    return Err(
-                        MathErr::TypeMismatch("round: точность должна быть целым числом").msg(),
-                    );
+                    return Err(MathErr::TypeMismatch(
+                        "round: точность должна быть целым числом",
+                    ));
                 }
             },
             Some(_) => {
-                return Err(MathErr::TypeMismatch("round: точность должна быть числом").msg());
+                return Err(MathErr::TypeMismatch("round: точность должна быть числом"));
             }
             None => 0,
         };
@@ -101,15 +101,17 @@ impl MathOperators {
             Some(Value::Number(nr)) => match Self::to_i128(&nr) {
                 Some(v) => v as i8,
                 None => {
-                    return Err(MathErr::TypeMismatch("round: rf должна быть целым числом").msg());
+                    return Err(MathErr::TypeMismatch("round: rf должна быть целым числом"));
                 }
             },
-            Some(_) => return Err(MathErr::TypeMismatch("round: rf должна быть числом").msg()),
+            Some(_) => return Err(MathErr::TypeMismatch("round: rf должна быть числом")),
             None => 5,
         };
 
         if !(1..=9).contains(&rf_val) {
-            return Err(MathErr::DomainError("параметр rf должен быть в диапазоне 1..9").msg());
+            return Err(MathErr::DomainError(
+                "параметр rf должен быть в диапазоне 1..9",
+            ));
         }
 
         match a {
@@ -117,7 +119,7 @@ impl MathOperators {
                 let res = Self::num_round(n, prec, rf_val)?;
                 Ok(Value::Number(res))
             }
-            _ => Err(MathErr::TypeMismatch("round ожидает число").msg()),
+            _ => Err(MathErr::TypeMismatch("round ожидает число")),
         }
     }
 
@@ -128,11 +130,11 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Sine value
-    /// * `Err(String)` - Error message
-    pub fn sin(a: Value) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message
+    pub fn sin(a: Value) -> Result<Value, MathErr> {
         match a {
             Value::Number(n) => Ok(Value::Number(Self::num_sin(n))),
-            _ => Err(MathErr::TypeMismatch("sin ожидает число").msg()),
+            _ => Err(MathErr::TypeMismatch("sin ожидает число")),
         }
     }
 
@@ -143,11 +145,11 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Cosine value
-    /// * `Err(String)` - Error message
-    pub fn cos(a: Value) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message
+    pub fn cos(a: Value) -> Result<Value, MathErr> {
         match a {
             Value::Number(n) => Ok(Value::Number(Self::num_cos(n))),
-            _ => Err(MathErr::TypeMismatch("cos ожидает число").msg()),
+            _ => Err(MathErr::TypeMismatch("cos ожидает число")),
         }
     }
 
@@ -158,11 +160,11 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Tangent value
-    /// * `Err(String)` - Error message
-    pub fn tg(a: Value) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message
+    pub fn tg(a: Value) -> Result<Value, MathErr> {
         match a {
             Value::Number(n) => Ok(Value::Number(Self::num_tan(n))),
-            _ => Err(MathErr::TypeMismatch("tg ожидает число").msg()),
+            _ => Err(MathErr::TypeMismatch("tg ожидает число")),
         }
     }
 
@@ -173,11 +175,11 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Cotangent value
-    /// * `Err(String)` - Error message (division by zero)
-    pub fn ctg(a: Value) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message (division by zero)
+    pub fn ctg(a: Value) -> Result<Value, MathErr> {
         match a {
             Value::Number(n) => Self::num_ctg(n),
-            _ => Err(MathErr::TypeMismatch("ctg ожидает число").msg()),
+            _ => Err(MathErr::TypeMismatch("ctg ожидает число")),
         }
     }
 
@@ -188,11 +190,11 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Absolute value
-    /// * `Err(String)` - Error message
-    pub fn abs(a: Value) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message
+    pub fn abs(a: Value) -> Result<Value, MathErr> {
         match a {
             Value::Number(n) => Ok(Value::Number(Self::num_abs(n))),
-            _ => Err(MathErr::TypeMismatch("abs ожидает число").msg()),
+            _ => Err(MathErr::TypeMismatch("abs ожидает число")),
         }
     }
 
@@ -203,19 +205,19 @@ impl MathOperators {
     /// * `fo_e` - If true, overflow causes error; if false, auto-widens type
     ///
     /// # Returns
-    /// * `Result<Value, String>` - Square root result or error message
-    pub(super) fn num_sqrt(n: Number, fo_e: bool) -> Result<Value, String> {
+    /// * `Result<Value, MathErr>` - Square root result or error message
+    pub(super) fn num_sqrt(n: Number, fo_e: bool) -> Result<Value, MathErr> {
         let x = Self::to_f128_full(&n);
         // Easter egg: calc sqrt(-1) -> return specific NotRealOneSqrt error
         if x == tF128::from(-1.0_f64) {
-            return Err(MathErr::NotRealOneSqrt.msg());
+            return Err(MathErr::NotRealOneSqrt);
         }
         if x.is_sign_negative() {
-            return Err(MathErr::NegativeSqrt.msg());
+            return Err(MathErr::NegativeSqrt);
         }
         let r = x.sqrt();
         if (r.is_infinite() || r.is_nan()) && fo_e {
-            return Err(MathErr::FloatOverflow.msg());
+            return Err(MathErr::FloatOverflow);
         }
         Ok(Value::Number(Number::F128(r)))
     }
@@ -228,19 +230,19 @@ impl MathOperators {
     /// * `fo_e` - If true, overflow causes error; if false, auto-widens type
     ///
     /// # Returns
-    /// * `Result<Value, String>` - Nth root result or error message
-    pub(super) fn num_root(n: Number, k: i64, fo_e: bool) -> Result<Value, String> {
+    /// * `Result<Value, MathErr>` - Nth root result or error message
+    pub(super) fn num_root(n: Number, k: i64, fo_e: bool) -> Result<Value, MathErr> {
         let x = Self::to_f128_full(&n);
         if k == 0 {
-            return Err(MathErr::DomainError("root(x,0) не определён").msg());
+            return Err(MathErr::DomainError("root(x,0) не определён"));
         }
         if x.is_sign_negative() && k % 2 == 0 {
-            return Err(MathErr::NegativeRoot.msg());
+            return Err(MathErr::NegativeRoot);
         }
         let kf = k as f64;
         let r = x.powf(tF128::from(1.0_f64 / kf));
         if (r.is_infinite() || r.is_nan()) && fo_e {
-            return Err(MathErr::FloatOverflow.msg());
+            return Err(MathErr::FloatOverflow);
         }
         Ok(Value::Number(Number::F128(r)))
     }
@@ -253,8 +255,8 @@ impl MathOperators {
     /// * `rf` - Rounding factor (1-9, default 5)
     ///
     /// # Returns
-    /// * `Result<Number, String>` - Rounded number or error message
-    pub(super) fn num_round(n: Number, prec: i32, rf: i8) -> Result<Number, String> {
+    /// * `Result<Number, MathErr>` - Rounded number or error message
+    pub(super) fn num_round(n: Number, prec: i32, rf: i8) -> Result<Number, MathErr> {
         match n {
             Number::F128(v) => {
                 let rounded = Self::round_decimal_f128(v, prec, rf);
@@ -403,12 +405,12 @@ impl MathOperators {
     /// * `rf` - Rounding factor (1-9)
     ///
     /// # Returns
-    /// * `Result<Number, String>` - Rounded integer or error message
-    pub(super) fn round_integer(n: Number, prec: i32, rf: i8) -> Result<Number, String> {
+    /// * `Result<Number, MathErr>` - Rounded integer or error message
+    pub(super) fn round_integer(n: Number, prec: i32, rf: i8) -> Result<Number, MathErr> {
         let exp = (-prec) as u32;
         let divisor = 10i128.pow(exp);
 
-        let val = Self::to_i128(&n).ok_or_else(|| MathErr::Overflow.msg())?;
+        let val = Self::to_i128(&n).ok_or(MathErr::Overflow)?;
         let sign = if val < 0 { -1 } else { 1 };
         let abs_val = val.abs();
 
@@ -431,7 +433,7 @@ impl MathOperators {
             val < 0,
             Self::int_info(&n).map(|(_, r)| r).unwrap_or(5),
         )
-        .ok_or_else(|| MathErr::Overflow.msg())
+        .ok_or(MathErr::Overflow)
     }
 
     /// Computes sine of a number.
@@ -483,12 +485,12 @@ impl MathOperators {
     /// * `n` - Angle in radians (must not be multiple of π)
     ///
     /// # Returns
-    /// * `Result<Value, String>` - Cotangent value or division by zero error
-    pub(super) fn num_ctg(n: Number) -> Result<Value, String> {
+    /// * `Result<Value, MathErr>` - Cotangent value or division by zero error
+    pub(super) fn num_ctg(n: Number) -> Result<Value, MathErr> {
         let f = Self::to_f128_full(&n);
         let s = f.sin();
         if s.is_zero() {
-            return Err(MathErr::DivisionByZero.msg());
+            return Err(MathErr::DivisionByZero);
         }
         Ok(Value::Number(Number::F128(f.ctg())))
     }

@@ -75,23 +75,22 @@ impl TypeOps {
     }
 
     /// Вычислительное ядро: как считать результат уже разрешённой операции.
+    ///
+    /// Ошибка ядра ([`shared::math::MathErr`]) несёт свой вид, поэтому
+    /// `RuntimeError::from` расставляет `DivisionByZero`/`Overflow`/
+    /// `TypeMismatch` (KITE-0014 § 3.2), а не схлопывает всё в `Other`.
     fn compute(op: &Token, left: Value, right: Value) -> RuntimeResult<Value> {
         match op {
             // Арифметические операции
-            Token::Plus => MathOperators::add(left, right, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::Minus => MathOperators::sub(left, right, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::Star => MathOperators::mul(left, right, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::Slash => MathOperators::div(left, right, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::IntDiv => MathOperators::int_div(left, right, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::Percent => MathOperators::modulus(left, right, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
-            Token::Power => MathOperators::pow(left, right, false)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
+            Token::Plus => MathOperators::add(left, right, false).map_err(RuntimeError::from),
+            Token::Minus => MathOperators::sub(left, right, false).map_err(RuntimeError::from),
+            Token::Star => MathOperators::mul(left, right, false).map_err(RuntimeError::from),
+            Token::Slash => MathOperators::div(left, right, false).map_err(RuntimeError::from),
+            Token::IntDiv => MathOperators::int_div(left, right, false).map_err(RuntimeError::from),
+            Token::Percent => {
+                MathOperators::modulus(left, right, false).map_err(RuntimeError::from)
+            }
+            Token::Power => MathOperators::pow(left, right, false).map_err(RuntimeError::from),
 
             // Сравнения
             Token::Equal => Ok(Value::Boolean(TypeOps::values_equal(&left, &right))),

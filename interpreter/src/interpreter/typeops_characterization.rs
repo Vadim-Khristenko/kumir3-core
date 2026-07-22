@@ -867,3 +867,239 @@ fn char_cast_null_to_optional_is_empty() {
         Value::Option(Box::new(None))
     );
 }
+
+// =============================================================================
+//   TYPE ENGINE SEAM — comparison (`<` `<=` `>` `>=`, `=` `<>`)
+// =============================================================================
+//
+// `TypeOps::compare` now asks the engine (`result_of_binop`) whether ORDERING is
+// defined for the operand types before ordering them, and orders numbers WITHOUT
+// the old round-trip through `f64`. Equality (`values_equal`) stays total — the
+// engine defines `=`/`<>` for every pair of types, so it is never asked to veto.
+
+// ── equality is total for every pair of types ───────────────────────────────
+
+#[test]
+fn char_engine_equality_is_total_for_every_type_pair() {
+    use shared::types::TypeKind;
+    use shared::typesys::{TypeOp, default_engine};
+
+    let kinds = [
+        TypeKind::Int64,
+        TypeKind::Float64,
+        TypeKind::Bool,
+        TypeKind::Char,
+        TypeKind::String,
+        TypeKind::Array(Box::new(TypeKind::Int64)),
+        TypeKind::Option(Box::new(TypeKind::Int64)),
+        TypeKind::Null,
+        TypeKind::Any,
+    ];
+    for a in &kinds {
+        for b in &kinds {
+            for op in [TypeOp::Eq, TypeOp::Ne] {
+                assert_eq!(
+                    default_engine().result_of_binop(op, a, b),
+                    Ok(TypeKind::Bool),
+                    "равенство должно быть тотальным: {:?} {} {:?}",
+                    a,
+                    op.symbol(),
+                    b
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn char_equality_of_unordered_types_still_works() {
+    // `лог` and tables are NOT ordered, but equality on them must stay defined.
+    assert_eq!(eval("да = да").unwrap(), Value::Boolean(true));
+    assert_eq!(eval("да <> нет").unwrap(), Value::Boolean(true));
+    assert_eq!(eval("[1, 2] = [1, 2]").unwrap(), Value::Boolean(true));
+    assert_eq!(eval("[1, 2] <> [1]").unwrap(), Value::Boolean(true));
+}
+
+// ── ordering demands an ordered type on both sides ─────────────────────────
+
+#[test]
+fn char_ordering_rejects_unordered_types() {
+    // NEW (type-engine seam): the old hand-written `match` reported the vague
+    // "ожидался сравнимые типы"; the engine names the operator and both types.
+    assert_type_verdict("да < нет", "<", "лог", "лог");
+    assert_type_verdict("[1] < [2]", "<", "таб цел", "таб цел");
+    assert_type_verdict("пусто <= 1", "<=", "пусто", "цел");
+}
+
+#[test]
+fn char_ordering_of_ordered_types_still_works() {
+    assert_eq!(eval("\"a\" < \"b\"").unwrap(), Value::Boolean(true));
+    assert_eq!(eval("5 <= 5.5").unwrap(), Value::Boolean(true));
+    assert_eq!(eval("5.5 > 5").unwrap(), Value::Boolean(true));
+}
+
+// ── numbers are compared without the lossy f64 round-trip ──────────────────
+
+#[test]
+fn char_ordering_large_integers_is_exact() {
+    // CORRECTED: both operands used to be converted to `f64` (53-bit mantissa),
+    // so 2^53 and 2^53+1 collapsed to the same value and compared EQUAL —
+    // `<` and `>` were both false. Integers are now compared as integers.
+    assert_eq!(
+        eval("9007199254740992 < 9007199254740993").unwrap(),
+        Value::Boolean(true)
+    );
+    assert_eq!(
+        eval("9007199254740993 > 9007199254740992").unwrap(),
+        Value::Boolean(true)
+    );
+    assert_eq!(
+        eval("9007199254740993 <= 9007199254740992").unwrap(),
+        Value::Boolean(false)
+    );
+    // Two distinct large integers are not "equal" under ordering either.
+    assert_eq!(
+        eval("9007199254740993 >= 9007199254740994").unwrap(),
+        Value::Boolean(false)
+    );
+}
+
+#[test]
+fn char_ordering_mixed_int_and_real_is_exact() {
+    // CORRECTED: the integer side is no longer rounded to `f64` before the
+    // comparison, so an integer just above 2^53 is greater than the real 2^53.
+    assert_eq!(
+        eval("9007199254740993 > 9007199254740992.0").unwrap(),
+        Value::Boolean(true)
+    );
+    // Ordinary mixed comparisons are unchanged.
+    assert_eq!(eval("2 < 2.5").unwrap(), Value::Boolean(true));
+    assert_eq!(eval("3 > 2.5").unwrap(), Value::Boolean(true));
+    assert_eq!(eval("2 >= 2.0").unwrap(), Value::Boolean(true));
+    assert_eq!(eval("2 <= 2.0").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_ordering_small_numbers_unchanged() {
+    // Parity guard: the everyday cases keep their exact previous answers.
+    for (src, expected) in [
+        ("0 < 1", true),
+        ("-1 < 0", true),
+        ("-1 > 0", false),
+        ("1.5 < 1.5", false),
+        ("1.5 <= 1.5", true),
+        ("-2.5 < -2.0", true),
+        ("0.1 + 0.2 > 0.3", true),
+    ] {
+        assert_eq!(eval(src).unwrap(), Value::Boolean(expected), "{src}");
+    }
+}
+
+#[test]
+fn char_ordering_chars_and_strings_unchanged() {
+    assert_eq!(
+        eval("(\"a\" как сим) < (\"b\" как сим)").unwrap(),
+        Value::Boolean(true)
+    );
+    assert_eq!(eval("\"abc\" >= \"abc\"").unwrap(), Value::Boolean(true));
+}
+
+// =============================================================================
+//     ВИД ОШИБКИ АРИФМЕТИКИ (KITE-0014 § 3.2)
+// =============================================================================
+//
+// ИСПРАВЛЕНО: раньше любая ошибка математического ядра доходила до программы
+// с видом `Other` — задокументированные виды `DivisionByZero` и `Overflow`
+// были недостижимы. Теперь ядро возвращает типизированную ошибку
+// (`shared::math::MathErr`), и граница `ops::binary` расставляет вид.
+// Тесты ниже закрепляют именно вид, а не только текст сообщения.
+
+use crate::interpreter::error::{RuntimeError, RuntimeErrorKind};
+use shared::math::{MathErr, MathOperators};
+
+/// Вид ошибки, с которым выражение падает.
+fn err_kind(src: &str) -> RuntimeErrorKind {
+    match eval(src) {
+        Ok(v) => panic!("ожидалась ошибка для `{src}`, получено {v:?}"),
+        Err(e) => e.kind,
+    }
+}
+
+#[test]
+fn arith_division_by_zero_has_its_own_kind() {
+    for src in ["5 див 0", "1 / 0", "5 % 0", "5 мод 0"] {
+        assert_eq!(err_kind(src), RuntimeErrorKind::DivisionByZero, "{src}");
+    }
+}
+
+#[test]
+fn arith_division_by_zero_message_has_no_internal_marker() {
+    // Сообщение — обычная русская фраза: служебный префикс `[MathErr]` убран,
+    // вид ошибки передаётся отдельным полем.
+    let err = eval("5 див 0").unwrap_err();
+    assert_eq!(err.message, "Деление на ноль не определено");
+    assert!(!err.message.contains("MathErr"));
+}
+
+#[test]
+fn kernel_type_mismatch_is_type_mismatch() {
+    // Встроенные `остаток`/`цел_деление` определены только для целых:
+    // отбраковку делает само ядро, и её вид — рассогласование типов.
+    for src in ["остаток(1, 2.5)", "цел_деление(1, 2.5)"] {
+        assert_eq!(err_kind(src), RuntimeErrorKind::TypeMismatch, "{src}");
+    }
+}
+
+#[test]
+fn kernel_domain_errors_stay_other() {
+    // Для нарушений области определения отдельного вида в KITE-0014 нет.
+    assert_eq!(err_kind("корень(-4)"), RuntimeErrorKind::Other);
+}
+
+#[test]
+fn kernel_overflow_maps_to_overflow_kind() {
+    // Переполнение целых достижимо в ядре при строгом режиме (`fo_e = true`);
+    // из программы на Кумире оно пока не наблюдается — все вызовы ядра идут
+    // с автоматическим расширением типа.
+    let err = MathOperators::add(
+        Value::Number(Number::I8(i8::MAX)),
+        Value::Number(Number::I8(1)),
+        true,
+    )
+    .unwrap_err();
+    assert_eq!(err, MathErr::Overflow);
+
+    // Беззнаковый выход за ноль даёт переполнение даже без строгого режима:
+    // расширять отрицательный результат беззнакового типа некуда.
+    let err = MathOperators::sub(
+        Value::Number(Number::U8(0)),
+        Value::Number(Number::U8(1)),
+        false,
+    )
+    .unwrap_err();
+    assert_eq!(err, MathErr::Overflow);
+    assert_eq!(
+        RuntimeError::from(err).kind,
+        RuntimeErrorKind::Overflow,
+        "переполнение обязано доходить как Overflow"
+    );
+}
+
+#[test]
+fn math_err_kind_mapping_is_total() {
+    for (err, kind) in [
+        (MathErr::DivisionByZero, RuntimeErrorKind::DivisionByZero),
+        (MathErr::Overflow, RuntimeErrorKind::Overflow),
+        (MathErr::FloatOverflow, RuntimeErrorKind::Overflow),
+        (MathErr::TypeMismatch("x"), RuntimeErrorKind::TypeMismatch),
+        (MathErr::DomainError("x"), RuntimeErrorKind::Other),
+        (MathErr::NegativeSqrt, RuntimeErrorKind::Other),
+        (MathErr::NegativeRoot, RuntimeErrorKind::Other),
+        (MathErr::NotRealOneSqrt, RuntimeErrorKind::Other),
+        (MathErr::NegativePowNonInteger, RuntimeErrorKind::Other),
+    ] {
+        let rt = RuntimeError::from(err);
+        assert_eq!(rt.kind, kind, "{err:?}");
+        assert_eq!(rt.message, err.msg());
+    }
+}

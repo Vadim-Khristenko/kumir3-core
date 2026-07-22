@@ -196,12 +196,12 @@ impl MathOperators {
     /// * `_fo_e` - Overflow flag (unused)
     ///
     /// # Returns
-    /// * `Result<Value, String>` - Repeated string or error message
+    /// * `Result<Value, MathErr>` - Repeated string or error message
     pub(super) fn str_mul_string_number(
         s: String,
         n: Number,
         _fo_e: bool,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, MathErr> {
         use self::Number::*;
         match n {
             I8(v) => Self::str_mul_by_count(&s, v as i128),
@@ -214,17 +214,17 @@ impl MathOperators {
             U32(v) => Self::str_mul_by_count(&s, v as i128),
             U64(v) => {
                 if v > i128::MAX as u64 {
-                    return Err(MathErr::Overflow.msg());
+                    return Err(MathErr::Overflow);
                 }
                 Self::str_mul_by_count(&s, v as i128)
             }
             U128(v) => {
                 if v > i128::MAX as u128 {
-                    return Err(MathErr::Overflow.msg());
+                    return Err(MathErr::Overflow);
                 }
                 Self::str_mul_by_count(&s, v as i128)
             }
-            _ => Err(MathErr::TypeMismatch("умножение строки только на целое").msg()),
+            _ => Err(MathErr::TypeMismatch("умножение строки только на целое")),
         }
     }
 
@@ -235,10 +235,12 @@ impl MathOperators {
     /// * `count` - Number of repetitions (must be non-negative)
     ///
     /// # Returns
-    /// * `Result<Value, String>` - Repeated string or error message
-    pub(super) fn str_mul_by_count(s: &str, count: i128) -> Result<Value, String> {
+    /// * `Result<Value, MathErr>` - Repeated string or error message
+    pub(super) fn str_mul_by_count(s: &str, count: i128) -> Result<Value, MathErr> {
         if count < 0 {
-            return Err(MathErr::DomainError("умножение строки на отрицательное число").msg());
+            return Err(MathErr::DomainError(
+                "умножение строки на отрицательное число",
+            ));
         }
         let cnt = if count == 0 { 0 } else { count as usize };
         Ok(Value::String(s.repeat(cnt)))
@@ -252,12 +254,12 @@ impl MathOperators {
     /// * `_fo_e` - Overflow flag (unused)
     ///
     /// # Returns
-    /// * `Result<Value, String>` - Array of string parts or error message
+    /// * `Result<Value, MathErr>` - Array of string parts or error message
     pub(super) fn str_div_string_number(
         s: String,
         n: Number,
         _fo_e: bool,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, MathErr> {
         use self::Number::*;
         match n {
             I8(v) => Self::str_div_by_count(&s, v as i128),
@@ -270,17 +272,17 @@ impl MathOperators {
             U32(v) => Self::str_div_by_count(&s, v as i128),
             U64(v) => {
                 if v > i128::MAX as u64 {
-                    return Err(MathErr::Overflow.msg());
+                    return Err(MathErr::Overflow);
                 }
                 Self::str_div_by_count(&s, v as i128)
             }
             U128(v) => {
                 if v > i128::MAX as u128 {
-                    return Err(MathErr::Overflow.msg());
+                    return Err(MathErr::Overflow);
                 }
                 Self::str_div_by_count(&s, v as i128)
             }
-            _ => Err(MathErr::TypeMismatch("деление строки только на целое").msg()),
+            _ => Err(MathErr::TypeMismatch("деление строки только на целое")),
         }
     }
 
@@ -291,20 +293,22 @@ impl MathOperators {
     /// * `count` - Number of parts (must be positive)
     ///
     /// # Returns
-    /// * `Result<Value, String>` - Array of string parts or error message
-    pub(super) fn str_div_by_count(s: &str, count: i128) -> Result<Value, String> {
+    /// * `Result<Value, MathErr>` - Array of string parts or error message
+    pub(super) fn str_div_by_count(s: &str, count: i128) -> Result<Value, MathErr> {
         if count == 0 {
-            return Err(MathErr::DivisionByZero.msg());
+            return Err(MathErr::DivisionByZero);
         }
         if count < 0 {
-            return Err(MathErr::DomainError("деление строки на отрицательное число").msg());
+            return Err(MathErr::DomainError(
+                "деление строки на отрицательное число",
+            ));
         }
         let n = count as usize;
         // Split into n parts as equally as possible using character count
         let chars: Vec<char> = s.chars().collect();
         let len = chars.len();
         if n == 0 {
-            return Err(MathErr::DivisionByZero.msg());
+            return Err(MathErr::DivisionByZero);
         }
         if n == 1 {
             return Ok(Value::Array(vec![Value::String(s.to_string())]));
@@ -334,14 +338,16 @@ impl MathOperators {
     /// * `_fo_e` - Overflow flag (unused)
     ///
     /// # Returns
-    /// * `Result<Value, String>` - Pair of (parts array, split count) or error message
+    /// * `Result<Value, MathErr>` - Pair of (parts array, split count) or error message
     pub(super) fn str_div_string_delim(
         s: String,
         delim: String,
         _fo_e: bool,
-    ) -> Result<Value, String> {
+    ) -> Result<Value, MathErr> {
         if delim.is_empty() {
-            return Err(MathErr::DomainError("разделитель не может быть пустой строкой").msg());
+            return Err(MathErr::DomainError(
+                "разделитель не может быть пустой строкой",
+            ));
         }
         let parts: Vec<Value> = s
             .split(&delim)

@@ -189,14 +189,14 @@ impl MathOperators {
     /// * `float_op` - Floating-point operation function
     ///
     /// # Returns
-    /// * `Result<Number, String>` - Result of operation or error message
+    /// * `Result<Number, MathErr>` - Result of operation or error message
     pub(super) fn int_or_float(
         a: Number,
         b: Number,
         fo_e: bool,
         int_op: fn(i128, i128) -> i128,
         float_op: fn(tF128, tF128) -> tF128,
-    ) -> Result<Number, String> {
+    ) -> Result<Number, MathErr> {
         if let (Some((sa, ra)), Some((sb, rb))) = (Self::int_info(&a), Self::int_info(&b)) {
             let signed = sa || sb;
             let rank = ra.max(rb);
@@ -208,19 +208,19 @@ impl MathOperators {
                 }
 
                 if fo_e {
-                    return Err(MathErr::Overflow.msg());
+                    return Err(MathErr::Overflow);
                 }
 
                 let widened = if signed {
                     if (i128::MIN..=i128::MAX).contains(&res) {
                         Number::I128(res)
                     } else {
-                        return Err(MathErr::Overflow.msg());
+                        return Err(MathErr::Overflow);
                     }
                 } else if res >= 0 {
                     Number::U128(res as u128)
                 } else {
-                    return Err(MathErr::Overflow.msg());
+                    return Err(MathErr::Overflow);
                 };
 
                 let _ = warn_auto_widen();
@@ -232,7 +232,7 @@ impl MathOperators {
         let fb = Self::to_f128_full(&b);
         let r = float_op(fa, fb);
         if (r.is_infinite() || r.is_nan()) && fo_e {
-            return Err(MathErr::FloatOverflow.msg());
+            return Err(MathErr::FloatOverflow);
         }
         Ok(Number::F128(r))
     }

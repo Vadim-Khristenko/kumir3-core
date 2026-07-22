@@ -264,11 +264,11 @@ fn string_divide_by_empty_delim_errors() {
 fn sqrt_minus_one_special_error() {
     let a = Value::from(-1.0);
     let e = MathOperators::sqrt(a, true);
-    assert_eq!(e.unwrap_err(), MathErr::NotRealOneSqrt.msg());
+    assert_eq!(e.unwrap_err(), MathErr::NotRealOneSqrt);
 
     let b = Value::from(-1i64);
     let e2 = MathOperators::sqrt(b, true);
-    assert_eq!(e2.unwrap_err(), MathErr::NotRealOneSqrt.msg());
+    assert_eq!(e2.unwrap_err(), MathErr::NotRealOneSqrt);
 }
 
 #[test]

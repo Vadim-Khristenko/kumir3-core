@@ -25,7 +25,7 @@ impl Builtins {
                 Self::check_args(name, &vals, 1)?;
                 MathOperators::sqrt(vals[0].clone(), false)
                     .map(Some)
-                    .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other))
+                    .map_err(RuntimeError::from)
             }
 
             "sin" => {
@@ -62,7 +62,7 @@ impl Builtins {
                 Self::check_args(name, &vals, 1)?;
                 MathOperators::ctg(vals[0].clone())
                     .map(Some)
-                    .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other))
+                    .map_err(RuntimeError::from)
             }
 
             "arcctg" | "arccot" => {
@@ -128,7 +128,7 @@ impl Builtins {
                 Self::check_args(name, &vals, 2)?;
                 MathOperators::pow(vals[0].clone(), vals[1].clone(), false)
                     .map(Some)
-                    .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other))
+                    .map_err(RuntimeError::from)
             }
 
             "floor" | "пол" => {
@@ -163,14 +163,14 @@ impl Builtins {
                 Self::check_args(name, &vals, 2)?;
                 MathOperators::int_div(vals[0].clone(), vals[1].clone(), false)
                     .map(Some)
-                    .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other))
+                    .map_err(RuntimeError::from)
             }
 
             "остаток" | "rem" => {
                 Self::check_args(name, &vals, 2)?;
                 MathOperators::modulus(vals[0].clone(), vals[1].clone(), false)
                     .map(Some)
-                    .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other))
+                    .map_err(RuntimeError::from)
             }
 
             "round" | "округлить" | "округл" => {

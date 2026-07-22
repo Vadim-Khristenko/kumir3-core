@@ -27,8 +27,8 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Result of addition
-    /// * `Err(String)` - Error message
-    pub fn add(a: Value, b: Value, fo_e: bool) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message
+    pub fn add(a: Value, b: Value, fo_e: bool) -> Result<Value, MathErr> {
         match (a, b) {
             (Value::Number(na), Value::Number(nb)) => {
                 Self::num_add(na, nb, fo_e).map(Value::Number)
@@ -38,7 +38,7 @@ impl MathOperators {
                 va.extend(vb);
                 Ok(Value::Array(va))
             }
-            _ => Err(MathErr::TypeMismatch("операция сложения").msg()),
+            _ => Err(MathErr::TypeMismatch("операция сложения")),
         }
     }
 
@@ -51,8 +51,8 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Result of subtraction
-    /// * `Err(String)` - Error message
-    pub fn sub(a: Value, b: Value, fo_e: bool) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message
+    pub fn sub(a: Value, b: Value, fo_e: bool) -> Result<Value, MathErr> {
         match (a, b) {
             (Value::Number(na), Value::Number(nb)) => {
                 Self::num_sub(na, nb, fo_e).map(Value::Number)
@@ -92,7 +92,7 @@ impl MathOperators {
                 }
                 Ok(Value::Array(out))
             }
-            _ => Err(MathErr::TypeMismatch("операция вычитания").msg()),
+            _ => Err(MathErr::TypeMismatch("операция вычитания")),
         }
     }
 
@@ -105,15 +105,15 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Result of multiplication
-    /// * `Err(String)` - Error message
-    pub fn mul(a: Value, b: Value, fo_e: bool) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message
+    pub fn mul(a: Value, b: Value, fo_e: bool) -> Result<Value, MathErr> {
         match (a, b) {
             (Value::Number(na), Value::Number(nb)) => {
                 Self::num_mul(na, nb, fo_e).map(Value::Number)
             }
             (Value::String(sa), Value::Number(nb)) => Self::str_mul_string_number(sa, nb, fo_e),
             (Value::Number(na), Value::String(sb)) => Self::str_mul_string_number(sb, na, fo_e),
-            _ => Err(MathErr::TypeMismatch("операция умножения").msg()),
+            _ => Err(MathErr::TypeMismatch("операция умножения")),
         }
     }
 
@@ -126,18 +126,18 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Result of division
-    /// * `Err(String)` - Error message (division by zero, overflow)
-    pub fn div(a: Value, b: Value, fo_e: bool) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message (division by zero, overflow)
+    pub fn div(a: Value, b: Value, fo_e: bool) -> Result<Value, MathErr> {
         match (a, b) {
             (Value::Number(_), Value::Number(nb)) if Self::is_zero_num(&nb) => {
-                Err(MathErr::DivisionByZero.msg())
+                Err(MathErr::DivisionByZero)
             }
             (Value::Number(na), Value::Number(nb)) => {
                 Self::num_div(na, nb, fo_e).map(Value::Number)
             }
             (Value::String(sa), Value::Number(nb)) => Self::str_div_string_number(sa, nb, fo_e),
             (Value::String(sa), Value::String(sb)) => Self::str_div_string_delim(sa, sb, fo_e),
-            _ => Err(MathErr::TypeMismatch("операция деления").msg()),
+            _ => Err(MathErr::TypeMismatch("операция деления")),
         }
     }
 
@@ -150,13 +150,13 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Remainder of division
-    /// * `Err(String)` - Error message
-    pub fn modulus(a: Value, b: Value, fo_e: bool) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message
+    pub fn modulus(a: Value, b: Value, fo_e: bool) -> Result<Value, MathErr> {
         match (a, b) {
-            (Value::Number(na), Value::Number(nb)) => Self::num_mod(na, nb, fo_e)
-                .map(Value::Number)
-                .map_err(|e| e.msg()),
-            _ => Err(MathErr::TypeMismatch("операция взятия остатка").msg()),
+            (Value::Number(na), Value::Number(nb)) => {
+                Self::num_mod(na, nb, fo_e).map(Value::Number)
+            }
+            _ => Err(MathErr::TypeMismatch("операция взятия остатка")),
         }
     }
 
@@ -173,13 +173,13 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Integer quotient
-    /// * `Err(String)` - Error message (division by zero, type mismatch)
-    pub fn int_div(a: Value, b: Value, fo_e: bool) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message (division by zero, type mismatch)
+    pub fn int_div(a: Value, b: Value, fo_e: bool) -> Result<Value, MathErr> {
         match (a, b) {
-            (Value::Number(na), Value::Number(nb)) => Self::num_int_div(na, nb, fo_e)
-                .map(Value::Number)
-                .map_err(|e| e.msg()),
-            _ => Err(MathErr::TypeMismatch("операция целочисленного деления").msg()),
+            (Value::Number(na), Value::Number(nb)) => {
+                Self::num_int_div(na, nb, fo_e).map(Value::Number)
+            }
+            _ => Err(MathErr::TypeMismatch("операция целочисленного деления")),
         }
     }
 
@@ -192,11 +192,11 @@ impl MathOperators {
     ///
     /// # Returns
     /// * `Ok(Value)` - Result of exponentiation
-    /// * `Err(String)` - Error message
-    pub fn pow(a: Value, b: Value, fo_e: bool) -> Result<Value, String> {
+    /// * `Err(MathErr)` - Error message
+    pub fn pow(a: Value, b: Value, fo_e: bool) -> Result<Value, MathErr> {
         match (a, b) {
             (Value::Number(na), Value::Number(nb)) => Self::num_pow(na, nb, fo_e),
-            _ => Err(MathErr::TypeMismatch("операция возведения в степень").msg()),
+            _ => Err(MathErr::TypeMismatch("операция возведения в степень")),
         }
     }
 
@@ -208,8 +208,8 @@ impl MathOperators {
     /// * `fo_e` - If true, overflow causes error; if false, auto-widens type
     ///
     /// # Returns
-    /// * `Result<Number, String>` - Result of addition or error message
-    pub(super) fn num_add(a: Number, b: Number, fo_e: bool) -> Result<Number, String> {
+    /// * `Result<Number, MathErr>` - Result of addition or error message
+    pub(super) fn num_add(a: Number, b: Number, fo_e: bool) -> Result<Number, MathErr> {
         Self::int_or_float(a, b, fo_e, |x, y| x.wrapping_add(y), |x, y| x + y)
     }
 
@@ -221,8 +221,8 @@ impl MathOperators {
     /// * `fo_e` - If true, overflow causes error; if false, auto-widens type
     ///
     /// # Returns
-    /// * `Result<Number, String>` - Result of subtraction or error message
-    pub(super) fn num_sub(a: Number, b: Number, fo_e: bool) -> Result<Number, String> {
+    /// * `Result<Number, MathErr>` - Result of subtraction or error message
+    pub(super) fn num_sub(a: Number, b: Number, fo_e: bool) -> Result<Number, MathErr> {
         Self::int_or_float(a, b, fo_e, |x, y| x.wrapping_sub(y), |x, y| x - y)
     }
 
@@ -234,8 +234,8 @@ impl MathOperators {
     /// * `fo_e` - If true, overflow causes error; if false, auto-widens type
     ///
     /// # Returns
-    /// * `Result<Number, String>` - Result of multiplication or error message
-    pub(super) fn num_mul(a: Number, b: Number, fo_e: bool) -> Result<Number, String> {
+    /// * `Result<Number, MathErr>` - Result of multiplication or error message
+    pub(super) fn num_mul(a: Number, b: Number, fo_e: bool) -> Result<Number, MathErr> {
         Self::int_or_float(a, b, fo_e, |x, y| x.wrapping_mul(y), |x, y| x * y)
     }
 
@@ -247,16 +247,16 @@ impl MathOperators {
     /// * `fo_e` - If true, overflow causes error; if false, auto-widens type
     ///
     /// # Returns
-    /// * `Result<Number, String>` - Result of division or error message
-    pub(super) fn num_div(a: Number, b: Number, fo_e: bool) -> Result<Number, String> {
+    /// * `Result<Number, MathErr>` - Result of division or error message
+    pub(super) fn num_div(a: Number, b: Number, fo_e: bool) -> Result<Number, MathErr> {
         if Self::is_zero_num(&b) {
-            return Err(MathErr::DivisionByZero.msg());
+            return Err(MathErr::DivisionByZero);
         }
         let fa = Self::to_f128_full(&a);
         let fb = Self::to_f128_full(&b);
         let r = fa / fb;
         if (r.is_infinite() || r.is_nan()) && fo_e {
-            return Err(MathErr::FloatOverflow.msg());
+            return Err(MathErr::FloatOverflow);
         }
         Ok(Number::F128(r))
     }
@@ -320,18 +320,18 @@ impl MathOperators {
     /// * `fo_e` - If true, overflow causes error; if false, auto-widens type
     ///
     /// # Returns
-    /// * `Result<Value, String>` - Result of exponentiation or error message
-    pub(super) fn num_pow(a: Number, b: Number, fo_e: bool) -> Result<Value, String> {
+    /// * `Result<Value, MathErr>` - Result of exponentiation or error message
+    pub(super) fn num_pow(a: Number, b: Number, fo_e: bool) -> Result<Value, MathErr> {
         let fa = Self::to_f128_full(&a);
         let fb = Self::to_f128_full(&b);
 
         if fa.is_sign_negative() && !Self::is_effectively_integer(fb) && fo_e {
-            return Err(MathErr::NegativePowNonInteger.msg());
+            return Err(MathErr::NegativePowNonInteger);
         }
 
         let r = fa.powf(fb);
         if (r.is_infinite() || r.is_nan()) && fo_e {
-            return Err(MathErr::FloatOverflow.msg());
+            return Err(MathErr::FloatOverflow);
         }
         Ok(Value::Number(Number::F128(r)))
     }
