@@ -771,6 +771,7 @@ dependencies = [
  "lazy_static",
  "once_cell",
  "ratatui",
+ "regex",
  "rustls",
  "rustls-pemfile",
  "serde",

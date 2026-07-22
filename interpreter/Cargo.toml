@@ -27,6 +27,10 @@ colored = {workspace = true}
 ratatui = {workspace = true}
 crossterm = {workspace = true}
 
+[dev-dependencies]
+# [KITE 18 § 3.6] Режим сравнения `ДОПУСК: регэксп` в раннере учебного корпуса.
+regex = "1.12"
+
 [[bin]]
 name = "interpreter-cli"
 path = "src/interpreter_cli.rs"

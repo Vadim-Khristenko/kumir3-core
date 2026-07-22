@@ -5,6 +5,7 @@
 //! - kumir3-cli --help       - показать справку
 
 use std::fs;
+use std::io;
 use std::time::Instant;
 
 use clap::Parser;
@@ -66,7 +67,19 @@ fn main() {
             }
         }
         Err(e) => {
+            // [KITE 7] Вывод, произведённый до ошибки, уже случился с точки
+            // зрения программы, поэтому печатается и при неудачном завершении:
+            // без него ученик не видит, докуда дошло выполнение, а раннер
+            // корпуса не может проверить частичный вывод (KITE 18 § 3.7, п. 4).
+            let output = interpreter.get_output();
+            if !output.is_empty() {
+                print!("{}", output);
+                let _ = io::Write::flush(&mut io::stdout());
+            }
             eprintln!("Ошибка выполнения: {}", e);
+            if cli.error_kind {
+                eprintln!("[вид ошибки] {:?}", e.kind);
+            }
             std::process::exit(1);
         }
     }
