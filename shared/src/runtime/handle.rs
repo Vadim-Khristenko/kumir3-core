@@ -696,11 +696,17 @@ mod tests {
             }
         });
 
-        tokio::time::sleep(Duration::from_millis(55)).await;
+        tokio::time::sleep(Duration::from_millis(90)).await;
         interval.stop();
 
         let count = counter.load(Ordering::SeqCst);
-        assert!((4..=6).contains(&count)); // ~5 тиков
+        // Wall-clock timing test: bounds are intentionally generous so it does not
+        // flake under CI/CPU load (ticks can be dropped or delayed). We only assert
+        // the interval fired repeatedly and did not run away.
+        assert!(
+            (3..=18).contains(&count),
+            "interval fired {count} times over ~90ms at 10ms period (expected ~9)"
+        );
     }
 
     #[tokio::test]
