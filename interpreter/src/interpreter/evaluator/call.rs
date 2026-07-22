@@ -68,7 +68,10 @@ impl ExprEvaluator {
         }
 
         // Получаем алгоритм
-        let algorithm = env.get_algorithm(name)?.clone();
+        let algorithm = match env.get_algorithm(name) {
+            Ok(alg) => alg.clone(),
+            Err(err) => return Err(Self::explain_unknown_call(name, err)),
+        };
 
         // Проверяем количество аргументов
         let required_params = algorithm
@@ -86,6 +89,25 @@ impl ExprEvaluator {
         }
 
         Self::call_algorithm(&algorithm, args, env)
+    }
+
+    /// Дополняет ошибку «алгоритм не определён» подсказкой про библиотеку.
+    ///
+    /// Самая частая причина этой ошибки — забытое `использовать`: функция
+    /// существует, но её библиотека не подключена. Голое «алгоритм не
+    /// определён» в таком случае уводит искать опечатку там, где её нет.
+    fn explain_unknown_call(name: &str, err: RuntimeError) -> RuntimeError {
+        let Some(library) = shared::libraries::registry::library_providing_function(name) else {
+            return err;
+        };
+        RuntimeError::new(
+            format!(
+                "Алгоритм не определён: '{name}'. \
+                 Такая функция есть в библиотеке «{library}» — \
+                 добавьте в начало программы: использовать {library}"
+            ),
+            RuntimeErrorKind::UndefinedAlgorithm,
+        )
     }
 
     /// Вызывает функцию подключённой библиотеки.
@@ -162,7 +184,10 @@ impl ExprEvaluator {
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
         // Получаем алгоритм
-        let algorithm = env.get_algorithm(name)?.clone();
+        let algorithm = match env.get_algorithm(name) {
+            Ok(alg) => alg.clone(),
+            Err(err) => return Err(Self::explain_unknown_call(name, err)),
+        };
 
         // Проверяем количество аргументов
         let required_params = algorithm

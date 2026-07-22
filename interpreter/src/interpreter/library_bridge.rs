@@ -152,25 +152,81 @@ impl LibraryManager {
     }
 
     /// Вызывает функцию библиотеки.
+    ///
+    /// `Ok(None)` означает «такой функции нет» — вызывающий продолжает поиск.
     pub fn call_function(&self, name: &str, args: &[Value]) -> RuntimeResult<Option<Value>> {
-        // Сначала ищем по полному имени
-        if let Some(handler) = self.functions.get(name) {
-            return handler(args)
-                .map(Some)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other));
+        let Some(full_name) = self.resolve_function_name(name) else {
+            return Ok(None);
+        };
+        let Some(handler) = self.functions.get(&full_name) else {
+            return Ok(None);
+        };
+
+        // Число аргументов проверяется здесь, а не в каждом обработчике: иначе
+        // лишний аргумент молча игнорируется, а недостающий даёт сообщение
+        // вида «не передан параметр», не называющее ни функции, ни того,
+        // сколько их всего.
+        if let Some(def) = self.get_function_def(name) {
+            Self::check_arity(&full_name, def, args.len())?;
         }
 
-        // Затем по алиасу
-        if let Some(full_name) = self.function_aliases.get(name)
-            && let Some(handler) = self.functions.get(full_name)
+        handler(args)
+            .map(Some)
+            .map_err(|message| Self::library_error(&full_name, message))
+    }
+
+    /// Полное имя `библиотека::функция` для имени или алиаса функции.
+    fn resolve_function_name(&self, name: &str) -> Option<String> {
+        if self.functions.contains_key(name) {
+            return Some(name.to_string());
+        }
+        self.function_aliases.get(name).cloned()
+    }
+
+    /// Проверяет число переданных аргументов по объявленным параметрам.
+    fn check_arity(full_name: &str, def: &LibFunctionDef, given: usize) -> RuntimeResult<()> {
+        let required = def
+            .params
+            .iter()
+            .filter(|p| !p.optional && p.default.is_none())
+            .count();
+        let total = def.params.len();
+
+        if given < required || given > total {
+            // В сообщении называется то число, от которого пользователь дальше
+            // всего: при недоборе — обязательное, при переборе — предельное.
+            let expected = if given < required { required } else { total };
+            return Err(RuntimeError::argument_count(full_name, expected, given));
+        }
+        Ok(())
+    }
+
+    /// Превращает сообщение обработчика в ошибку исполнения.
+    ///
+    /// Обработчики библиотек возвращают строку, поэтому вид ошибки
+    /// восстанавливается по её тексту. Это не догадка на глазок: формулировки
+    /// задаются самими библиотеками и перечислены здесь целиком. Без этого
+    /// любая ошибка библиотеки приходила бы как `Other`, и ни `перехват`, ни
+    /// корпус не смогли бы отличить неверный тип от сбоя ввода-вывода
+    /// (KITE 14 § 3.2).
+    fn library_error(full_name: &str, message: String) -> RuntimeError {
+        let kind = if message.starts_with("Ожидается") || message.starts_with("Ожидался")
         {
-            return handler(args)
-                .map(Some)
-                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other));
-        }
+            RuntimeErrorKind::TypeMismatch
+        } else if message.starts_with("Не передан параметр") {
+            RuntimeErrorKind::ArgumentCount
+        } else {
+            RuntimeErrorKind::Other
+        };
 
-        // Не найдена
-        Ok(None)
+        // Имя функции добавляется, только если его ещё нет в сообщении: часть
+        // библиотек называет себя сама, и дублировать не нужно.
+        let message = if message.contains(full_name) {
+            message
+        } else {
+            format!("{full_name}: {message}")
+        };
+        RuntimeError::new(message, kind)
     }
 
     /// Проверяет, является ли имя функцией библиотеки.

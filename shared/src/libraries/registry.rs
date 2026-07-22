@@ -181,6 +181,38 @@ pub fn list_available() -> Vec<String> {
     venv_loader::list_available()
 }
 
+/// Ищет встроенную библиотеку, предоставляющую функцию с таким именем.
+///
+/// Нужна для подсказки: программа зовёт `текущий_год()`, забыв
+/// `использовать время`, и вместо «алгоритм не определён» получает ответ,
+/// из которого видно, что делать. Возвращается имя библиотеки на языке
+/// программы — то, что пишут после `использовать`.
+pub fn library_providing_function(function: &str) -> Option<String> {
+    register_all_builtins();
+
+    for lib_name in venv_loader::list_available() {
+        let Some(lib) = find_library(&lib_name) else {
+            continue;
+        };
+        let provides = lib.functions.iter().any(|f| {
+            f.name.as_ref() == function || f.aliases.iter().any(|a| a.as_ref() == function)
+        });
+        if provides {
+            // Русское название («Время») читается в подсказке лучше
+            // служебного идентификатора («time»), но после `использовать`
+            // пишут именно то, что понимает импорт, — берём первый алиас.
+            let import_name = lib
+                .aliases
+                .iter()
+                .find(|a| !a.is_ascii())
+                .map(|a| a.to_string())
+                .unwrap_or_else(|| lib.name.to_string());
+            return Some(import_name);
+        }
+    }
+    None
+}
+
 // ===== LibraryProvider =====
 
 /// Глобальный провайдер библиотек, реализующий `LibraryProvider` trait
