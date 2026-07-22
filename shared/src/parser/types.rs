@@ -30,6 +30,7 @@
 //! | `CharType`     | `Char`         |                            |
 //! | `StringType`   | `String`       |                            |
 //! | `AutoType`     | `Auto`         | Type inference placeholder |
+//! | `AnyType`      | `Any`          | Dynamic/any (top) type     |
 //! | `NoneType`     | `Null`         | Absence-of-value type      |
 //! | `ArrayType`    | `Array(elem)`  | Element type follows       |
 //! | `PointerType`  | `Pointer(t)`   | Pointee type follows       |
@@ -59,6 +60,7 @@ impl Parser {
             Token::CharType => TypeKind::Char,
             Token::StringType => TypeKind::String,
             Token::AutoType => TypeKind::Auto,
+            Token::AnyType => TypeKind::Any,
             Token::NoneType => TypeKind::Null,
 
             // Composite builtins (consume keyword, then recurse for inner type)
@@ -265,6 +267,7 @@ impl Parser {
                 | Token::StringType
                 | Token::ArrayType
                 | Token::AutoType
+                | Token::AnyType
                 | Token::PointerType
                 | Token::OptionalType
                 | Token::NoneType

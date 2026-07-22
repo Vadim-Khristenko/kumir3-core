@@ -263,6 +263,61 @@ fn char_typecheck_mismatch_false() {
 }
 
 // =============================================================================
+//                    ANY / DYNAMIC TYPE  (любой — the top type)
+// =============================================================================
+//
+// `любой` is the surface spelling for the top type (TypeKind::Any). Everything
+// is-a `любой`, so `x это любой` is always true, and `x как любой` is identity.
+
+#[test]
+fn char_typecheck_any_int_true() {
+    assert_eq!(eval("5 это любой").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_typecheck_any_string_true() {
+    assert_eq!(eval("\"x\" это любой").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_typecheck_any_bool_true() {
+    assert_eq!(eval("да это любой").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_cast_any_int_identity() {
+    // `значение как любой` returns the value unchanged (never errors).
+    assert_eq!(eval("5 как любой").unwrap(), Value::Number(Number::I64(5)));
+}
+
+#[test]
+fn char_cast_any_string_identity() {
+    assert_eq!(
+        eval("\"hi\" как любой").unwrap(),
+        Value::String("hi".to_string())
+    );
+}
+
+#[test]
+fn char_any_variable_holds_int_then_string() {
+    // A `любой` variable (type-first declaration, like `цел x`) can hold an int
+    // then a string across assignments.
+    let prog = "\
+алг Тест
+нач
+    любой x
+    x := 5
+    вывод x
+    x := \"привет\"
+    вывод x
+кон
+";
+    let out = run_and_get_output(prog).unwrap();
+    assert!(out.contains('5'), "got {:?}", out);
+    assert!(out.contains("привет"), "got {:?}", out);
+}
+
+// =============================================================================
 //                    TRUTHINESS  (если <val> то ... иначе ... все)
 // =============================================================================
 

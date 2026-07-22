@@ -218,6 +218,7 @@ yield	Yield
 лит	StringType
 лог	BoolType
 ложь	False
+любой	AnyType
 лямбда	Lambda
 мод	Percent
 модуль	Module

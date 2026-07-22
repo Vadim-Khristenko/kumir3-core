@@ -26,6 +26,7 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
     ("PointerType", "указатель", &["pointer", "ptr"]),
     ("EnumType", "перечисление", &["enum"]),
     ("AutoType", "авто", &["auto", "var", "пусть"]),
+    ("AnyType", "любой", &[]),
     ("NoneType", "пустота", &["void", "unit"]),
     (
         "OptionalType",
