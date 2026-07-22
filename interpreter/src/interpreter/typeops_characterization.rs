@@ -759,3 +759,111 @@ fn char_multidim_index_is_clean_not_implemented_error() {
     );
     assert!(err.message.contains("многомерные"), "got {:?}", err.message);
 }
+
+// =============================================================================
+//   TYPE ENGINE SEAM — `как` / `это` routed through shared::typesys
+// =============================================================================
+//
+// `TypeOps::cast` now asks the engine for a coercion plan and `TypeOps::
+// type_check` asks it for a subtyping verdict. The cases below pin the parts
+// of that behaviour that the old hand-written `match` did NOT express, plus
+// the error shape of an engine-`Forbidden` cast.
+
+// ── `это` is real subtyping now ─────────────────────────────────────────────
+
+#[test]
+fn char_typecheck_array_of_ints_is_tab() {
+    // Bare `таб` parses to Array(авто); the engine relates it covariantly to
+    // Array(цел), so any array is-a `таб`.
+    assert_eq!(eval("[1, 2, 3] это таб").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_typecheck_empty_array_is_tab() {
+    assert_eq!(eval("[] это таб").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_typecheck_array_element_type_is_checked() {
+    // NEW (type-engine seam): the element type now participates. The old
+    // hand-written match answered `да` for ANY array against ANY `таб T`.
+    assert_eq!(eval("[1, 2] это таб цел").unwrap(), Value::Boolean(true));
+    assert_eq!(
+        eval("[\"a\", \"b\"] это таб цел").unwrap(),
+        Value::Boolean(false)
+    );
+}
+
+#[test]
+fn char_typecheck_char_true() {
+    assert_eq!(eval("\"Я\" как сим это сим").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_typecheck_int_is_not_float() {
+    // Integers are NOT reals: `цел` → `вещ` is Coercible, not implicit.
+    assert_eq!(eval("5 это вещ").unwrap(), Value::Boolean(false));
+    assert_eq!(eval("5.5 это вещ").unwrap(), Value::Boolean(true));
+    assert_eq!(eval("5.5 это цел").unwrap(), Value::Boolean(false));
+}
+
+// ── `как`: engine-forbidden casts name both types ───────────────────────────
+
+#[test]
+fn char_cast_string_to_int_is_forbidden_and_names_both_types() {
+    let err = eval("\"текст\" как цел").unwrap_err();
+    assert_eq!(err.kind, crate::interpreter::RuntimeErrorKind::TypeMismatch);
+    assert!(err.message.contains("лит"), "сообщение: {}", err.message);
+    assert!(err.message.contains("цел"), "сообщение: {}", err.message);
+}
+
+#[test]
+fn char_cast_bool_to_int_is_forbidden() {
+    assert!(eval("да как цел").is_err());
+}
+
+#[test]
+fn char_cast_float_to_char_is_forbidden() {
+    // A real is not a code point — the engine forbids it outright.
+    assert!(eval("65.5 как сим").is_err());
+}
+
+// ── `как`: the language's total conversions still win over the engine ───────
+
+#[test]
+fn char_cast_array_to_string_still_works() {
+    // `лит` ← любое stays total even though the engine sees no relation.
+    assert!(matches!(eval("[1, 2] как лит").unwrap(), Value::String(_)));
+}
+
+#[test]
+fn char_cast_string_to_bool_still_works() {
+    // `лог` ← любое stays total (truthiness, KITE 13 § 3.20).
+    assert_eq!(eval("\"x\" как лог").unwrap(), Value::Boolean(true));
+    assert_eq!(eval("\"\" как лог").unwrap(), Value::Boolean(false));
+}
+
+#[test]
+fn char_cast_float_to_int_truncates() {
+    assert_eq!(eval("3.7 как цел").unwrap(), Value::Number(Number::I64(3)));
+}
+
+// ── `как`: plans the engine supplies that the old matrix could not ──────────
+
+#[test]
+fn char_cast_to_optional_wraps() {
+    // NEW: the engine plans `T` → `T?` as Coercion::Wrap; previously this was
+    // a NotImplemented error.
+    assert_eq!(
+        eval("5 как необязательно цел").unwrap(),
+        Value::Option(Box::new(Some(Value::Number(Number::I64(5)))))
+    );
+}
+
+#[test]
+fn char_cast_null_to_optional_is_empty() {
+    assert_eq!(
+        eval("пусто как необязательно цел").unwrap(),
+        Value::Option(Box::new(None))
+    );
+}
