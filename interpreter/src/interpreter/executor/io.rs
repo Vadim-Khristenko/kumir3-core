@@ -45,18 +45,23 @@ impl Executor {
         Ok(ControlFlow::None)
     }
 
+    /// Команда `вывод`: значения печатаются подряд, без разделителя.
+    ///
+    /// Пробелы ставит сама программа, внутри своих строк:
+    /// `вывод "Ответ: ", n` даёт `Ответ: 5`. Пока разделитель добавлялся
+    /// автоматически, этот — самый частый в языке — приём давал два пробела
+    /// подряд, а убрать лишний было нечем.
     pub(crate) fn execute_output(
         exprs: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<ControlFlow> {
-        let mut output_parts = Vec::new();
+        let mut output = String::new();
 
         for expr in exprs {
             let value = ExprEvaluator::evaluate(expr, env)?;
-            output_parts.push(Self::format_value(&value));
+            output.push_str(&Self::format_value(&value));
         }
 
-        let output = output_parts.join(" ");
         env.println(&output);
 
         // Также выводим в stdout если не в режиме тестирования
