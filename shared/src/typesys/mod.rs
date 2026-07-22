@@ -152,12 +152,20 @@ impl std::error::Error for TypeError {}
 // =============================================================================
 
 /// Binary operators recognised for operator-result typing.
+///
+/// The set mirrors the language (KITE 13 § 3), not a generic expression
+/// algebra: `/` and `див` are **different operators** with different typing
+/// rules, so they are different variants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TypeOp {
     Add,
     Sub,
     Mul,
+    /// Real division `/` — always yields a real number (KITE 13 § 3.4).
     Div,
+    /// Integer division `див` — integers only, truncating (KITE 13 § 3.5).
+    IntDiv,
+    /// Remainder `мод` / `%` — integers only (KITE 13 § 3.6).
     Mod,
     Pow,
     Eq,
@@ -177,6 +185,7 @@ impl TypeOp {
             TypeOp::Sub => "-",
             TypeOp::Mul => "*",
             TypeOp::Div => "/",
+            TypeOp::IntDiv => "див",
             TypeOp::Mod => "мод",
             TypeOp::Pow => "**",
             TypeOp::Eq => "=",
@@ -189,21 +198,24 @@ impl TypeOp {
             TypeOp::Or => "или",
         }
     }
-    fn is_arithmetic(self) -> bool {
-        matches!(
-            self,
-            TypeOp::Add | TypeOp::Sub | TypeOp::Mul | TypeOp::Div | TypeOp::Mod | TypeOp::Pow
-        )
+    /// Equality (`=`, `<>`) — **total**: defined for every pair of value types.
+    fn is_equality(self) -> bool {
+        matches!(self, TypeOp::Eq | TypeOp::Ne)
     }
-    fn is_comparison(self) -> bool {
-        matches!(
-            self,
-            TypeOp::Eq | TypeOp::Ne | TypeOp::Lt | TypeOp::Le | TypeOp::Gt | TypeOp::Ge
-        )
+    /// Ordering (`<`, `<=`, `>`, `>=`) — requires an *ordered* type.
+    fn is_ordering(self) -> bool {
+        matches!(self, TypeOp::Lt | TypeOp::Le | TypeOp::Gt | TypeOp::Ge)
     }
     fn is_logical(self) -> bool {
         matches!(self, TypeOp::And | TypeOp::Or)
     }
+}
+
+/// Types the language puts in a total order (KITE 13 § 3.8): numbers, strings
+/// and characters. Everything else (`лог`, tables, sets, …) can only be tested
+/// for equality.
+fn is_ordered(t: &TypeKind) -> bool {
+    t.is_numeric() || matches!(t, TypeKind::String | TypeKind::Char)
 }
 
 // =============================================================================
@@ -360,6 +372,25 @@ impl TypeSystem {
     // -------------------------------------------------------------------------
 
     /// Result type of a binary operation, or an error if undefined.
+    ///
+    /// The rules follow KITE 13 § 3 exactly, including the operators the
+    /// language defines over strings and tables:
+    ///
+    /// | operation | result |
+    /// |---|---|
+    /// | number `+ - *` number | common numeric type (§ 3.3) |
+    /// | number `/` number | `вещ_128` — *always* real (§ 3.4) |
+    /// | integer `див` / `мод` integer | common integer type (§ 3.5, § 3.6) |
+    /// | `лит + лит` | `лит` (concatenation) |
+    /// | `лит - лит` | `лит` (substring removal) |
+    /// | `лит * цел`, `цел * лит` | `лит` (repetition) |
+    /// | `лит / цел` | `таб лит` (chunking) |
+    /// | `лит / лит` | `пара(таб лит, цел)` (splitting) |
+    /// | `таб + таб` | `таб` of the common element type |
+    /// | `таб - таб` | the left table's type (multiset difference) |
+    /// | `=` `<>` | `лог`, **always** — equality is total |
+    /// | `<` `<=` `>` `>=` | `лог`, only for compatible *ordered* types |
+    /// | `и` `или` | `лог`, only for `лог` operands |
     pub fn result_of_binop(
         &self,
         op: TypeOp,
@@ -380,25 +411,69 @@ impl TypeSystem {
             };
         }
 
-        if op.is_comparison() {
-            if self.conformance(left, right).is_compatible()
-                || self.conformance(right, left).is_compatible()
-            {
-                return Ok(TypeKind::Bool);
-            }
-            return Err(unsupported());
+        // Equality is structural and TOTAL: values of unrelated types are
+        // simply not equal, never a type error (KITE 13 § 3.8).
+        if op.is_equality() {
+            return Ok(TypeKind::Bool);
         }
 
-        // Arithmetic.
-        if op == TypeOp::Add
-            && (matches!(left, TypeKind::String) || matches!(right, TypeKind::String))
-        {
-            return Ok(TypeKind::String);
+        // Ordering needs an ordered type on BOTH sides, and the two must be
+        // comparable with each other (`цел < вещ` yes, `сим < лит` no).
+        if op.is_ordering() {
+            let comparable = self.conformance(left, right).is_compatible()
+                || self.conformance(right, left).is_compatible();
+            return if is_ordered(left) && is_ordered(right) && comparable {
+                Ok(TypeKind::Bool)
+            } else {
+                Err(unsupported())
+            };
         }
-        if op.is_arithmetic() && left.is_numeric() && right.is_numeric() {
-            return self.common_type(left, right).map_err(|_| unsupported());
+
+        self.result_of_arith(op, left, right)
+            .ok_or_else(unsupported)
+    }
+
+    /// Arithmetic-operator typing (numeric, string and table operations).
+    fn result_of_arith(&self, op: TypeOp, left: &TypeKind, right: &TypeKind) -> Option<TypeKind> {
+        use TypeKind::*;
+
+        // `див` and `мод` are integer-only; the result is the common integer type.
+        if matches!(op, TypeOp::IntDiv | TypeOp::Mod) {
+            return if left.is_integer() && right.is_integer() {
+                self.unify(left, right)
+            } else {
+                None
+            };
         }
-        Err(unsupported())
+
+        // `/` over numbers is always real, even for two integers.
+        if op == TypeOp::Div && left.is_numeric() && right.is_numeric() {
+            return Some(Float128);
+        }
+
+        if left.is_numeric() && right.is_numeric() {
+            return self.unify(left, right);
+        }
+
+        match (op, left, right) {
+            // Strings.
+            (TypeOp::Add, String, String) => Some(String),
+            (TypeOp::Sub, String, String) => Some(String),
+            (TypeOp::Mul, String, t) | (TypeOp::Mul, t, String) if t.is_integer() => Some(String),
+            (TypeOp::Div, String, t) if t.is_integer() => Some(Array(Box::new(String))),
+            (TypeOp::Div, String, String) => Some(Pair(
+                Box::new(Array(Box::new(String))),
+                Box::new(TypeKind::Int64),
+            )),
+            // Tables: concatenation keeps both element types, difference keeps
+            // the left one. A concatenation of unrelated element types is still
+            // defined — the result is simply a table of `любой`.
+            (TypeOp::Add, Array(a), Array(b)) => {
+                Some(Array(Box::new(self.unify(a, b).unwrap_or(TypeKind::Any))))
+            }
+            (TypeOp::Sub, Array(_), Array(_)) => Some(left.clone()),
+            _ => None,
+        }
     }
 
     // -------------------------------------------------------------------------

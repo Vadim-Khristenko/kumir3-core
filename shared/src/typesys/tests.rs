@@ -112,10 +112,20 @@ fn binop_arithmetic_and_concat() {
             .unwrap(),
         TK::Float64
     );
+    // `лит + лит` concatenates; `лит + <что-угодно-ещё>` is NOT defined
+    // (the runtime only joins two strings).
     assert_eq!(
-        s.result_of_binop(TypeOp::Add, &TK::String, &TK::Int64)
+        s.result_of_binop(TypeOp::Add, &TK::String, &TK::String)
             .unwrap(),
         TK::String
+    );
+    assert!(
+        s.result_of_binop(TypeOp::Add, &TK::String, &TK::Int64)
+            .is_err()
+    );
+    assert!(
+        s.result_of_binop(TypeOp::Add, &TK::Int64, &TK::String)
+            .is_err()
     );
 }
 
@@ -138,6 +148,211 @@ fn binop_comparison_and_logic() {
     );
     assert!(
         s.result_of_binop(TypeOp::Add, &TK::Bool, &TK::Bool)
+            .is_err()
+    );
+}
+
+// --- division: `/` (real) vs `див` (integer) ---------------------------------
+
+#[test]
+fn binop_real_division_is_always_real() {
+    let s = ts();
+    // KITE 13 § 3.4: `7 / 2 → 3.5` — two integers still give a real result.
+    assert_eq!(
+        s.result_of_binop(TypeOp::Div, &TK::Int64, &TK::Int64)
+            .unwrap(),
+        TK::Float128
+    );
+    assert!(
+        s.result_of_binop(TypeOp::Div, &TK::Int64, &TK::Int64)
+            .unwrap()
+            .is_float()
+    );
+    assert_eq!(
+        s.result_of_binop(TypeOp::Div, &TK::Float32, &TK::Int16)
+            .unwrap(),
+        TK::Float128
+    );
+}
+
+#[test]
+fn binop_integer_division_is_integer_only() {
+    let s = ts();
+    // KITE 13 § 3.5: integers only, integer result.
+    let r = s
+        .result_of_binop(TypeOp::IntDiv, &TK::Int64, &TK::Int64)
+        .unwrap();
+    assert_eq!(r, TK::Int64);
+    assert!(r.is_integer());
+    assert_eq!(
+        s.result_of_binop(TypeOp::IntDiv, &TK::Int16, &TK::Int64)
+            .unwrap(),
+        TK::Int64
+    );
+    // A real operand is rejected — `див` never touches вещ.
+    assert!(
+        s.result_of_binop(TypeOp::IntDiv, &TK::Float64, &TK::Int64)
+            .is_err()
+    );
+    assert!(
+        s.result_of_binop(TypeOp::IntDiv, &TK::Int64, &TK::Float64)
+            .is_err()
+    );
+    assert!(
+        s.result_of_binop(TypeOp::IntDiv, &TK::String, &TK::Int64)
+            .is_err()
+    );
+}
+
+#[test]
+fn binop_div_and_intdiv_are_named_apart() {
+    assert_eq!(TypeOp::Div.symbol(), "/");
+    assert_eq!(TypeOp::IntDiv.symbol(), "див");
+}
+
+// --- remainder ---------------------------------------------------------------
+
+#[test]
+fn binop_mod_is_integer_only() {
+    let s = ts();
+    assert_eq!(
+        s.result_of_binop(TypeOp::Mod, &TK::Int64, &TK::Int64)
+            .unwrap(),
+        TK::Int64
+    );
+    // `вещ мод вещ` must be rejected (KITE 13 § 3.6).
+    assert!(
+        s.result_of_binop(TypeOp::Mod, &TK::Float64, &TK::Float64)
+            .is_err()
+    );
+    assert!(
+        s.result_of_binop(TypeOp::Mod, &TK::Int64, &TK::Float64)
+            .is_err()
+    );
+}
+
+// --- equality is total, ordering is not --------------------------------------
+
+#[test]
+fn binop_equality_is_total() {
+    let s = ts();
+    // `5 = "x"` is plain `нет`, not a type error.
+    for (a, b) in [
+        (TK::Int64, TK::String),
+        (TK::Bool, TK::Int64),
+        (TK::Array(Box::new(TK::Int64)), TK::String),
+        (TK::Null, TK::Int64),
+        (TK::Char, TK::String),
+    ] {
+        assert_eq!(s.result_of_binop(TypeOp::Eq, &a, &b).unwrap(), TK::Bool);
+        assert_eq!(s.result_of_binop(TypeOp::Ne, &a, &b).unwrap(), TK::Bool);
+    }
+}
+
+#[test]
+fn binop_ordering_needs_an_ordered_type() {
+    let s = ts();
+    // Ordered: numbers, strings, characters (KITE 13 § 3.8).
+    assert_eq!(
+        s.result_of_binop(TypeOp::Lt, &TK::String, &TK::String)
+            .unwrap(),
+        TK::Bool
+    );
+    assert_eq!(
+        s.result_of_binop(TypeOp::Ge, &TK::Char, &TK::Char).unwrap(),
+        TK::Bool
+    );
+    assert_eq!(
+        s.result_of_binop(TypeOp::Le, &TK::Int64, &TK::Float64)
+            .unwrap(),
+        TK::Bool
+    );
+    // Not ordered: `да < нет`, table < table, and mixed ordered types.
+    assert!(s.result_of_binop(TypeOp::Lt, &TK::Bool, &TK::Bool).is_err());
+    let arr = TK::Array(Box::new(TK::Int64));
+    assert!(s.result_of_binop(TypeOp::Lt, &arr, &arr).is_err());
+    assert!(
+        s.result_of_binop(TypeOp::Gt, &TK::Int64, &TK::String)
+            .is_err()
+    );
+    assert!(
+        s.result_of_binop(TypeOp::Lt, &TK::Char, &TK::String)
+            .is_err()
+    );
+}
+
+// --- operators over tables and strings ---------------------------------------
+
+#[test]
+fn binop_table_concat_and_difference() {
+    let s = ts();
+    let a_i16 = TK::Array(Box::new(TK::Int16));
+    let a_i64 = TK::Array(Box::new(TK::Int64));
+    assert_eq!(
+        s.result_of_binop(TypeOp::Add, &a_i16, &a_i64).unwrap(),
+        a_i64
+    );
+    assert_eq!(
+        s.result_of_binop(TypeOp::Sub, &a_i64, &a_i16).unwrap(),
+        a_i64
+    );
+    // Unrelated element types still concatenate — the result is `таб любой`.
+    let a_str = TK::Array(Box::new(TK::String));
+    assert_eq!(
+        s.result_of_binop(TypeOp::Add, &a_i64, &a_str).unwrap(),
+        TK::Array(Box::new(TK::Any))
+    );
+    // ... but a table and a non-table have no `+`.
+    assert!(s.result_of_binop(TypeOp::Add, &a_i64, &TK::Int64).is_err());
+}
+
+#[test]
+fn binop_string_operators() {
+    let s = ts();
+    // `лит - лит` — substring removal.
+    assert_eq!(
+        s.result_of_binop(TypeOp::Sub, &TK::String, &TK::String)
+            .unwrap(),
+        TK::String
+    );
+    // `лит * цел` / `цел * лит` — repetition.
+    assert_eq!(
+        s.result_of_binop(TypeOp::Mul, &TK::String, &TK::Int64)
+            .unwrap(),
+        TK::String
+    );
+    assert_eq!(
+        s.result_of_binop(TypeOp::Mul, &TK::Int64, &TK::String)
+            .unwrap(),
+        TK::String
+    );
+    // Repetition needs a whole number of copies.
+    assert!(
+        s.result_of_binop(TypeOp::Mul, &TK::String, &TK::Float64)
+            .is_err()
+    );
+    // `лит / цел` — chunking into pieces.
+    assert_eq!(
+        s.result_of_binop(TypeOp::Div, &TK::String, &TK::Int64)
+            .unwrap(),
+        TK::Array(Box::new(TK::String))
+    );
+    // `лит / лит` — splitting: (pieces, number of splits).
+    assert_eq!(
+        s.result_of_binop(TypeOp::Div, &TK::String, &TK::String)
+            .unwrap(),
+        TK::Pair(
+            Box::new(TK::Array(Box::new(TK::String))),
+            Box::new(TK::Int64)
+        )
+    );
+    // Nothing else is defined for strings.
+    assert!(
+        s.result_of_binop(TypeOp::Pow, &TK::String, &TK::Int64)
+            .is_err()
+    );
+    assert!(
+        s.result_of_binop(TypeOp::Mod, &TK::String, &TK::Int64)
             .is_err()
     );
 }
@@ -328,7 +543,7 @@ fn errors_are_descriptive() {
     let err2 = s.common_type(&TK::String, &TK::Bool).unwrap_err();
     assert!(matches!(err2, TypeError::NoCommonType { .. }));
     let err3 = s
-        .result_of_binop(TypeOp::Sub, &TK::String, &TK::String)
+        .result_of_binop(TypeOp::Sub, &TK::String, &TK::Bool)
         .unwrap_err();
     assert!(matches!(err3, TypeError::BinaryOpUnsupported { .. }));
 }
