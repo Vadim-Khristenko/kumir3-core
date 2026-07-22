@@ -1,0 +1,535 @@
+<link rel="stylesheet" href="./assets/kite.css">
+<!-- =============================================================================
+     KITE 15 — Модули, импорты и пространства имён Kumir 3
+     Нормативизация фактической резолюции импортов.
+     Источники истины:
+       shared/build.rs (ключевые слова: использовать/подключить/модуль/экспорт)
+       shared/src/parser/{decl.rs,stmt.rs,expr.rs,core.rs} (Import/ModuleDecl/Export, ::, .)
+       shared/src/types/config.rs (KumirConfig — kumir.toml)
+       interpreter/src/interpreter/import.rs (порядок резолюции)
+       interpreter/src/interpreter/file_importer.rs (FileImporter, кэш, циклы, base_dir)
+       interpreter/src/interpreter/library_bridge.rs (LibraryManager, resolve_import_path)
+       interpreter/src/interpreter/executor/import.rs (регистрация в среде)
+       interpreter/src/interpreter/executor/statements.rs (execute_module_decl/export)
+       interpreter/src/interpreter/evaluator/mod.rs (ModuleAccess — not_implemented)
+============================================================================== -->
+<article class="kite" data-kite="0015" data-status="draft" lang="ru">
+
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE 15 · Спецификация</span>
+    <h1>Модули, импорты и пространства имён</h1>
+    <dl class="kite-meta">
+      <dt>Номер</dt>            <dd>KITE 15</dd>
+      <dt>Название</dt>         <dd>Модули, импорты и пространства имён</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
+      <dt>Тип</dt>              <dd>Спецификация</dd>
+      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Создан</dt>           <dd>2026-07-22</dd>
+      <dt>Версия документа</dt> <dd>0.1.0</dd>
+    </dl>
+  </header>
+
+  <nav class="kite-toc" aria-label="Содержание">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#obzor">Обзор и цель</a></li>
+      <li><a href="#formy">Формы импорта</a></li>
+      <li><a href="#rezolyuciya">Алгоритм резолюции</a></li>
+      <li><a href="#registraciya">Регистрация имён и пространства имён</a></li>
+      <li><a href="#dostup">Доступ к членам модуля</a></li>
+      <li><a href="#eksport">Модули и экспорт: <code>модуль</code> / <code>экспорт</code></a></li>
+      <li><a href="#kumir-toml">Конфигурация проекта <code>kumir.toml</code></a></li>
+      <li><a href="#cikly">Кэш, циклы и инициализация</a></li>
+      <li><a href="#ogranicheniya">Ограничения и открытые вопросы</a></li>
+      <li><a href="#istochniki">Источники истины</a></li>
+    </ol>
+  </nav>
+
+  <!-- легенда -->
+  <section class="kite-section">
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Легенда доступности</span>
+      <span class="kite-badge is-available">✅&nbsp;Доступно</span> — реализовано и работает на поверхности языка.
+      <span class="kite-badge is-experimental">🧪&nbsp;Экспериментально</span> — реализовано, интерфейс может меняться.
+      <span class="kite-badge is-proposed">📋&nbsp;Предложено</span> — описано в стандарте, ещё не в движке.
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Что нормативизирует этот документ</span>
+      KITE 15 фиксирует <strong>фактическое</strong> поведение резолюции модулей и импортов,
+      как оно реализовано в интерпретаторе, а не идеализированную модель. Всё, что помечено
+      <span class="kite-badge is-proposed">📋</span>, ещё не работает и описывает целевую семантику.
+      Каталог встроенных библиотек и формы <code>использовать</code> для них — предмет
+      <a href="./KITE-0005-libraries.html">KITE 5</a>; здесь описан общий механизм модулей,
+      пространств имён и резолюции, частью которого библиотеки являются.
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="kite-section" id="obzor">
+    <h2>1. Обзор и цель</h2>
+    <p>
+      В Kumir 3 <strong>модуль</strong> — это единица кода, из которой другой код может брать
+      алгоритмы и классы. Модулем может быть:
+    </p>
+    <ul>
+      <li>отдельный файл <code>.kum</code> (файловый модуль, как в Python);</li>
+      <li>директория-проект с манифестом <code>kumir.toml</code> (модуль-проект);</li>
+      <li>встроенная библиотека ядра (<code>время</code>, <code>система</code>, <code>файлы</code>, <code>сеть</code>);</li>
+      <li>пользовательская библиотека (директория или файл, загружаемая как библиотека);</li>
+      <li>именованный блок <code>модуль … кон</code> внутри одного файла.</li>
+    </ul>
+    <p>
+      Все формы вводятся <strong>двумя взаимозаменяемыми ключевыми словами</strong> —
+      <code>использовать</code> и <code>подключить</code>. Они не различаются семантически:
+      конкретный вид импорта определяет резолвер по <em>форме пути</em>, а не по ключевому слову.
+    </p>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Одно правило вместо многих</span>
+      Форму импорта выбирает не автор программы явным синтаксисом, а резолвер — по тому,
+      как выглядит путь: строка с <code>.kum</code> или разделителем каталогов → файл;
+      каталог с <code>kumir.toml</code> → проект; простое имя → библиотека.
+      Это единый вход и предсказуемая цепочка проверок (раздел&nbsp;3).
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="kite-section" id="formy">
+    <h2>2. Формы импорта</h2>
+    <p>
+      Синтаксис объявления импорта (парсится в <code>Stmt::Import { path, alias, items }</code>):
+    </p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>использовать &lt;путь&gt; [: имя1, имя2, …] [как Алиас]
+подключить  &lt;путь&gt; [: имя1, имя2, …] [как Алиас]</code></pre>
+    </div>
+    <p>
+      <code>&lt;путь&gt;</code> — это строковый литерал (<code>"./математика.kum"</code>) или
+      идентификатор (<code>время</code>, <code>сеть</code>). Обе записи допустимы.
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Пример</th><th>Что импортируется</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td><code>использовать время</code></td><td>Встроенная библиотека по имени.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>использовать время как т</code></td><td>Библиотека под алиасом <code>т</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>использовать время@^2.0</code></td><td>Библиотека с указанием версии (SemVer, только для библиотек).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>подключить "./математика.kum"</code></td><td>Соседний файл <code>.kum</code> по относительному пути.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>подключить "./математика.kum" как мат</code></td><td>Файловый модуль под алиасом <code>мат</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>подключить "../общее/утилиты"</code></td><td>Файл без расширения; резолвер добавит <code>.kum</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>использовать "./библиотека"</code></td><td>Директория-проект с <code>kumir.toml</code> — импорт её главного файла.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>использовать время: время_мс, пауза</code></td><td>Выборочный импорт (список имён после <code>:</code>).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Разделитель списка выборочного импорта — двоеточие</span>
+      Парсер принимает <code>использовать Модуль: имя1, имя2</code> (<code>Token::Colon</code>),
+      а не фигурные скобки. Записи вида <code>использовать время { now_ms }</code> из старых
+      примеров <strong>не парсятся</strong>; правильная форма — через <code>:</code>.
+      Внутренние комментарии в коде, упоминающие <code>{ … }</code>, отражают устаревший замысел.
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="kite-section" id="rezolyuciya">
+    <h2>3. Алгоритм резолюции</h2>
+    <p>
+      Инструкция импорта разрешается процедурой <code>process_import</code>
+      (<code>interpreter/src/interpreter/import.rs</code>). Резолвер проверяет форму пути в
+      <strong>строго фиксированном порядке</strong> и берёт первое сработавшее правило:
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>№</th><th>Проверка</th><th>Что делает</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><strong>Директория-проект.</strong> Путь (как есть <em>или</em> относительно базовой директории) — существующая директория, содержащая <code>kumir.toml</code>.</td>
+            <td>Резолвится главный файл проекта (см. ниже), импортируется как <em>модуль</em>: его публичные алгоритмы и классы становятся вызываемыми.</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><strong>Файл <code>.kum</code>.</strong> Путь оканчивается на <code>.kum</code>, начинается с <code>./</code> или <code>../</code>, либо содержит <code>/</code> или <code>\</code>.</td>
+            <td>Импортируется как файловый <em>модуль</em> через <code>FileImporter</code>.</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><strong>Пользовательская библиотека.</strong> Путь — существующая директория, либо содержит разделитель каталогов, но не подошёл под п.&nbsp;1–2.</td>
+            <td>Загружается как <em>библиотека</em> через <code>LibraryManager</code> (директория с <code>kumir.toml</code> → как библиотека-проект, иначе как файл).</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><strong>Встроенная библиотека.</strong> Простое имя, которое <code>resolve_import_path</code> распознаёт как известную библиотеку (по ru/en-имени или алиасу).</td>
+            <td>Загружается библиотека ядра из реестра.</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><strong>Иначе</strong></td>
+            <td>Ошибка: «Модуль или библиотека '&lt;путь&gt;' не найдены».</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>3.1 Разрешение пути файлового модуля</h3>
+    <p>
+      Для файловых модулей (<code>FileImporter::resolve_path</code>) действует такой порядок:
+    </p>
+    <ul>
+      <li><strong>Относительный путь</strong> (<code>./</code>, <code>../</code>) — присоединяется к <em>базовой директории</em>;</li>
+      <li><strong>Абсолютный путь</strong> — берётся как есть;</li>
+      <li><strong>Простое имя</strong> — ищется по всем <em>директориям поиска</em> (по умолчанию — базовая директория); дополнительно проверяется вариант «директория с <code>index.kum</code>».</li>
+    </ul>
+    <p>
+      Расширение <code>.kum</code> подставляется автоматически, если его нет
+      (<code>ensure_kum_extension</code>): сперва пробуется <code>&lt;путь&gt;.kum</code>,
+      затем файл без расширения.
+    </p>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Базовая директория</span>
+      Для запуска файла базовой директорией становится <strong>каталог этого файла</strong>
+      (CLI и TUI вызывают <code>set_base_dir</code>). Поэтому относительные импорты
+      разрешаются относительно расположения импортирующего файла, а не текущего каталога процесса.
+      Базовая директория всегда входит в список директорий поиска.
+    </div>
+
+    <h3>3.2 Главный файл проекта</h3>
+    <p>
+      Для директории-проекта (п.&nbsp;1) главный файл выбирается так
+      (<code>resolve_dir_library_main</code>):
+    </p>
+    <ol>
+      <li>если <code>kumir.toml</code> задаёт главный файл (<code>[build] main</code> или
+          <code>[project]/[package] main</code>) и он существует — берётся он;</li>
+      <li>иначе перебираются запасные общепринятые расположения в порядке:
+          <code>src/lib.kum</code> → <code>lib.kum</code> → <code>src/main.kum</code> → <code>main.kum</code>;</li>
+      <li>первый существующий файл и есть главный.</li>
+    </ol>
+  </section>
+
+  <!-- 4 -->
+  <section class="kite-section" id="registraciya">
+    <h2>4. Регистрация имён и пространства имён</h2>
+    <p>
+      После загрузки модуля его публичные имена регистрируются в среде исполнения.
+      <strong>Пространство имён модуля — это префикс с точкой</strong>
+      (<code>Алиас.имя</code> или <code>ИмяМодуля.имя</code>), а не отдельная область.
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Что импортировали</th><th>Как зарегистрированы алгоритмы</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>С алиасом</strong> <code>… как Алиас</code></td>
+            <td>Только под именем <code>Алиас.имя</code> (пространство имён обязательно).</td>
+          </tr>
+          <tr>
+            <td><strong>Без алиаса</strong></td>
+            <td>И под именем <code>ИмяМодуля.имя</code>, <em>и</em> под коротким <code>имя</code> (импорт «вливается» в текущее пространство).</td>
+          </tr>
+          <tr>
+            <td><strong>Выборочный</strong> <code>: имя1, имя2</code></td>
+            <td>Каждое перечисленное имя регистрируется как <code>Префикс.имя</code>; классы — под своим коротким именем.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Имя модуля по умолчанию — <em>имя файла без расширения</em> (или алиас, если задан).
+      Классы импортированного модуля всегда регистрируются под своим коротким именем
+      (в текущей реализации пространство имён на классы <strong>не навешивается</strong>,
+      кроме случая директории-проекта без алиаса).
+    </p>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Разные пути регистрации модулей</span>
+      В коде существуют две почти совпадающие процедуры регистрации — <code>register_imported_module</code>
+      (для директории-проекта) и <code>execute_file_import</code> (для файлового модуля через executor).
+      Они дают одинаковый результат «префикс с точкой», но детали (навешивание префикса на класс)
+      различаются. Это <strong>дубликат логики</strong> — кандидат на унификацию; нормативно
+      следует считать эталоном правило «<code>Префикс.имя</code> для алгоритмов, короткое имя для классов».
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="kite-section" id="dostup">
+    <h2>5. Доступ к членам модуля</h2>
+    <p>
+      Kumir 3 синтаксически различает два оператора доступа к члену. Их фактическая
+      поддержка <strong>принципиально разная</strong>:
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Форма</th><th>Как парсится</th><th>Как исполняется</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>Алиас.функция(…)</code><br><span class="kite-eyebrow">точка</span></td>
+            <td>Постфиксный <code>.</code> + <code>(</code> → <code>Expr::Call("Алиас.функция", …)</code> — точка становится частью имени.</td>
+            <td>Ищется алгоритм с полным именем <code>Алиас.функция</code>, зарегистрированный при импорте. <strong>Работает.</strong></td>
+            <td><span class="kite-badge is-available">✅</span></td>
+          </tr>
+          <tr>
+            <td><code>Модуль::член</code><br><span class="kite-eyebrow">двойное двоеточие</span></td>
+            <td>Постфиксный <code>::</code> → <code>Expr::ModuleAccess("Модуль", "член")</code>; вызов <code>Модуль::функция(…)</code> → <code>Expr::Call("Модуль::функция", …)</code>.</td>
+            <td>Голый <code>Expr::ModuleAccess</code> в вычислителе — <strong>ошибка «не реализовано»</strong> (<code>not_implemented</code>).</td>
+            <td><span class="kite-badge is-proposed">📋</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>подключить "./математика.kum" как мат
+
+алг Тест
+нач
+    вывод мат.квадрат(5)   | ✅ работает: вызов алгоритма "мат.квадрат"
+    | вывод мат::квадрат(5)  | 📋 ModuleAccess не реализован — ошибка исполнения
+кон</code></pre>
+    </div>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Нормативно: точка — рабочий разделитель пространства имён</span>
+      Сегодня <strong>точечная</strong> запись <code>Модуль.член</code> — единственный работающий
+      способ обратиться к члену импортированного модуля. Оператор <code>::</code> зарезервирован
+      под пространства имён и enum-конструкторы, но для доступа к членам модуля <em>не исполняется</em>.
+      До реализации <code>ModuleAccess</code> примеры и учебные материалы обязаны использовать точку.
+    </div>
+    <p>
+      Для <strong>библиотек</strong> вызов идёт через отдельный путь: функции регистрируются под
+      полным именем <code>библиотека::функция</code> и под короткими алиасами, а квалифицированный
+      вызов обслуживает <code>call_qualified_function</code>. Детали вызова библиотечных функций —
+      в <a href="./KITE-0005-libraries.html">KITE 5</a>.
+    </p>
+  </section>
+
+  <!-- 6 -->
+  <section class="kite-section" id="eksport">
+    <h2>6. Модули и экспорт: <code>модуль</code> / <code>экспорт</code></h2>
+
+    <h3>6.1 Видимость по умолчанию</h3>
+    <p>
+      Если в файле нет инструкции <code>экспорт</code>, публичны <strong>все</strong> его алгоритмы
+      и классы (<code>is_exported</code> возвращает истину при отсутствии явного списка).
+      Инструкция <code>экспорт имя1, имя2, …</code> в глобальной области файла ограничивает
+      публичный набор перечисленными именами: экспортируется <em>только</em> то, что в списке.
+    </p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>экспорт квадрат, куб      | только эти два алгоритма видны при импорте
+
+алг цел квадрат(цел x) нач знач := x * x кон
+алг цел куб(цел x)    нач знач := x * x * x кон
+алг цел приватный(цел x) нач знач := x кон   | не экспортирован → не виден извне</code></pre>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Ключевое слово <code>экспорт</code> и алиас <code>pub</code></span>
+      Лексема <code>экспорт</code> имеет английские алиасы <code>export</code> и <code>pub</code>
+      (<code>shared/build.rs</code>). В файловом модуле она задаёт список публичных имён;
+      как <em>модификатор</em> отдельного объявления (<code>pub алг …</code>) она в текущей
+      резолюции не участвует — фильтрация идёт по единому списку <code>экспорт</code>.
+    </div>
+
+    <h3>6.2 Именованные модули <code>модуль … кон</code></h3>
+    <p>
+      Внутри одного файла можно объявить именованный модуль
+      (парсится в <code>Stmt::ModuleDecl</code>):
+    </p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>модуль Гео
+    алг вещ площадь(вещ a, вещ b) нач знач := a * b кон
+кон
+
+алг Главный
+нач
+    вывод Гео.площадь(3, 4)   | ✅ 12
+кон</code></pre>
+    </div>
+    <p>
+      При исполнении <code>execute_module_decl</code> регистрирует каждый алгоритм модуля
+      <strong>дважды</strong>: под полным именем <code>Модуль.алг</code> (для вызова снаружи через точку)
+      и под коротким именем <code>алг</code> (для вызова внутри). Тело модуля (глобальные объявления)
+      исполняется сразу.
+    </p>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Экспорт из именованного модуля пока не действует</span>
+      Поле <code>exports</code> у <code>Stmt::ModuleDecl</code> заполняется пустым списком, а
+      <code>execute_export</code> — это заглушка (<code>TODO</code>), не меняющая видимость.
+      Значит, у <code>модуль … кон</code> все алгоритмы публичны, а <code>экспорт</code> в этом
+      контексте не ограничивает набор. Целевое поведение: <code>экспорт</code> внутри модуля
+      сужает публичный набор так же, как в файловом модуле. <span class="kite-badge is-proposed">📋</span>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="kite-section" id="kumir-toml">
+    <h2>7. Конфигурация проекта <code>kumir.toml</code></h2>
+    <p>
+      Манифест <code>kumir.toml</code> (<code>shared/src/types/config.rs</code>, <code>KumirConfig</code>)
+      описывает проект. Все ключи допускают <strong>двуязычные имена</strong> (английские и русские).
+      <code>KumirConfig::find</code> ищет манифест вверх по дереву каталогов от стартовой директории.
+    </p>
+
+    <h3>7.1 Секция <code>[project]</code> / <code>[package]</code> / <code>[проект]</code></h3>
+    <p>Метаданные проекта. Все три заголовка секции взаимозаменяемы.</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Ключ (en)</th><th>Ключ (ru)</th><th>Смысл</th></tr></thead>
+        <tbody>
+          <tr><td><code>name</code></td><td><code>имя</code></td><td>Имя проекта.</td></tr>
+          <tr><td><code>version</code></td><td><code>версия</code></td><td>Версия (SemVer); по умолчанию <code>0.0.0</code>.</td></tr>
+          <tr><td><code>main</code></td><td><code>главный</code></td><td>Главный файл (дублирует <code>[build] main</code>).</td></tr>
+          <tr><td><code>description</code></td><td><code>описание</code></td><td>Описание.</td></tr>
+          <tr><td><code>authors</code></td><td><code>авторы</code></td><td>Список авторов.</td></tr>
+          <tr><td><code>license</code></td><td><code>лицензия</code></td><td>Лицензия.</td></tr>
+          <tr><td><code>keywords</code></td><td><code>ключевые</code></td><td>Ключевые слова.</td></tr>
+          <tr><td><code>homepage</code> · <code>repository</code> · <code>readme</code></td><td>—</td><td>Ссылки и файл README.</td></tr>
+          <tr><td><code>kumir_version</code></td><td>—</td><td>Требуемая версия Kumir.</td></tr>
+          <tr><td><code>edition</code></td><td>—</td><td>Издание языка (связь с <a href="./KITE-0006-kumir2-compatibility.html">KITE 6</a>).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>7.2 Секция <code>[build]</code> / <code>[сборка]</code></h3>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Ключ</th><th>Ru</th><th>Смысл</th><th>По умолчанию</th></tr></thead>
+        <tbody>
+          <tr><td><code>main</code></td><td><code>главный</code></td><td>Главный файл проекта.</td><td><code>main.kum</code></td></tr>
+          <tr><td><code>output</code></td><td><code>выход</code></td><td>Каталог сборки.</td><td><code>./build</code></td></tr>
+          <tr><td><code>optimization</code></td><td><code>оптимизация</code></td><td>Уровень оптимизации.</td><td><code>0</code></td></tr>
+          <tr><td><code>debug_info</code></td><td>—</td><td>Отладочная информация.</td><td><code>да</code></td></tr>
+          <tr><td><code>bounds_check</code></td><td>—</td><td>Проверка границ.</td><td><code>да</code></td></tr>
+          <tr><td><code>strict_mode</code></td><td>—</td><td>Строгий режим.</td><td><code>нет</code></td></tr>
+          <tr><td><code>incremental</code> · <code>lto</code> · <code>target</code> · <code>emit_ir</code></td><td>—</td><td>Инкрементальность, LTO, целевая тройка, вывод IR.</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>7.3 Разрешение главного файла</h3>
+    <p>
+      <code>main_file_path()</code>: если <code>main</code> — абсолютный путь, он берётся как есть;
+      иначе присоединяется к корню проекта (каталогу манифеста). Именно этот путь
+      использует резолвер импорта директории-проекта (раздел&nbsp;3.2), с запасными
+      расположениями, если файл не найден.
+    </p>
+
+    <h3>7.4 Прочие секции</h3>
+    <p>
+      Модель конфигурации предусматривает <code>[dependencies]</code> / <code>[зависимости]</code>
+      (версия, <code>path</code>, <code>git</code>, <code>registry</code>, features),
+      <code>[dev-dependencies]</code>, <code>[build-dependencies]</code>,
+      <code>[workspace]</code> / <code>[рабочее_пространство]</code>, <code>[registries]</code>,
+      <code>[env]</code>, а также lock-файл (<code>LockFile</code>). Эти поля
+      <strong>разбираются</strong> манифестом, но резолюция зависимостей, реестры пакетов и
+      workspaces как механизм разрешения импортов <strong>ещё не задействованы</strong>
+      резолвером (раздел&nbsp;3 работает только с локальными путями и встроенными библиотеками).
+      <span class="kite-badge is-proposed">📋</span> Управление пакетами — предмет будущего KITE
+      и <a href="./KITE-0005-libraries.html">KITE 5</a> §10.
+    </p>
+    <div class="kite-code" data-lang="toml">
+<pre><code>[project]
+name = "моя_библиотека"
+version = "1.0.0"
+authors = ["Ученик"]
+
+[build]
+main = "src/lib.kum"</code></pre>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="kite-section" id="cikly">
+    <h2>8. Кэш, циклы и инициализация</h2>
+    <ul>
+      <li>
+        <strong>Кэш модулей.</strong> <code>FileImporter</code> кэширует загруженные файлы по
+        абсолютному пути. Повторный импорт того же файла возвращает уже загруженный модуль —
+        файл парсится один раз. <span class="kite-badge is-available">✅</span>
+      </li>
+      <li>
+        <strong>Обнаружение циклов.</strong> Импортер ведёт стек импортов; если файл уже в стеке,
+        возвращается ошибка «Циклический импорт: &lt;путь&gt;». Циклические зависимости между
+        файловыми модулями <em>запрещены</em> и диагностируются.
+        <span class="kite-badge is-available">✅</span>
+      </li>
+      <li>
+        <strong>Инициализация модуля.</strong> При загрузке файлового модуля из него собираются
+        <em>только</em> алгоритмы (включая первую реализацию перегруженных) и классы.
+        Глобальный код верхнего уровня файла <strong>не исполняется</strong> при импорте
+        (поле <code>globals</code> заполняется пустым — <code>TODO</code> в коде). Поэтому
+        глобальные переменные и побочные эффекты импортируемого файла недоступны.
+        <span class="kite-badge is-proposed">📋</span>
+      </li>
+    </ul>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Библиотеки vs файловые модули — разные менеджеры</span>
+      Файловые модули обслуживает <code>FileImporter</code> (кэш, циклы, base-dir), а библиотеки —
+      <code>LibraryManager</code> (реестр, версии, алиасы функций, выгрузка). Обнаружение циклов
+      относится к <code>FileImporter</code>; у библиотек циклов по построению нет.
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section class="kite-section" id="ogranicheniya">
+    <h2>9. Ограничения и открытые вопросы</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Ограничение</th><th>Статус</th></tr></thead>
+        <tbody>
+          <tr><td>Оператор <code>Модуль::член</code> не исполняется (<code>ModuleAccess</code> → not_implemented); работает только точечная запись <code>Модуль.член</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>экспорт</code> внутри <code>модуль … кон</code> не ограничивает видимость (заглушка <code>execute_export</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Глобальный код и переменные импортируемого файла не инициализируются (<code>globals</code> пуст).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Перегруженные алгоритмы модуля импортируются только первой реализацией.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>[dependencies]</code>, реестры, workspaces, lock-файл разбираются, но не участвуют в резолюции импортов.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Пространство имён на классы навешивается неоднородно (зависит от пути импорта); нужна унификация двух процедур регистрации.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td>Импорт без алиаса «вливает» короткие имена в текущее пространство — возможны коллизии имён между модулями (арбитраж не специфицирован).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td>Циклы между файловыми модулями запрещены и диагностируются (не разрешаются частично, как в некоторых языках).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Целевое направление</span>
+      Норматив на будущее: (1) реализовать <code>ModuleAccess</code> так, чтобы <code>::</code>
+      был равноправным разделителем пространства имён; (2) сделать <code>экспорт</code>
+      действующим и в именованных модулях; (3) исполнять инициализацию модуля предсказуемо;
+      (4) унифицировать регистрацию имён (одна процедура вместо двух); (5) определить правило
+      разрешения коллизий при импорте без алиаса.
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="kite-section" id="istochniki">
+    <h2>10. Источники истины</h2>
+    <p>Дата последней сверки с кодом: 2026-07-22.</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Аспект</th><th>Файл</th></tr></thead>
+        <tbody>
+          <tr><td>Ключевые слова <code>использовать/подключить/модуль/экспорт</code></td><td><code>shared/build.rs</code></td></tr>
+          <tr><td>Разбор <code>Import</code> / <code>ModuleDecl</code> / <code>Export</code></td><td><code>shared/src/parser/{decl.rs, stmt.rs, core.rs}</code></td></tr>
+          <tr><td>Операторы <code>.</code> и <code>::</code> (FieldAccess / ModuleAccess)</td><td><code>shared/src/parser/{expr.rs, stmt.rs}</code></td></tr>
+          <tr><td>Порядок резолюции импорта</td><td><code>interpreter/src/interpreter/import.rs</code></td></tr>
+          <tr><td>Файловый импортер: кэш, циклы, base-dir, разрешение путей</td><td><code>interpreter/src/interpreter/file_importer.rs</code></td></tr>
+          <tr><td>Мост библиотек: <code>LibraryManager</code>, <code>resolve_import_path</code></td><td><code>interpreter/src/interpreter/library_bridge.rs</code></td></tr>
+          <tr><td>Регистрация имён при импорте (executor)</td><td><code>interpreter/src/interpreter/executor/import.rs</code></td></tr>
+          <tr><td><code>execute_module_decl</code> / <code>execute_export</code></td><td><code>interpreter/src/interpreter/executor/statements.rs</code></td></tr>
+          <tr><td><code>ModuleAccess</code> — not_implemented</td><td><code>interpreter/src/interpreter/evaluator/mod.rs</code></td></tr>
+          <tr><td>Манифест проекта <code>KumirConfig</code> (kumir.toml)</td><td><code>shared/src/types/config.rs</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Смежные документы: <a href="./KITE-0005-libraries.html">KITE 5 — Библиотеки</a>
+      (формы <code>использовать</code> для библиотек, версии, каталог API),
+      <a href="./KITE-0004-environments-scope.html">KITE 4 — Окружения и видимость</a>
+      (регистры среды, в которые попадают импортированные имена),
+      <a href="./KITE-0006-kumir2-compatibility.html">KITE 6 — Совместимость с КуМир 2</a> (издания).
+    </p>
+  </section>
+
+  <footer class="kite-footer">
+    <span>KITE 15 · Модули, импорты и пространства имён</span>
+    <span>Kumir3 House 🐾🦀 · 2026-07-22</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>
+</content>
+</invoke>

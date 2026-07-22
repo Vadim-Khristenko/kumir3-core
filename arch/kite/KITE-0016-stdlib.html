@@ -1,0 +1,592 @@
+<link rel="stylesheet" href="./assets/kite.css">
+<!-- =============================================================================
+     KITE 16 — Каталог стандартной библиотеки
+     Источники истины:
+       • phf-таблица BUILTINS (категории Math/String/Io/Other) — shared/build.rs
+       • реализации встроенных функций — interpreter/src/interpreter/builtins/*.rs
+       • is_builtin_function / builtin_category — shared/src/constants/builtins.rs
+       • библиотеки — shared/src/libraries/{time,syscall,files,net}/*.rs
+     Каталог сгенерирован из кода (Bun-скрипт, .local/kite0016/), сверен с W0-аудитом.
+============================================================================== -->
+<article class="kite" data-kite="0016" data-status="draft" lang="ru">
+
+  <!-- ───────────────────────── HEADER ───────────────────────── -->
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE 16 · Спецификация / Справочник</span>
+    <h1>Каталог стандартной библиотеки</h1>
+    <dl class="kite-meta">
+      <dt>Номер</dt>            <dd>KITE 16</dd>
+      <dt>Название</dt>         <dd>Каталог встроенных функций и библиотек</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
+      <dt>Тип</dt>              <dd>Спецификация / Справочник</dd>
+      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Создан</dt>           <dd>2026-07-22</dd>
+      <dt>Версия документа</dt> <dd>0.1.0</dd>
+    </dl>
+  </header>
+
+  <!-- ───────────────────────── TOC ───────────────────────── -->
+  <nav class="kite-toc" aria-label="Содержание">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#o-dokumente">О документе и легенда</a></li>
+      <li><a href="#modeli">Две модели: builtins ядра и библиотеки</a></li>
+      <li><a href="#builtins-math">Встроенные: математика</a></li>
+      <li><a href="#builtins-string">Встроенные: строки</a></li>
+      <li><a href="#builtins-io">Встроенные: ввод-вывод</a></li>
+      <li><a href="#builtins-other">Встроенные: преобразования и коллекции</a></li>
+      <li><a href="#biblioteka-vremya">Библиотека <code>время</code></a></li>
+      <li><a href="#biblioteka-sistema">Библиотека <code>система</code></a></li>
+      <li><a href="#biblioteka-fajly">Библиотека <code>файлы</code></a></li>
+      <li><a href="#biblioteka-set">Библиотека <code>сеть</code></a></li>
+      <li><a href="#politika">Политика именования и версионирования</a></li>
+      <li><a href="#plan">План расширения</a></li>
+      <li><a href="#istoki">Источники истины</a></li>
+    </ol>
+  </nav>
+
+  <!-- ───────────────────────── 1 ───────────────────────── -->
+  <section class="kite-section" id="o-dokumente">
+    <h2>1. О документе и легенда</h2>
+    <p>
+      Это нормативный <strong>реестр всех встроенных имён</strong> Kumir&nbsp;3: функций ядра
+      (builtins) и функций четырёх стандартных библиотек. Каталог сгенерирован прямо из исходного
+      кода (Bun-скрипт в <code>.local/</code>): имена и категории builtins — из phf-таблицы
+      <code>BUILTINS</code> в <code>shared/build.rs</code>; сигнатуры и фактические реализации —
+      из <code>interpreter/src/interpreter/builtins/*.rs</code>; функции библиотек, их псевдонимы,
+      параметры и описания — из <code>shared/src/libraries/</code>.
+    </p>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Легенда доступности (честная по W0)</span>
+      <span class="kite-badge is-available">✅&nbsp;Доступно</span> — имя <em>вызывается</em>: для builtin —
+      <code>is_builtin_function</code> истинно <strong>и</strong> есть реализация в интерпретаторе;
+      для библиотеки — функция зарегистрирована и исполняется.
+      <span class="kite-badge is-experimental">🧪&nbsp;Экспериментально</span> — работает, но интерфейс/поведение могут меняться.
+      <span class="kite-badge is-proposed">📋&nbsp;Предложено</span> — имя присутствует в таблице/спецификации,
+      но реализации на поверхности языка ещё нет.
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Важная тонкость</span>
+      Присутствие имени в phf-таблице <code>BUILTINS</code> <strong>не</strong> означает, что функция
+      реализована. Часть имён категорий Math/String/Io зарегистрирована «на будущее» — они проходят
+      проверку <code>is_builtin_function</code>, но вызов падает как «функция не найдена». Такие имена
+      помечены <span class="kite-badge is-proposed">📋</span>. Отдельно: имена категории
+      <strong>Other</strong> (<code>цел</code>, <code>строка</code>, <code>сортировать</code>&nbsp;…)
+      по определению <code>builtins.rs</code> <em>не</em> считаются встроенными функциями
+      (<code>is_builtin_function == false</code>), хотя многие из них исполняются как обычные вызовы
+      (см.&nbsp;§6).
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 2 ───────────────────────── -->
+  <section class="kite-section" id="modeli">
+    <h2>2. Две модели: builtins ядра и библиотеки</h2>
+    <p>Стандартный функционал Kumir&nbsp;3 поставляется двумя механизмами:</p>
+    <div class="kite-grid">
+      <div class="kite-card">
+        <h3>Builtins ядра</h3>
+        <p>
+          Функции без <code>использовать</code>: математика, строки, ввод-вывод, преобразования.
+          Имена и категории — в phf-таблице <code>BUILTINS</code>; диспетчеризация — в
+          <code>Builtins::try_call</code> (<code>math → string → array → type → io</code>).
+          Доступны всегда, глобально.
+        </p>
+      </div>
+      <div class="kite-card">
+        <h3>Библиотеки</h3>
+        <p>
+          Модули <code>время</code>, <code>система</code>, <code>файлы</code>, <code>сеть</code>,
+          подключаемые через <code>использовать</code>. Каждая функция — <code>LibFunctionDef</code>
+          с именем, псевдонимами, параметрами, типом результата и описанием. Версионируются по SemVer.
+          Подробности механики импорта — в <a href="./KITE-0005-libraries.html">KITE&nbsp;5</a>.
+        </p>
+      </div>
+    </div>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Слой</th><th>Имён в источнике</th><th>Доступно к вызову</th><th>Источник истины</th></tr></thead>
+        <tbody>
+          <tr><td>Builtins · Math</td><td>47</td><td>28</td><td><code>build.rs</code> + <code>builtins/math.rs</code></td></tr>
+          <tr><td>Builtins · String</td><td>36</td><td>21</td><td><code>build.rs</code> + <code>builtins/string.rs</code></td></tr>
+          <tr><td>Builtins · Io</td><td>10</td><td>4 (как функции)</td><td><code>build.rs</code> + <code>builtins/io.rs</code></td></tr>
+          <tr><td>Builtins · Other (не <code>is_builtin_function</code>)</td><td>31</td><td>~20 (как обычные вызовы)</td><td><code>build.rs</code> + <code>builtins/{types,array}.rs</code></td></tr>
+          <tr><td>Библиотека <code>время</code></td><td>40</td><td>40</td><td><code>libraries/time/</code></td></tr>
+          <tr><td>Библиотека <code>система</code></td><td>35</td><td>35</td><td><code>libraries/syscall/</code></td></tr>
+          <tr><td>Библиотека <code>файлы</code></td><td>29</td><td>29</td><td><code>libraries/files/</code></td></tr>
+          <tr><td>Библиотека <code>сеть</code></td><td>21</td><td>21</td><td><code>libraries/net/</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Итог библиотек</span>
+      Четыре библиотеки дают <strong>125</strong> публичных функций (40 + 35 + 29 + 21). Все они
+      реализованы и исполняются; уровень стабильности каждой библиотеки — в её заголовке
+      (<code>время</code>, <code>система</code>, <code>файлы</code> — <code>stable</code>;
+      <code>сеть</code> — <span class="kite-badge is-experimental">🧪</span>).
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 3 ───────────────────────── -->
+  <section class="kite-section" id="builtins-math">
+    <h2>3. Встроенные: математика</h2>
+    <p>
+      Категория <code>Math</code>: 47 зарегистрированных имён, из них 28 реально вызываются.
+      Имена с <span class="kite-badge is-proposed">📋</span> присутствуют в phf-таблице
+      (<code>is_builtin_function</code> истинно), но <code>builtins/math.rs</code> их не обрабатывает —
+      вызов вернёт «функция не найдена».
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Имя (псевдонимы)</th><th>Арность / сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td><code>abs</code> · <code>модуль</code></td><td><code>(x) → число</code></td><td>Модуль числа (сохраняет тип).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>sqrt</code> · <code>корень</code></td><td><code>(x) → вещ</code></td><td>Квадратный корень.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>sin</code></td><td><code>(x) → вещ</code></td><td>Синус (радианы).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>cos</code></td><td><code>(x) → вещ</code></td><td>Косинус (радианы).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>tan</code> · <code>tg</code></td><td><code>(x) → вещ</code></td><td>Тангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>arcsin</code></td><td><code>(x) → вещ</code></td><td>Арксинус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>arccos</code></td><td><code>(x) → вещ</code></td><td>Арккосинус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>arctg</code> · <code>arctan</code></td><td><code>(x) → вещ</code></td><td>Арктангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>exp</code></td><td><code>(x) → вещ</code></td><td>Экспонента e<sup>x</sup>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>ln</code> · <code>log</code></td><td><code>(x&gt;0) → вещ</code></td><td>Натуральный логарифм.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>lg</code></td><td><code>(x&gt;0) → вещ</code></td><td>Десятичный логарифм (реализация <code>log10</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>pow</code> · <code>степень</code></td><td><code>(осн, показ) → число</code></td><td>Возведение в степень.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>floor</code></td><td><code>(x) → цел</code></td><td>Округление вниз.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>ceil</code></td><td><code>(x) → цел</code></td><td>Округление вверх.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>round</code></td><td><code>(x [, знаков]) → цел / вещ</code></td><td>Округление до целого или до N знаков.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>min</code></td><td><code>(a, b, …) → число</code></td><td>Минимум из аргументов.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>max</code></td><td><code>(a, b, …) → число</code></td><td>Максимум из аргументов.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>sign</code> · <code>знак</code></td><td><code>(x) → цел (−1/0/1)</code></td><td>Знак числа.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>rand</code> · <code>random</code></td><td><code>() / (n) / (a, b) → число</code></td><td>Псевдослучайное (реализовано также под именем <code>случайное</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>int</code></td><td><code>(x) → цел</code></td><td>Приведение к целому (реализация в <code>types.rs</code>, см.&nbsp;§6).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>ctg</code> · <code>cot</code></td><td><code>(x) → вещ</code></td><td>Котангенс.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>arcctg</code> · <code>arccot</code></td><td><code>(x) → вещ</code></td><td>Арккотангенс.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>sh</code> · <code>sinh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический синус.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>ch</code> · <code>cosh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический косинус.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>th</code> · <code>tanh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический тангенс.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>цел_часть</code></td><td><code>(x) → цел</code></td><td>Целая часть числа.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>frac</code> · <code>дробь</code></td><td><code>(x) → вещ</code></td><td>Дробная часть числа.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>округл</code></td><td><code>(x) → цел</code></td><td>Псевдоним округления (реализовано <code>round</code>/<code>округлить</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>мин</code> · <code>макс</code></td><td><code>(a, b, …) → число</code></td><td>Русские имена min/max (реализованы <code>минимум</code>/<code>максимум</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>mod</code></td><td><code>(a, b) → цел</code></td><td>Остаток как функция (есть оператор-слово <code>мод</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>div</code></td><td><code>(a, b) → цел</code></td><td>Целочисленное деление как функция (есть оператор-слово <code>див</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>случ</code></td><td><code>() / (n) / (a, b)</code></td><td>Русский псевдоним random (реализовано <code>случайное</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Расхождение имён</span>
+      Реализация распознаёт русские имена, которых нет в phf-таблице: <code>минимум</code>,
+      <code>максимум</code>, <code>округлить</code>, <code>случайное</code>, <code>пол</code>,
+      <code>потолок</code>, <code>квадратный_корень</code>, а также константы <code>пи</code>/<code>pi</code>
+      и <code>е</code>/<code>e</code>. Обратное тоже верно: часть phf-имён (гиперболические, котангенсы,
+      <code>цел_часть</code>, <code>frac</code>) в интерпретаторе не реализована. Унификация номенклатуры —
+      задача §11.
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 4 ───────────────────────── -->
+  <section class="kite-section" id="builtins-string">
+    <h2>4. Встроенные: строки</h2>
+    <p>Категория <code>String</code>: 36 имён, 21 вызывается. Реализация — <code>builtins/string.rs</code>.
+       Индексы строк в Кумире — с&nbsp;1.</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Имя (псевдонимы)</th><th>Арность / сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td><code>длин</code> · <code>len</code> · <code>length</code></td><td><code>(строка/массив/байты/диапазон) → цел</code></td><td>Длина (в символах для строки). Реализовано также как <code>длина</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>символ</code> · <code>chr</code></td><td><code>(код) → сим</code></td><td>Символ Unicode по коду.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>код</code> · <code>ord</code></td><td><code>(сим) → цел</code></td><td>Код символа Unicode.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>substr</code> · <code>substring</code></td><td><code>(строка, старт [, длина]) → лит</code></td><td>Подстрока (реализовано также <code>подстрока</code>, <code>копировать_строку</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>позиция</code> · <code>pos</code> · <code>position</code></td><td><code>(стог, игла) → цел</code></td><td>Позиция подстроки (0 если нет). Также <code>найти</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>upper</code></td><td><code>(строка) → лит</code></td><td>Верхний регистр (также <code>верхний_регистр</code>, <code>to_upper</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>lower</code></td><td><code>(строка) → лит</code></td><td>Нижний регистр (также <code>нижний_регистр</code>, <code>to_lower</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>обрезать</code> · <code>trim</code></td><td><code>(строка) → лит</code></td><td>Убрать пробелы по краям.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>заменить</code> · <code>replace</code></td><td><code>(строка, из, в) → лит</code></td><td>Замена всех вхождений.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>split</code></td><td><code>(строка, разделитель) → таб</code></td><td>Разбить строку (также <code>разделить</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>соединить</code> · <code>join</code></td><td><code>(массив, разделитель) → лит</code></td><td>Соединить элементы через разделитель.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>байты</code> · <code>bytes</code></td><td><code>(строка/массив/байты) → байты</code></td><td>Преобразование в <code>байты</code> (KITE&nbsp;2).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>char</code> · <code>code</code></td><td>—</td><td>Английские псевдонимы <code>символ</code>/<code>код</code>: в phf есть, реализация распознаёт только <code>chr</code>/<code>ord</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>вырезка</code></td><td><code>(строка, …) → лит</code></td><td>Русское имя подстроки (реализовано <code>substr</code>/<code>подстрока</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>find</code></td><td><code>(стог, игла) → цел</code></td><td>Английское имя поиска (реализовано <code>позиция</code>/<code>найти</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>верхний</code> · <code>uppercase</code></td><td><code>(строка) → лит</code></td><td>Псевдонимы верхнего регистра (реализовано <code>upper</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>нижний</code> · <code>lowercase</code></td><td><code>(строка) → лит</code></td><td>Псевдонимы нижнего регистра (реализовано <code>lower</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>слева</code> · <code>left</code></td><td><code>(строка, n) → лит</code></td><td>Первые n символов.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>справа</code> · <code>right</code></td><td><code>(строка, n) → лит</code></td><td>Последние n символов.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>повторить</code> · <code>repeat</code></td><td><code>(строка, n) → лит</code></td><td>Повтор строки n раз.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>разбить</code></td><td><code>(строка, разделитель) → таб</code></td><td>Русский псевдоним split (реализовано <code>разделить</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Дополнительно реализовано</span>
+      Помимо phf-имён, <code>string.rs</code> предоставляет <code>строка_из_байт</code> ·
+      <code>байты_в_строку</code> · <code>bytes_to_string</code> — обратное преобразование
+      <code>байты → лит</code>.
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 5 ───────────────────────── -->
+  <section class="kite-section" id="builtins-io">
+    <h2>5. Встроенные: ввод-вывод</h2>
+    <p>Категория <code>Io</code>: 10 имён. Реализация функций — <code>builtins/io.rs</code>.</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Имя (псевдонимы)</th><th>Арность / сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td><code>print</code></td><td><code>(…) → пусто</code></td><td>Печать значений через пробел без перевода строки (также <code>печать</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>println</code></td><td><code>(…) → пусто</code></td><td>Печать с переводом строки (также <code>печатьстр</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>нс</code> · <code>newline</code></td><td><code>() → пусто</code></td><td>Вывод пустой строки (также <code>nl</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>вывод</code> · <code>output</code></td><td>инструкция <code>вывод …</code></td><td>Вывод — это <strong>инструкция языка</strong> (ключевое слово), а не вызываемая builtin-функция.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>ввод</code> · <code>input</code></td><td>инструкция <code>ввод …</code></td><td>Ввод — инструкция языка; как builtin-функция не реализован.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>вывод_строки</code></td><td><code>(…) → пусто</code></td><td>Псевдоним println (реализовано <code>println</code>/<code>печатьстр</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>новая_строка</code></td><td><code>() → пусто</code></td><td>Псевдоним newline (реализовано <code>нс</code>/<code>newline</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title"><code>ввод</code> / <code>вывод</code> — ключевые слова, не функции</span>
+      В phf-таблице <code>ввод</code>/<code>вывод</code> числятся как Io-builtins, но в интерпретаторе
+      это <strong>инструкции</strong> (<code>Stmt::Input</code>/<code>Stmt::Output</code>), а не арм
+      <code>builtins/io.rs</code>. Как <em>вызов функции</em> <code>вывод(x)</code> не обрабатывается
+      builtin-диспетчером. Формат вывода значений и потоки ввода-вывода специфицируются отдельно —
+      <a href="./KITE-0007-stdio.html">KITE&nbsp;7</a>. Функции <code>время</code>/<code>time</code> и
+      <code>пауза</code>/<code>ждать</code> тоже реализованы в <code>io.rs</code>, но относятся к работе
+      со временем — их каноническое место в библиотеке <code>время</code> (§7).
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 6 ───────────────────────── -->
+  <section class="kite-section" id="builtins-other">
+    <h2>6. Встроенные: преобразования и коллекции</h2>
+    <p>
+      Категория <code>Other</code>: 31 имя. По определению
+      <code>constants/builtins.rs</code> для них <code>is_builtin_function == false</code> — они
+      <strong>не</strong> считаются встроенными функциями формально, но многие исполняются как обычные
+      вызовы (реализация — <code>builtins/types.rs</code> и <code>builtins/array.rs</code>). Бейдж
+      <span class="kite-badge is-experimental">🧪</span> здесь означает «вызывается, но не входит в
+      <code>is_builtin_function</code>».
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Имя (псевдонимы)</th><th>Сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
+        <tbody>
+          <tr><td><code>цел</code> · <code>int</code> · <code>целое</code></td><td><code>(x) → цел</code></td><td>Приведение к целому.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>вещ</code> · <code>float</code> · <code>вещественное</code></td><td><code>(x) → вещ</code></td><td>Приведение к вещественному.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>строка</code> · <code>str</code></td><td><code>(x) → лит</code></td><td>Приведение к строке.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>лог</code> · <code>bool</code> · <code>логическое</code></td><td><code>(x) → лог</code></td><td>Приведение к логическому (truthiness).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>тип</code> · <code>type</code> · <code>typeof</code></td><td><code>(x) → лит</code></td><td>Строковое имя типа значения.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>добавить</code> · <code>push</code> · <code>append</code></td><td><code>(массив, элемент) → таб</code></td><td>Добавить элемент (возвращает новый массив).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>извлечь</code> · <code>pop</code></td><td><code>(массив/опция) → элемент</code></td><td>Снять последний / развернуть опцию (реализация <code>удалить_последний</code> и <code>unwrap</code>).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>обратить</code> · <code>reverse</code></td><td><code>(массив/строка) → тот же тип</code></td><td>Развернуть (также <code>перевернуть</code>).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>сортировать</code> · <code>sort</code></td><td><code>(массив) → таб</code></td><td>Сортировка по возрастанию.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>содержит</code> · <code>contains</code></td><td><code>(массив/строка, x) → лог</code></td><td>Проверка вхождения.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>to_int</code> · <code>to_float</code> · <code>to_string</code> · <code>to_bool</code></td><td><code>(x)</code></td><td>Английские имена приведений: в phf есть, реализация распознаёт русские/короткие имена выше.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>размер</code> · <code>size</code></td><td><code>(коллекция) → цел</code></td><td>Размер коллекции (реализовано через <code>длин</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>индекс</code> · <code>index_of</code></td><td><code>(массив, x) → цел</code></td><td>Индекс элемента.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>утв</code> · <code>assert</code></td><td>инструкция <code>утв …</code></td><td>Утверждение — инструкция языка (ключевое слово), не builtin-функция.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>ошибка</code> · <code>error</code></td><td><code>(сообщение)</code></td><td>Конструктор ошибки — как builtin не реализован.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Коллекции сверх phf</span>
+      В <code>array.rs</code> реализованы также имена, которых нет в phf-таблице:
+      <code>таб</code>/<code>массив</code>, <code>первый</code>/<code>first</code>,
+      <code>последний</code>/<code>last</code>, <code>сумма</code>/<code>sum</code>,
+      <code>среднее</code>/<code>avg</code>, <code>пусто</code>/<code>is_empty</code>. А в
+      <code>types.rs</code> — конструкторы <code>пара</code>, <code>тройка</code>, <code>кортеж</code>,
+      опции <code>некоторое</code>/<code>ничего</code>/<code>есть</code>/<code>извлечь</code> и предикаты
+      <code>это_число</code>/<code>это_строка</code>/<code>это_массив</code>/<code>это_пусто</code>.
+      Их формальная номенклатура и место в каталоге — предмет §11.
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 7 ───────────────────────── -->
+  <section class="kite-section" id="biblioteka-vremya">
+    <h2>7. Библиотека <code>время</code> (40 функций)</h2>
+    <p>
+      <code>использовать время</code> · псевдонимы <code>time</code>, <code>время</code> ·
+      версия 2.0.0 · <span class="kite-badge is-available">✅ stable</span>. Работа с эпохой, паузами,
+      таймерами, форматированием и компонентами дат. Ниже — канонические имена с параметрами (типы
+      указаны в номенклатуре движка <code>TypeKind</code>); английские псевдонимы даны в скобках.
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Функция</th><th>Сигнатура</th><th>Описание</th></tr></thead>
+        <tbody>
+          <tr><td><code>текущее_время_мс</code> <span>(now_ms)</span></td><td><code>() → цел_64</code></td><td>Миллисекунды с 1970-01-01 UTC.</td></tr>
+          <tr><td><code>текущее_время_сек</code> <span>(now, now_sec)</span></td><td><code>() → цел_64</code></td><td>Секунды с эпохи.</td></tr>
+          <tr><td><code>текущее_время_мкс</code> <span>(now_us)</span></td><td><code>() → цел_64</code></td><td>Микросекунды с эпохи.</td></tr>
+          <tr><td><code>текущее_время_нс</code> <span>(now_ns)</span></td><td><code>() → цел_64</code></td><td>Наносекунды с эпохи.</td></tr>
+          <tr><td><code>текущий_год</code> <span>(year)</span></td><td><code>() → цел_32</code></td><td>Текущий год (UTC).</td></tr>
+          <tr><td><code>текущий_месяц</code> <span>(month)</span></td><td><code>() → нат_8</code></td><td>Месяц 1..12.</td></tr>
+          <tr><td><code>текущий_день</code> <span>(day)</span></td><td><code>() → нат_8</code></td><td>День месяца 1..31.</td></tr>
+          <tr><td><code>текущий_час</code> <span>(hour)</span></td><td><code>() → нат_8</code></td><td>Час 0..23.</td></tr>
+          <tr><td><code>текущая_минута</code> <span>(minute)</span></td><td><code>() → нат_8</code></td><td>Минута 0..59.</td></tr>
+          <tr><td><code>текущая_секунда</code> <span>(second)</span></td><td><code>() → нат_8</code></td><td>Секунда 0..59.</td></tr>
+          <tr><td><code>текущий_день_недели</code> <span>(weekday)</span></td><td><code>() → нат_8</code></td><td>ISO-день недели (1=пн … 7=вс).</td></tr>
+          <tr><td><code>високосный_год</code> <span>(is_leap_year)</span></td><td><code>(год: цел_32) → лог</code></td><td>Проверка високосности.</td></tr>
+          <tr><td><code>дней_в_месяце</code> <span>(days_in_month)</span></td><td><code>(год: цел_32, месяц: нат_8) → нат_8</code></td><td>Число дней в месяце.</td></tr>
+          <tr><td><code>дней_в_году</code> <span>(days_in_year)</span></td><td><code>(год: цел_32) → нат_16</code></td><td>365 или 366.</td></tr>
+          <tr><td><code>разница_сек</code> <span>(diff_seconds)</span></td><td><code>(шт1: цел_64, шт2: цел_64) → цел_64</code></td><td>Разница штампов в секундах.</td></tr>
+          <tr><td><code>разница_дней</code> <span>(diff_days)</span></td><td><code>(шт1: цел_64, шт2: цел_64) → цел_64</code></td><td>Разница штампов в днях.</td></tr>
+          <tr><td><code>добавить_сек</code> <span>(add_seconds)</span></td><td><code>(шт: цел_64, секунды: цел_64) → цел_64</code></td><td>Прибавить секунды к штампу.</td></tr>
+          <tr><td><code>добавить_дней</code> <span>(add_days)</span></td><td><code>(шт: цел_64, дни: цел_64) → цел_64</code></td><td>Прибавить дни к штампу.</td></tr>
+          <tr><td><code>дата_время_iso_utc</code> <span>(iso_utc)</span></td><td><code>() → лит</code></td><td>Текущее UTC в ISO 8601.</td></tr>
+          <tr><td><code>дата_время_iso</code> <span>(iso)</span></td><td><code>() → лит</code></td><td>Текущее время в ISO 8601 (UTC).</td></tr>
+          <tr><td><code>текущая_дата_рус</code> <span>(date_ru)</span></td><td><code>() → лит</code></td><td>Дата в русском формате.</td></tr>
+          <tr><td><code>текущее_время_строка</code> <span>(time_str)</span></td><td><code>() → лит</code></td><td>Время HH:MM:SS.</td></tr>
+          <tr><td><code>из_штампа_сек</code> <span>(from_timestamp)</span></td><td><code>(сек: цел_64) → лит</code></td><td>Секунды эпохи → ISO-дата UTC.</td></tr>
+          <tr><td><code>в_штамп_сек</code> <span>(to_timestamp)</span></td><td><code>(iso: лит) → цел_64</code></td><td>ISO-дата UTC → секунды эпохи.</td></tr>
+          <tr><td><code>разобрать_штамп_сек</code> <span>(ts_parts)</span></td><td><code>(сек: цел_64) → словарь</code></td><td>Компоненты штампа.</td></tr>
+          <tr><td><code>разобрать_iso</code> <span>(iso_parts)</span></td><td><code>(iso: лит) → словарь</code></td><td>Компоненты ISO-строки.</td></tr>
+          <tr><td><code>создать_штамп</code> <span>(make_timestamp)</span></td><td><code>(год, месяц, день, час, минута, секунда) → цел_64</code></td><td>Штамп из компонентов даты-времени.</td></tr>
+          <tr><td><code>создать_штамп_дата</code> <span>(make_date)</span></td><td><code>(год: цел_32, месяц: нат_8, день: нат_8) → цел_64</code></td><td>Штамп из даты (00:00:00).</td></tr>
+          <tr><td><code>дни_недели</code> <span>(weekdays)</span></td><td><code>() → словарь</code></td><td>1..7 → русские названия.</td></tr>
+          <tr><td><code>дни_недели_кратко</code> <span>(weekdays_short)</span></td><td><code>() → словарь</code></td><td>1..7 → краткие (пн, вт…).</td></tr>
+          <tr><td><code>месяцы</code> <span>(months)</span></td><td><code>() → словарь</code></td><td>1..12 → русские названия.</td></tr>
+          <tr><td><code>месяцы_кратко</code> <span>(months_short)</span></td><td><code>() → словарь</code></td><td>1..12 → краткие (янв, фев…).</td></tr>
+          <tr><td><code>пауза</code> <span>(sleep)</span></td><td><code>(сек: нат_64)</code></td><td>Блокирующая пауза в секундах.</td></tr>
+          <tr><td><code>пауза_мс</code> <span>(sleep_ms)</span></td><td><code>(мс: нат_64)</code></td><td>Пауза в миллисекундах.</td></tr>
+          <tr><td><code>пауза_мин</code> <span>(sleep_min)</span></td><td><code>(мин: нат_64)</code></td><td>Пауза в минутах.</td></tr>
+          <tr><td><code>пауза_мкс</code> <span>(sleep_us)</span></td><td><code>(мкс: нат_64)</code></td><td>Пауза в микросекундах.</td></tr>
+          <tr><td><code>таймер_старт</code> <span>(timer_start)</span></td><td><code>() → цел_64</code></td><td>Отметка (мс) для замера.</td></tr>
+          <tr><td><code>таймер_прошло_мс</code> <span>(timer_elapsed_ms)</span></td><td><code>(старт: цел_64) → цел_64</code></td><td>Прошло мс от отметки.</td></tr>
+          <tr><td><code>таймер_прошло_сек</code> <span>(timer_elapsed)</span></td><td><code>(старт: цел_64) → цел_64</code></td><td>Прошло секунд от отметки.</td></tr>
+          <tr><td><code>таймер_высокоточный</code> <span>(timer_precise)</span></td><td><code>() → цел_64</code></td><td>Наносекундный таймер (бенчмарки).</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Совет</span>
+      Пауза в этой библиотеке — как и builtin <code>пауза</code> — блокирующая
+      (<code>thread::sleep</code>), а не точка приостановки планировщика; это согласовано с
+      <a href="./KITE-0003-async-runtime.html">KITE&nbsp;3</a>.
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 8 ───────────────────────── -->
+  <section class="kite-section" id="biblioteka-sistema">
+    <h2>8. Библиотека <code>система</code> (35 функций)</h2>
+    <p>
+      <code>использовать система</code> · псевдонимы <code>syscall</code>, <code>sys</code>,
+      <code>системные_вызовы</code>, <code>os</code> · <span class="kite-badge is-available">✅ stable</span>.
+      Окружение, пути, процессы, информация о системе.
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Функция</th><th>Сигнатура</th><th>Описание</th></tr></thead>
+        <tbody>
+          <tr><td><code>окружение</code> <span>(env)</span></td><td><code>(имя: лит) → лит</code></td><td>Значение переменной окружения.</td></tr>
+          <tr><td><code>установить_окружение</code> <span>(env_set)</span></td><td><code>(имя: лит, значение: лит)</code></td><td>Установить переменную окружения.</td></tr>
+          <tr><td><code>удалить_окружение</code> <span>(env_unset)</span></td><td><code>(имя: лит)</code></td><td>Удалить переменную окружения.</td></tr>
+          <tr><td><code>все_окружение</code> <span>(env_all)</span></td><td><code>() → словарь</code></td><td>Все переменные окружения.</td></tr>
+          <tr><td><code>есть_окружение</code> <span>(env_exists)</span></td><td><code>(имя: лит) → лог</code></td><td>Проверка существования переменной.</td></tr>
+          <tr><td><code>текущая_директория</code> <span>(cwd)</span></td><td><code>() → лит</code></td><td>Рабочая директория.</td></tr>
+          <tr><td><code>сменить_директорию</code> <span>(chdir)</span></td><td><code>(путь: лит)</code></td><td>Сменить рабочую директорию.</td></tr>
+          <tr><td><code>домашняя_директория</code> <span>(home_dir)</span></td><td><code>() → лит</code></td><td>Домашняя директория.</td></tr>
+          <tr><td><code>временная_директория</code> <span>(temp_dir)</span></td><td><code>() → лит</code></td><td>Директория временных файлов.</td></tr>
+          <tr><td><code>путь_существует</code> <span>(path_exists)</span></td><td><code>(путь: лит) → лог</code></td><td>Существование пути.</td></tr>
+          <tr><td><code>это_файл</code> <span>(is_file)</span></td><td><code>(путь: лит) → лог</code></td><td>Путь — файл?</td></tr>
+          <tr><td><code>это_директория</code> <span>(is_dir)</span></td><td><code>(путь: лит) → лог</code></td><td>Путь — директория?</td></tr>
+          <tr><td><code>абсолютный_путь</code> <span>(abs_path)</span></td><td><code>(путь: лит) → лит</code></td><td>Абсолютный путь.</td></tr>
+          <tr><td><code>имя_файла</code> <span>(basename)</span></td><td><code>(путь: лит) → лит</code></td><td>Имя файла из пути.</td></tr>
+          <tr><td><code>директория_файла</code> <span>(dirname)</span></td><td><code>(путь: лит) → лит</code></td><td>Директория из пути.</td></tr>
+          <tr><td><code>расширение_файла</code> <span>(extension)</span></td><td><code>(путь: лит) → лит</code></td><td>Расширение файла.</td></tr>
+          <tr><td><code>соединить_пути</code> <span>(join_path)</span></td><td><code>(путь1: лит, путь2: лит) → лит</code></td><td>Соединить два пути.</td></tr>
+          <tr><td><code>без_расширения</code> <span>(stem)</span></td><td><code>(путь: лит) → лит</code></td><td>Имя файла без расширения.</td></tr>
+          <tr><td><code>выполнить</code> <span>(run, exec)</span></td><td><code>(команда: лит) → словарь</code></td><td>Запуск команды: code, stdout, stderr.</td></tr>
+          <tr><td><code>система</code> <span>(system)</span></td><td><code>(команда: лит) → цел_32</code></td><td>Команда, вернуть код возврата.</td></tr>
+          <tr><td><code>вывод_команды</code> <span>(popen)</span></td><td><code>(команда: лит) → лит</code></td><td>Команда, вернуть stdout.</td></tr>
+          <tr><td><code>успех_команды</code> <span>(run_success)</span></td><td><code>(команда: лит) → лог</code></td><td>Да, если код возврата 0.</td></tr>
+          <tr><td><code>имя_ос</code> <span>(os_name)</span></td><td><code>() → лит</code></td><td>windows / linux / macos.</td></tr>
+          <tr><td><code>семейство_ос</code> <span>(os_family)</span></td><td><code>() → лит</code></td><td>unix / windows.</td></tr>
+          <tr><td><code>архитектура</code> <span>(arch)</span></td><td><code>() → лит</code></td><td>Архитектура процессора.</td></tr>
+          <tr><td><code>имя_хоста</code> <span>(hostname)</span></td><td><code>() → лит</code></td><td>Имя компьютера.</td></tr>
+          <tr><td><code>имя_пользователя</code> <span>(username)</span></td><td><code>() → лит</code></td><td>Имя пользователя.</td></tr>
+          <tr><td><code>разделитель_пути</code> <span>(path_sep)</span></td><td><code>() → лит</code></td><td>Разделитель пути (/ или \).</td></tr>
+          <tr><td><code>разделитель_путей</code> <span>(pathlist_sep)</span></td><td><code>() → лит</code></td><td>Разделитель в PATH (; или :).</td></tr>
+          <tr><td><code>разделитель_строк</code> <span>(line_sep)</span></td><td><code>() → лит</code></td><td>Системный перевод строки.</td></tr>
+          <tr><td><code>количество_ядер</code> <span>(cpu_count)</span></td><td><code>() → нат_64</code></td><td>Логические ядра CPU.</td></tr>
+          <tr><td><code>аргументы_командной_строки</code> <span>(argv)</span></td><td><code>() → таб</code></td><td>Аргументы командной строки.</td></tr>
+          <tr><td><code>путь_к_исполняемому</code> <span>(exe_path)</span></td><td><code>() → лит</code></td><td>Путь к исполняемому файлу.</td></tr>
+          <tr><td><code>информация_о_системе</code> <span>(system_info)</span></td><td><code>() → словарь</code></td><td>Сводка о системе.</td></tr>
+          <tr><td><code>идентификатор_процесса</code> <span>(pid)</span></td><td><code>() → нат_64</code></td><td>ID текущего процесса.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 9 ───────────────────────── -->
+  <section class="kite-section" id="biblioteka-fajly">
+    <h2>9. Библиотека <code>файлы</code> (29 функций)</h2>
+    <p>
+      <code>использовать файлы</code> · псевдонимы <code>files</code>, <code>fs</code>,
+      <code>файловая_система</code> · <span class="kite-badge is-available">✅ stable</span>.
+      Директории, чтение/запись, метаданные, ссылки.
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Функция</th><th>Сигнатура</th><th>Описание</th></tr></thead>
+        <tbody>
+          <tr><td><code>список_файлов</code> <span>(list_dir)</span></td><td><code>(путь: лит) → таб</code></td><td>Имена файлов и папок в директории.</td></tr>
+          <tr><td><code>только_файлы</code> <span>(list_files)</span></td><td><code>(путь: лит) → таб</code></td><td>Только файлы.</td></tr>
+          <tr><td><code>только_директории</code> <span>(list_dirs)</span></td><td><code>(путь: лит) → таб</code></td><td>Только поддиректории.</td></tr>
+          <tr><td><code>создать_директорию</code> <span>(mkdir)</span></td><td><code>(путь: лит)</code></td><td>Создать директорию.</td></tr>
+          <tr><td><code>создать_все_директории</code> <span>(mkdirs)</span></td><td><code>(путь: лит)</code></td><td>Создать директорию рекурсивно.</td></tr>
+          <tr><td><code>обход</code> <span>(walk)</span></td><td><code>(путь: лит) → таб</code></td><td>Рекурсивный обход дерева.</td></tr>
+          <tr><td><code>найти_по_расширению</code> <span>(glob_ext)</span></td><td><code>(путь: лит, расш: лит) → таб</code></td><td>Файлы с расширением рекурсивно.</td></tr>
+          <tr><td><code>чтение_текста</code> <span>(read_text)</span></td><td><code>(путь: лит) → лит</code></td><td>Прочитать текстовый файл.</td></tr>
+          <tr><td><code>чтение_строк</code> <span>(read_lines)</span></td><td><code>(путь: лит) → таб</code></td><td>Файл как массив строк.</td></tr>
+          <tr><td><code>запись_текста</code> <span>(write_text)</span></td><td><code>(путь: лит, содержимое: лит)</code></td><td>Записать строку (перезапись).</td></tr>
+          <tr><td><code>дозапись_текста</code> <span>(append_text)</span></td><td><code>(путь: лит, содержимое: лит)</code></td><td>Дописать в конец файла.</td></tr>
+          <tr><td><code>чтение_байтов</code> <span>(read_bytes)</span></td><td><code>(путь: лит) → таб</code></td><td>Файл как массив байтов.</td></tr>
+          <tr><td><code>запись_байтов</code> <span>(write_bytes)</span></td><td><code>(путь: лит, байты: таб)</code></td><td>Записать массив байтов.</td></tr>
+          <tr><td><code>запись_строк</code> <span>(write_lines)</span></td><td><code>(путь: лит, строки: таб)</code></td><td>Записать массив строк.</td></tr>
+          <tr><td><code>существует</code> <span>(exists)</span></td><td><code>(путь: лит) → лог</code></td><td>Файл или директория существует?</td></tr>
+          <tr><td><code>это_файл</code> <span>(is_file)</span></td><td><code>(путь: лит) → лог</code></td><td>Путь — файл?</td></tr>
+          <tr><td><code>это_директория</code> <span>(is_dir)</span></td><td><code>(путь: лит) → лог</code></td><td>Путь — директория?</td></tr>
+          <tr><td><code>это_ссылка</code> <span>(is_symlink)</span></td><td><code>(путь: лит) → лог</code></td><td>Путь — символическая ссылка?</td></tr>
+          <tr><td><code>размер_файла</code> <span>(file_size)</span></td><td><code>(путь: лит) → цел_64</code></td><td>Размер файла в байтах.</td></tr>
+          <tr><td><code>информация_о_файле</code> <span>(stat)</span></td><td><code>(путь: лит) → словарь</code></td><td>Полная информация о файле.</td></tr>
+          <tr><td><code>канонический_путь</code> <span>(canonical_path)</span></td><td><code>(путь: лит) → лит</code></td><td>Каноничный абсолютный путь.</td></tr>
+          <tr><td><code>установить_только_чтение</code> <span>(set_readonly)</span></td><td><code>(путь: лит, только_чтение: лог)</code></td><td>Атрибут «только для чтения».</td></tr>
+          <tr><td><code>копировать_файл</code> <span>(copy_file)</span></td><td><code>(источник: лит, назначение: лит) → цел_64</code></td><td>Копировать файл.</td></tr>
+          <tr><td><code>переместить_файл</code> <span>(move_file, rename)</span></td><td><code>(источник: лит, назначение: лит)</code></td><td>Переместить/переименовать.</td></tr>
+          <tr><td><code>удалить_файл</code> <span>(remove_file)</span></td><td><code>(путь: лит)</code></td><td>Удалить файл.</td></tr>
+          <tr><td><code>удалить_директорию</code> <span>(remove_dir)</span></td><td><code>(путь: лит)</code></td><td>Удалить пустую директорию.</td></tr>
+          <tr><td><code>удалить_директорию_рекурсивно</code> <span>(remove_dir_all)</span></td><td><code>(путь: лит)</code></td><td>Удалить директорию со содержимым.</td></tr>
+          <tr><td><code>создать_файл</code> <span>(touch)</span></td><td><code>(путь: лит)</code></td><td>Создать пустой файл.</td></tr>
+          <tr><td><code>символическая_ссылка</code> <span>(symlink)</span></td><td><code>(цель: лит, ссылка: лит)</code></td><td>Создать символическую ссылку.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 10 ───────────────────────── -->
+  <section class="kite-section" id="biblioteka-set">
+    <h2>10. Библиотека <code>сеть</code> (21 функция)</h2>
+    <p>
+      <code>использовать сеть</code> · псевдонимы <code>net</code>, <code>network</code> ·
+      <span class="kite-badge is-experimental">🧪 экспериментальная</span>. Вопреки старому тексту
+      KITE&nbsp;5 «TCP и UDP», библиотека покрывает также HTTP, DNS, URL-кодирование, Base64 и JSON.
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Функция</th><th>Сигнатура</th><th>Описание</th></tr></thead>
+        <tbody>
+          <tr><td><code>http_запрос</code> <span>(http_get)</span></td><td><code>(url: лит) → лит</code></td><td>GET-запрос, тело ответа.</td></tr>
+          <tr><td><code>http_отправить</code> <span>(http_post)</span></td><td><code>(url: лит, данные: лит) → лит</code></td><td>POST-запрос с данными.</td></tr>
+          <tr><td><code>http_заголовки</code> <span>(http_head)</span></td><td><code>(url: лит) → лит</code></td><td>HEAD-запрос, заголовки.</td></tr>
+          <tr><td><code>http_расширенный_запрос</code> <span>(http_request)</span></td><td><code>(метод, url, тело, заголовки: лит) → лит</code></td><td>Произвольный HTTP-запрос.</td></tr>
+          <tr><td><code>tcp_подключение</code> <span>(tcp_connect)</span></td><td><code>(адрес: лит) → лит</code></td><td>Подключение к TCP-серверу.</td></tr>
+          <tr><td><code>tcp_отправить</code> <span>(tcp_send)</span></td><td><code>(адрес: лит, данные: лит) → цел_64</code></td><td>Отправить данные по TCP.</td></tr>
+          <tr><td><code>tcp_получить</code> <span>(tcp_receive)</span></td><td><code>(адрес: лит) → лит</code></td><td>Подключиться и прочитать ответ.</td></tr>
+          <tr><td><code>tcp_слушать</code> <span>(tcp_listen)</span></td><td><code>(адрес: лит) → лит</code></td><td>Принять одно соединение и прочитать.</td></tr>
+          <tr><td><code>udp_отправить</code> <span>(udp_send)</span></td><td><code>(адрес: лит, данные: лит) → цел_64</code></td><td>Отправить датаграмму UDP.</td></tr>
+          <tr><td><code>udp_получить</code> <span>(udp_receive)</span></td><td><code>(адрес: лит) → лит</code></td><td>Принять одну датаграмму UDP.</td></tr>
+          <tr><td><code>udp_широковещание</code> <span>(udp_broadcast)</span></td><td><code>(порт: цел_64, данные: лит) → цел_64</code></td><td>Широковещательный UDP-пакет.</td></tr>
+          <tr><td><code>dns_поиск</code> <span>(dns_lookup)</span></td><td><code>(хост: лит) → таб</code></td><td>DNS-имя → список IP.</td></tr>
+          <tr><td><code>dns_обратный</code> <span>(dns_reverse)</span></td><td><code>(ip: лит) → лит</code></td><td>Обратный DNS (PTR).</td></tr>
+          <tr><td><code>url_кодирование</code> <span>(url_encode)</span></td><td><code>(строка: лит) → лит</code></td><td>Percent-encoding.</td></tr>
+          <tr><td><code>url_декодирование</code> <span>(url_decode)</span></td><td><code>(строка: лит) → лит</code></td><td>Percent-decoding.</td></tr>
+          <tr><td><code>url_разбор</code> <span>(url_parse)</span></td><td><code>(url: лит) → словарь</code></td><td>URL → scheme/host/port/path/query/fragment.</td></tr>
+          <tr><td><code>base64_кодирование</code> <span>(base64_encode)</span></td><td><code>(строка: лит) → лит</code></td><td>Кодировать в Base64.</td></tr>
+          <tr><td><code>base64_декодирование</code> <span>(base64_decode)</span></td><td><code>(строка: лит) → лит</code></td><td>Декодировать из Base64.</td></tr>
+          <tr><td><code>json_разбор</code> <span>(json_parse)</span></td><td><code>(строка: лит) → любой</code></td><td>JSON-строка → значение Кумира.</td></tr>
+          <tr><td><code>json_строка</code> <span>(json_stringify)</span></td><td><code>(значение: любой) → лит</code></td><td>Значение Кумира → JSON.</td></tr>
+          <tr><td><code>локальный_ip</code> <span>(local_ip)</span></td><td><code>() → лит</code></td><td>Локальный IP машины.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 11 ───────────────────────── -->
+  <section class="kite-section" id="politika">
+    <h2>11. Политика именования и версионирования</h2>
+    <h3>11.1 Когда builtin ядра, когда библиотека</h3>
+    <ul>
+      <li><strong>Builtin ядра</strong> — минимальный «школьный» набор, доступный без импорта:
+        арифметика, строки, преобразования, элементарные коллекции, печать. Регистрируется в
+        <code>BUILTINS</code> (<code>build.rs</code>).</li>
+      <li><strong>Библиотека</strong> — всё, что требует ОС/сети/времени или образует связную предметную
+        область. Подключается через <code>использовать</code>, версионируется по SemVer.</li>
+    </ul>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Известная фрагментация (долг)</span>
+      Математика сейчас размазана по трём местам: phf-имена в <code>build.rs</code>, реализации в
+      <code>builtins/math.rs</code> и константы в <code>shared/src/constants/math.rs</code>. Из-за
+      этого phf-таблица и реальная реализация <strong>расходятся</strong>: 19 Math-имён и 15
+      String-имён зарегистрированы, но не исполняются, а часть работающих русских имён (например,
+      <code>минимум</code>, <code>округлить</code>, <code>случайное</code>) в таблице отсутствует.
+      Унификация — привести phf-таблицу к списку фактически реализованных имён (единый источник правды)
+      либо дореализовать недостающие армы.
+    </div>
+    <h3>11.2 Правило доступности (нормативное)</h3>
+    <p>
+      Имя считается <span class="kite-badge is-available">✅ Доступно</span> в каталоге только если оно
+      реально вызывается. Для builtin это значит: <code>is_builtin_function</code> истинно
+      <strong>и</strong> есть соответствующий арм в <code>Builtins::try_call*</code>. Регистрация в phf
+      без реализации — <span class="kite-badge is-proposed">📋 Предложено</span>. Изменение builtins или
+      библиотек без обновления этого каталога — блокер ревью (принцип KITE&nbsp;0 «документация не врёт»).
+    </p>
+    <h3>11.3 Версионирование библиотек</h3>
+    <p>
+      Каждая библиотека несёт <code>LibVersion</code> (SemVer) и флаг <code>stable</code>. Импорт может
+      указывать спецификацию версии (<code>^1.0</code>, <code>~1.2.3</code>, <code>&gt;=1.0.0</code>) —
+      разрешение выбирает наибольшую подходящую версию (<code>libraries/registry.rs</code>). Ломающие
+      изменения сигнатур требуют мажорного инкремента.
+    </p>
+  </section>
+
+  <!-- ───────────────────────── 12 ───────────────────────── -->
+  <section class="kite-section" id="plan">
+    <h2>12. План расширения</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Область</th><th>Что добавить</th><th>Статус</th></tr></thead>
+        <tbody>
+          <tr><td>Математика для школы</td><td><code>НОД</code>, <code>НОК</code>, проверка простоты, факторизация.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Гиперболические и котангенсы</td><td>Дореализовать <code>sh/ch/th</code>, <code>ctg/cot</code>, <code>arcctg</code> (имена уже в phf).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Целая/дробная часть</td><td>Дореализовать <code>цел_часть</code>, <code>frac</code>/<code>дробь</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Конвейер коллекций</td><td><code>отобразить</code>/map, <code>отфильтровать</code>/filter, <code>свернуть</code>/reduce для <code>|&gt;</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Строки</td><td>Дореализовать <code>слева</code>/<code>справа</code>, <code>повторить</code>; выровнять псевдонимы с phf.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Унификация номенклатуры</td><td>Свести phf-таблицу и реализацию к одному источнику правды (см.&nbsp;§11.1).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 13 ───────────────────────── -->
+  <section class="kite-section" id="istoki">
+    <h2>13. Источники истины</h2>
+    <ul>
+      <li><strong>Таблица builtins</strong> (имена + категории): <code>shared/build.rs</code>
+        (константа <code>BUILTINS</code>, генерация <code>builtins_gen.rs</code> через phf).</li>
+      <li><strong>Классификатор</strong>: <code>shared/src/constants/builtins.rs</code>
+        (<code>is_builtin_function</code>, <code>builtin_category</code>, <code>get_all_builtin_names</code>).</li>
+      <li><strong>Реализации builtins</strong>: <code>interpreter/src/interpreter/builtins/{math,string,array,io,types}.rs</code>
+        (диспетчер <code>Builtins::try_call</code> в <code>builtins/mod.rs</code>).</li>
+      <li><strong>Библиотеки</strong>: <code>shared/src/libraries/{time,syscall,files,net}/</code>;
+        реестр — <code>libraries/registry.rs</code>.</li>
+      <li><strong>Сверка честности</strong>: аудит W0 (<code>.local/superpowers/plans/2026-07-22-W0-spec-truth-audit.md</code>).</li>
+      <li><strong>Генерация каталога</strong>: throwaway Bun-скрипты в <code>.local/kite0016/</code>
+        (парсинг <code>LibFunctionDef::new</code> и кросс-сверка phf ↔ реализация).</li>
+    </ul>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Связанные документы</span>
+      Механика импорта и версий — <a href="./KITE-0005-libraries.html">KITE&nbsp;5</a>;
+      типы в сигнатурах — <a href="./KITE-0002-type-system.html">KITE&nbsp;2</a>;
+      форматы ввода-вывода — <a href="./KITE-0007-stdio.html">KITE&nbsp;7</a>.
+    </div>
+  </section>
+
+  <!-- ───────────────────────── FOOTER ───────────────────────── -->
+  <footer class="kite-footer">
+    <span>KITE 16 · Каталог стандартной библиотеки</span>
+    <span>Kumir3 House 🐾🦀 · 2026-07-22</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>

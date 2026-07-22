@@ -1,0 +1,866 @@
+<link rel="stylesheet" href="./assets/kite.css">
+<!-- =============================================================================
+     KITE 12 — Формальная грамматика (EBNF)
+     Источники истины (сверено с кодом 2026-07-22):
+       Лексика:   shared/src/lexer/{mod,scanner,identifiers,numbers,strings,comments,operators,rust_blocks}.rs
+       Токены:    shared/src/types/token.rs
+       Таблицы:   shared/build.rs (KEYWORDS/OPERATORS/BUILTINS, phf)
+       Синтаксис: shared/src/parser/{core,decl,stmt,expr,types,oop,pattern}.rs
+       Приоритет: shared/src/parser/precedence.rs + shared/src/constants/operators.rs
+============================================================================== -->
+<article class="kite" data-kite="0012" data-status="draft" lang="ru">
+
+  <header class="kite-header">
+    <span class="kite-eyebrow">KITE 12 · Спецификация</span>
+    <h1>Формальная грамматика (EBNF)</h1>
+    <dl class="kite-meta">
+      <dt>Номер</dt>            <dd>KITE 12</dd>
+      <dt>Название</dt>         <dd>Формальная грамматика и лексическая структура языка</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
+      <dt>Тип</dt>              <dd>Спецификация</dd>
+      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Создан</dt>           <dd>2026-07-22</dd>
+      <dt>Версия документа</dt> <dd>0.1.0</dd>
+    </dl>
+  </header>
+
+  <nav class="kite-toc" data-auto aria-label="Содержание">
+    <h2>Содержание</h2>
+    <ol>
+      <li><a href="#vvedenie">Введение и статус</a></li>
+      <li><a href="#notaciya">Нотация EBNF</a></li>
+      <li><a href="#leksika">Лексическая грамматика</a></li>
+      <li><a href="#identifikatory">Идентификаторы и ключевые слова</a></li>
+      <li><a href="#literaly">Литералы</a></li>
+      <li><a href="#stroki">Строки и интерполяция</a></li>
+      <li><a href="#kommentarii">Комментарии, пробелы, переводы строк</a></li>
+      <li><a href="#operatory-lex">Операторы и разделители</a></li>
+      <li><a href="#programma">Структура программы</a></li>
+      <li><a href="#algoritmy">Алгоритмы и функции</a></li>
+      <li><a href="#deklaracii">Объявления переменных и типов</a></li>
+      <li><a href="#instrukcii">Инструкции</a></li>
+      <li><a href="#vyrazheniya">Выражения</a></li>
+      <li><a href="#prioritet">Приоритет и ассоциативность</a></li>
+      <li><a href="#tipy">Синтаксис типов</a></li>
+      <li><a href="#oop">Объектная модель</a></li>
+      <li><a href="#patterny">Паттерны (сопоставление)</a></li>
+      <li><a href="#rust">Rust-вставки</a></li>
+      <li><a href="#status-tablica">Сводка реализованности</a></li>
+      <li><a href="#istochniki">Источники истины</a></li>
+    </ol>
+  </nav>
+
+  <!-- легенда -->
+  <section class="kite-section" id="legenda">
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Легенда доступности</span>
+      <span class="kite-badge is-available">✅&nbsp;Доступно</span> — продукция разбирается лексером/парсером ядра.
+      <span class="kite-badge is-experimental">🧪&nbsp;Экспериментально</span> — разбирается, но семантика неполна или интерфейс может меняться.
+      <span class="kite-badge is-proposed">📋&nbsp;Предложено</span> — описано в стандарте, синтаксиса или разбора пока нет.
+      Бейджи в этом документе относятся к <em>разбору</em> (front-end), а не к исполнению — семантику описывают KITE-0013/0014/0015.
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="kite-section" id="vvedenie">
+    <h2>1. Введение и статус</h2>
+    <p>
+      Этот документ нормативно фиксирует <strong>фактическую грамматику</strong> языка Kumir&nbsp;3 —
+      такую, какую разбирают лексер (<code>shared/src/lexer/</code>) и парсер (<code>shared/src/parser/</code>)
+      ядра. Грамматика извлечена из кода, а не придумана: если продукция ниже расходится с поведением
+      разборщика — это <em>баг</em> (грамматики или кода), а не свобода трактовки.
+    </p>
+    <p>
+      Грамматика — основа для второго фронтенда (LSP, форматтер, линтер), conformance-тестов и режима
+      совместимости. Данный документ описывает <strong>синтаксис</strong>; семантику операций описывает
+      <a href="./KITE-0013-expression-semantics.html">KITE&nbsp;13</a>, ошибки —
+      <a href="./KITE-0014-error-handling.html">KITE&nbsp;14</a>, модули —
+      <a href="./KITE-0015-modules.html">KITE&nbsp;15</a>, типы — <a href="./KITE-0002-type-system.html">KITE&nbsp;2</a>.
+    </p>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Статус — Draft</span>
+      Грамматика извлечена из парсера (~6.3k строк) и лексера (~2.4k строк) и станет <em>Active</em>
+      после покрытия conformance-тестами. До тех пор возможны неполноты в редко используемых ветках
+      (например, точная форма generic-ограничений <code>где</code>).
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="kite-section" id="notaciya">
+    <h2>2. Нотация EBNF</h2>
+    <p>Используется единая, слегка расширенная EBNF. Ниже — значения метасимволов:</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Запись</th><th>Смысл</th></tr></thead>
+        <tbody>
+          <tr><td><code>rule = … ;</code></td><td>Определение продукции; завершается <code>;</code>.</td></tr>
+          <tr><td><code>"текст"</code></td><td>Терминал — точная последовательность символов (лексема/оператор).</td></tr>
+          <tr><td><code>ИМЯ</code> (прописными)</td><td>Терминальный класс токена лексера (например <code>INT</code>, <code>IDENT</code>).</td></tr>
+          <tr><td><code>a b</code></td><td>Конкатенация: <code>a</code>, затем <code>b</code>.</td></tr>
+          <tr><td><code>a | b</code></td><td>Альтернатива: <code>a</code> или <code>b</code>.</td></tr>
+          <tr><td><code>[ a ]</code></td><td>Необязательно (0 или 1).</td></tr>
+          <tr><td><code>{ a }</code></td><td>Повторение (0 или более).</td></tr>
+          <tr><td><code>( a )</code></td><td>Группировка.</td></tr>
+          <tr><td><code>a - b</code></td><td>Разность: <code>a</code>, но не <code>b</code> (в лексических правилах).</td></tr>
+          <tr><td><code>? описание ?</code></td><td>Внеконтекстное условие словами (например класс Unicode).</td></tr>
+          <tr><td><code>NL</code></td><td>Терминал «значимый перевод строки» (<code>Token::Newline</code>).</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Два уровня</span>
+      Лексические правила (разделы 3–8) работают над потоком <em>символов</em> и порождают <em>токены</em>.
+      Синтаксические правила (разделы 9–17) работают над потоком <em>токенов</em>. Терминалы синтаксиса —
+      это либо имена классов токенов (<code>INT</code>, <code>IDENT</code>), либо канонические написания
+      ключевых слов и операторов в кавычках (<code>"алг"</code>, <code>":="</code>).
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="kite-section" id="leksika">
+    <h2>3. Лексическая грамматика</h2>
+    <p>
+      Лексер сканирует UTF-8 посимвольно (<code>lexer/scanner.rs</code>), пропускает пробелы (кроме
+      значимых переводов строк), затем на каждой позиции выбирает один из классов токенов. Порядок
+      попыток фиксирован: комментарий → перевод строки → строка/сим/raw/f-строка → число → идентификатор
+      или ключевое слово → оператор → Rust-вставка.
+    </p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>токен       = комментарий | NL | литерал | идентификатор
+            | ключевое_слово | оператор | rust_вставка ;
+
+пробел      = " " | "\t" | "\r" ;   (* не порождает токен *)
+</code></pre>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Значимые переводы строк</span>
+      Символ <code>\n</code> порождает отдельный токен <code>NL</code> (<code>lexer/mod.rs</code>): переводы
+      строк разделяют инструкции. <code>;</code> лексируется как отдельный оператор <code>Token::SemiColon</code>,
+      но парсером как разделитель инструкций не используется. Продолжения строки обратным слэшем нет.
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="kite-section" id="identifikatory">
+    <h2>4. Идентификаторы и ключевые слова</h2>
+    <p>
+      Идентификатор начинается с буквы (любой Unicode-буквы, включая кириллицу) или <code>_</code>,
+      продолжается буквами, цифрами, <code>_</code> и комбинирующими диакритическими знаками
+      (<code>lexer/identifiers.rs</code>). Нормализация NFC не применяется — сравнение побайтовое.
+    </p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>идентификатор = ид_начало { ид_продолжение } ;
+
+ид_начало     = ? Unicode-буква ? | "_" ;
+ид_продолжение = ? Unicode-буква ? | ? Unicode-цифра ? | "_"
+              | ? комбинирующий знак ? ;
+</code></pre>
+    </div>
+    <p>
+      После сканирования лексема сверяется с phf-таблицей ключевых слов (<code>KEYWORD_INDEX</code>,
+      сгенерирована из <code>build.rs::KEYWORDS</code> — 193 написания). Совпадение даёт конкретный токен
+      ключевого слова; иначе — <code>Token::Ident</code>. Ключевые слова <strong>регистрозависимы</strong>,
+      но у многих есть и русское каноническое, и латинские алиасы (<code>алг</code>&nbsp;=&nbsp;<code>alg</code>&nbsp;=&nbsp;<code>algorithm</code>).
+    </p>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Категоризация идентификаторов</span>
+      Тип токена <code>token.rs</code> различает <code>NamespaceIdent/ClassIdent/FuncIdent/TypeIdent/VarIdent/Ident</code>,
+      но <strong>лексер категоризацию по регистру/суффиксам не выполняет</strong>: не-ключевое слово всегда
+      становится обобщённым <code>Ident</code>; роль (переменная, тип, функция) определяет парсер и рантайм
+      по контексту. Правило «класс с прописной буквы» — соглашение стиля (KITE-8), не лексическое правило.
+    </div>
+    <p>Некоторые слова-операторы лексируются в операторные токены, а не в отдельные ключевые слова:</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Слово</th><th>Токен</th><th>Смысл</th><th>Разбор</th></tr></thead>
+        <tbody>
+          <tr><td><code>и</code> / <code>или</code> / <code>не</code></td><td><code>And</code>/<code>Or</code>/<code>Not</code></td><td>Логические операторы.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>мод</code></td><td><code>Percent</code></td><td>Остаток от деления (как <code>%</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>див</code></td><td><code>IntDiv</code></td><td>Целочисленное деление (только русское <code>див</code>; латинское <code>div</code> — имя встроенной функции).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="kite-section" id="literaly">
+    <h2>5. Литералы</h2>
+    <p>Числовые литералы допускают разделитель <code>_</code> между цифрами во всех системах счисления (<code>lexer/numbers.rs</code>). Разделитель вырезается перед разбором значения.</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>целое      = дес_целое | шестн | двоичн | восьмер ;
+
+дес_целое  = цифра { [ "_" ] цифра } ;
+шестн      = ( "0x" | "0X" ) hex_цифра { [ "_" ] hex_цифра } ;
+двоичн     = ( "0b" | "0B" ) бит      { [ "_" ] бит } ;
+восьмер    = ( "0o" | "0O" ) вось_цифра { [ "_" ] вось_цифра } ;
+
+вещественное = дес_целое "." дробная [ экспонента ]
+             | дес_целое экспонента ;
+дробная    = цифра { [ "_" ] цифра } ;
+экспонента = ( "e" | "E" ) [ "+" | "-" ] цифра { [ "_" ] цифра } ;
+
+цифра      = "0"…"9" ;
+hex_цифра  = "0"…"9" | "a"…"f" | "A"…"F" ;
+вось_цифра = "0"…"7" ;
+бит        = "0" | "1" ;
+</code></pre>
+    </div>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Факты реализации</span>
+      Целые разбираются в <code>i64</code>, вещественные — в <code>f64</code>. Десятичная точка требует цифр
+      с обеих сторон (<code>3.14</code>, не <code>3.</code>). Форма с экспонентой без точки (<code>1e10</code>)
+      классифицируется как вещественное. Разделитель <code>1_000_000</code> — <span class="kite-badge is-available">✅</span>
+      во всех системах счисления.
+    </div>
+    <p>Логические и специальные литералы — это ключевые слова:</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>лог_литерал   = "да" | "нет" ;                 (* true / false *)
+пусто_литерал = "Пусто" | "пусто" | "ничего" | "null" | "nil" ; (* Token::None *)
+</code></pre>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="kite-section" id="stroki">
+    <h2>6. Строки и интерполяция</h2>
+    <p>Поддерживаются пять форм строковых/символьных литералов (<code>lexer/strings.rs</code>).</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>строка        = '"' { символ_строки | экранир } '"' ;
+многострочная = '"""' { ? любой символ, включая \n ? } '"""' ;
+сим_литерал   = "'" ( символ | экранир ) "'" ;   (* ровно один символ *)
+
+raw_строка    = "r" { "#" } '"' { ? любой символ ? } '"' { "#" } ;
+              (* число закрывающих # равно числу открывающих; без экранирования *)
+
+f_строка      = 'f"' { f_текст | "{{" | "}}" | "{" выражение "}" } '"' ;
+
+экранир = "\n" | "\r" | "\t" | "\\" | "\"" | "\'" | "\0"
+        | "\x" hex_цифра hex_цифра
+        | "\u{" hex_цифра { hex_цифра } "}" ;   (* 1–6 цифр *)
+</code></pre>
+    </div>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Форма</th><th>Пример</th><th>Особенности</th><th>Разбор</th></tr></thead>
+        <tbody>
+          <tr><td>Строка</td><td><code>"привет\n"</code></td><td>Двойные кавычки; экранирование по таблице выше.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Многострочная</td><td><code>"""…"""</code></td><td>Тройные кавычки; переводы строк внутри разрешены.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Символ</td><td><code>'а'</code></td><td>Одинарные кавычки; ровно один символ, иначе ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Raw</td><td><code>r#"C:\путь"#</code></td><td>Префикс <code>r</code> + N решёток; без экранирования.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Интерполяция</td><td><code>f"x = {x+1}"</code></td><td>Префикс <code>f</code>; <code>{{</code>/<code>}}</code> — литеральные скобки; вложенные выражения.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Префикс f обязателен</span>
+      Обычные строки <strong>не</strong> интерполируются: <code>"привет, {имя}"</code> — литеральный текст.
+      Интерполяция включается только префиксом: <code>f"привет, {имя}"</code>. F-строка лексируется в
+      последовательность <code>InterpolatedStringStart</code> / <code>…Part</code> / вложенные токены выражения
+      / <code>…End</code> и разбирается парсером в цепочку конкатенаций.
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="kite-section" id="kommentarii">
+    <h2>7. Комментарии, пробелы, переводы строк</h2>
+    <p>Есть два вида строчных комментариев (<code>lexer/comments.rs</code>); блочных комментариев нет.</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>комментарий      = pipe_комментарий | slash_комментарий | doc_комментарий ;
+
+pipe_комментарий = "|" { ? любой символ до конца строки ? } ;  (* но не "|>" *)
+slash_комментарий= "//" { ? …до конца строки ? } ;
+doc_комментарий  = "///" { ? …до конца строки ? } ;
+</code></pre>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Тонкость <code>|</code></span>
+      Одиночная <code>|</code> начинает комментарий классического КуМира, но последовательность <code>|&gt;</code>
+      — это оператор конвейера (pipe), а не комментарий (<code>lexer/mod.rs</code>). <code>///</code> даёт
+      doc-комментарий (<code>Token::DocComment</code>), <code>//</code> — обычный.
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="kite-section" id="operatory-lex">
+    <h2>8. Операторы и разделители</h2>
+    <p>
+      Операторы лексируются жадно (3&nbsp;символа&nbsp;→&nbsp;2&nbsp;→&nbsp;1) по phf-таблице
+      <code>build.rs::OPERATORS</code> (39 записей). Полный набор терминалов:
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Категория</th><th>Терминалы</th></tr></thead>
+        <tbody>
+          <tr><td>Арифметика</td><td><code>+ - * / % **</code>, слова <code>мод</code> (%) и <code>див</code> (целочисленное деление)</td></tr>
+          <tr><td>Сравнение</td><td><code>= == &lt;&gt; != &lt; &gt; &lt;= &gt;=</code></td></tr>
+          <tr><td>Присваивание</td><td><code>:= += -= *= /= %=</code>, а также <code>&lt;&lt;= &gt;&gt;=</code> (→&nbsp;Assign)</td></tr>
+          <tr><td>Логика/слова</td><td><code>и или не</code>, символьные <code>&amp;&amp; || </code></td></tr>
+          <tr><td>Диапазон</td><td><code>.. ..= ...</code></td></tr>
+          <tr><td>Функц. / null</td><td><code>|&gt;</code> (pipe), <code>&gt;&gt;</code> (compose), <code>??</code> (coalesce), <code>?.</code> (safe), <code>?</code> (propagate)</td></tr>
+          <tr><td>Стрелки / доступ</td><td><code>-&gt;</code> <code>=&gt;</code> <code>::</code> <code>.</code></td></tr>
+          <tr><td>Сигилы</td><td><code>@</code> <code>&amp;</code> <code>^</code> <code>~</code></td></tr>
+          <tr><td>Скобки/разделители</td><td><code>( ) [ ] { } , : ; </code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Синонимы на уровне лексики</span>
+      Несколько символов могут давать один токен: <code>&lt;&gt;</code> и <code>!=</code> → <code>NotEqual</code>;
+      <code>=</code> и <code>==</code> → <code>Equal</code>; <code>~</code> и <code>!</code> → <code>Not</code>;
+      <code>%=</code>, <code>&lt;&lt;=</code>, <code>&gt;&gt;=</code> → обобщённый <code>Assign</code>.
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section class="kite-section" id="programma">
+    <h2>9. Структура программы</h2>
+    <p>
+      Программа (<code>parser/decl.rs</code>) — это последовательность элементов верхнего уровня. Если ни
+      одного <code>алг</code> нет, весь исходник оборачивается в анонимный алгоритм (совместимость с
+      простыми КуМир-2 программами). Обязательного заголовка программы нет; переводы строк разделяют элементы.
+    </p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>программа   = { NL } { элемент_вп { NL } } ;
+
+элемент_вп  = импорт
+            | алгоритм
+            | класс_декл
+            | структура_декл
+            | интерфейс_декл
+            | трейт_декл
+            | реализация_декл
+            | модуль_декл
+            | перечисление_декл
+            | глоб_объявление        (* type name … на верхнем уровне *)
+            ;
+
+импорт      = ( "подключить" | "использовать" ) импорт_цель ;
+</code></pre>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Импорты</span>
+      Формы <code>подключить</code>/<code>использовать</code> (файл, каталог, библиотека, алиас) полностью
+      разбираются; их нормативная семантика и правила резолюции описываются отдельно в
+      <a href="./KITE-0015-modules.html">KITE&nbsp;15</a> и <a href="./KITE-0005-libraries.html">KITE&nbsp;5</a>.
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="kite-section" id="algoritmy">
+    <h2>10. Алгоритмы и функции</h2>
+    <p>Заголовок алгоритма допускает тип результата <em>перед</em> именем (классически) или <em>после</em> параметров через <code>:</code> (современно). Секции <code>дано</code>/<code>надо</code> — необязательные пред/постусловия.</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>алгоритм    = "алг" [ "асинх" ] [ тип ] имя [ "(" [ параметры ] ")" ] [ ":" тип ]
+              { NL }
+              [ "дано" выражение { NL } ]
+              [ "надо" выражение { NL } ]
+              "нач" { NL }
+                блок
+              "кон" ;
+
+параметры   = параметр { "," параметр } ;
+
+параметр    = режим тип имя [ "=" выражение ]        (* классически: арг цел x *)
+            | имя ":" тип [ "=" выражение ] ;         (* современно: x: цел *)
+
+режим       = [ "арг" | "рез" | "аргрез" ] ;
+</code></pre>
+    </div>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Возможность</th><th>Пример</th><th>Разбор</th></tr></thead>
+        <tbody>
+          <tr><td>Классический заголовок</td><td><code>алг цел сумма(арг цел a, b)</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Современные параметры</td><td><code>алг f(x: цел, y: вещ): лог</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Значения по умолчанию</td><td><code>арг цел n = 10</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Асинхронный алгоритм</td><td><code>алг асинх загрузить(...)</code></td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td>Пред/постусловия</td><td><code>дано n &gt; 0</code> · <code>надо рез &gt;= 0</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 11 -->
+  <section class="kite-section" id="deklaracii">
+    <h2>11. Объявления переменных и типов</h2>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>объявление  = тип_объявление | авто_объявление | конст_объявление ;
+
+тип_объявление  = тип имя { "," имя } [ ":=" выражение ] ;  (* init — только для одной переменной *)
+авто_объявление = ( "авто" | "пусть" ) имя ":=" выражение ;
+конст_объявление= "конст" тип имя ":=" выражение ;
+</code></pre>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Списки и инициализация</span>
+      Несколько имён перечисляются через запятую (<code>цел a, b, c</code>), но инициализатор <code>:=</code>
+      допускается только при одной переменной. <code>пусть</code> — алиас <code>авто</code> (вывод типа).
+      Массивы объявляются как <code>таб</code>-тип (раздел 15); синтаксис границ <code>[1:10]</code>
+      разбирается в рамках типа/индексации.
+    </div>
+  </section>
+
+  <!-- 12 -->
+  <section class="kite-section" id="instrukcii">
+    <h2>12. Инструкции</h2>
+    <p>Тело (<code>parser/stmt.rs</code>) — последовательность инструкций, разделённых переводами строк.</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>блок        = { NL } { инструкция { NL } } ;
+
+инструкция  = объявление
+            | присваивание
+            | вызов_инстр
+            | если_инстр    | выбор_инстр   | совпадение_инстр
+            | цикл_инстр
+            | ввод_инстр     | вывод_инстр
+            | вернуть_инстр  | знач_инстр
+            | утв_инстр      | пауза_инстр   | выход_инстр
+            | попытка_инстр  | бросить_инстр
+            | прервать       | продолжить
+            | экспорт_инстр
+            | удалить_инстр   | ждать_инстр
+            | rust_вставка ;
+
+присваивание = цель_присв оп_присв выражение ;
+оп_присв     = ":=" | "+=" | "-=" | "*=" | "/=" | "%=" ;
+цель_присв   = выражение ;   (* переменная, индекс a[i], поле o.f *)
+</code></pre>
+    </div>
+
+    <h3>12.1 Условие</h3>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>если_инстр = "если" выражение { NL } "то" { NL } блок
+             [ "иначе" { NL } блок ] "все" ;
+</code></pre>
+    </div>
+
+    <h3>12.2 Выбор</h3>
+    <p>Классический <code>выбор</code>/<code>при</code> десугарится парсером в <code>совпадение</code> с охранами и wildcard-паттернами (<code>stmt.rs</code>).</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>выбор_инстр = "выбор" { NL }
+                { "при" выражение [ ":" ] { NL } блок }
+                [ "иначе" [ ":" ] { NL } блок ]
+              "все" ;
+</code></pre>
+    </div>
+
+    <h3>12.3 Циклы</h3>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>цикл_инстр = "нц" ( тело_бесконечный
+                  | "пока" выражение { NL } блок "кц"
+                  | "для" имя "от" выражение "до" выражение [ "шаг" выражение ] { NL } блок "кц"
+                  | "для" имя "в" выражение { NL } блок "кц"
+                  | выражение "раз" { NL } блок "кц" ) ;
+
+тело_бесконечный = { NL } блок "кц" [ "при" выражение ] ;  (* "кц при cond" — do-while *)
+</code></pre>
+    </div>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Форма</th><th>Пример</th><th>Разбор</th></tr></thead>
+        <tbody>
+          <tr><td>Со счётчиком</td><td><code>нц для i от 1 до n шаг 2 … кц</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Пока</td><td><code>нц пока x &gt; 0 … кц</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Для-каждого</td><td><code>нц для x в список … кц</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Повторить N раз</td><td><code>нц N раз … кц</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Бесконечный</td><td><code>нц … кц</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>С постусловием</td><td><code>нц … кц при условие</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>12.4 Совпадение (match)</h3>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>совпадение_инстр = "совпадение" выражение { NL }
+                     { "при" паттерн [ "если" выражение ] "=&gt;" блок }
+                   "все" ;
+</code></pre>
+    </div>
+
+    <h3>12.5 Ввод/вывод, возврат, диагностика</h3>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>ввод_инстр    = "ввод" имя { "," имя } ;
+вывод_инстр   = "вывод" [ выражение { "," выражение } ] ;
+вернуть_инстр = "вернуть" [ выражение ] ;
+знач_инстр    = "знач" ":=" выражение ;
+утв_инстр     = "утв" выражение ;
+пауза_инстр   = "пауза" ;
+выход_инстр   = "выход" ;
+удалить_инстр = "удалить" имя ;
+ждать_инстр   = "ждать" выражение ;
+</code></pre>
+    </div>
+
+    <h3>12.6 Обработка ошибок</h3>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>попытка_инстр = "попытка" { NL } блок
+                "перехват" [ имя [ ":" тип ] ] { NL } блок
+                [ "наконец" { NL } блок ]
+                "кон" ;
+бросить_инстр = "бросить" выражение ;
+</code></pre>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Семантика — в KITE-14</span>
+      <code>попытка</code>/<code>перехват</code>/<code>наконец</code>/<code>бросить</code> полностью разбираются.
+      Их доктрина и соотношение с моделью <code>T!E</code>&nbsp;/&nbsp;<code>?</code> — предмет
+      <a href="./KITE-0014-error-handling.html">KITE&nbsp;14</a>.
+    </div>
+  </section>
+
+  <!-- 13 -->
+  <section class="kite-section" id="vyrazheniya">
+    <h2>13. Выражения</h2>
+    <p>
+      Выражения разбираются восходящим методом приоритетов (Pratt / precedence-climbing,
+      <code>parser/expr.rs</code>): бинарный слой над унарным, унарный над постфиксным, постфиксный над
+      первичным.
+    </p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>выражение   = бинарное ;
+
+бинарное    = унарное { бин_оп унарное } ;   (* с учётом приоритета/ассоциативности, разд. 14 *)
+
+бин_оп      = "+" | "-" | "*" | "/" | "%" | "мод" | "**" | "див"
+            | "=" | "==" | "&lt;&gt;" | "!=" | "&lt;" | "&gt;" | "&lt;=" | "&gt;="
+            | "и" | "или"
+            | ".." | "..=" | "|&gt;" | "&gt;&gt;" | "??" ;
+
+диапазон_шаг = бинарное [ "шаг" бинарное ] ;  (* a..b шаг c *)
+
+унарное     = ( "-" | "не" | "&amp;" | "&amp;" "измен" | "^"
+              | "новый" | "перемещение" | "клонировать" | "копировать"
+              | "заимствовать" [ "измен" ] ) унарное
+            | постфиксное ;
+
+постфиксное = первичное { постфикс } ;
+
+постфикс    = "(" [ аргументы ] ")"          (* вызов / вызов метода *)
+            | "[" выражение { "," выражение } "]"  (* индексация *)
+            | "." имя                          (* доступ к полю *)
+            | "?." имя [ "(" [ аргументы ] ")" ]    (* безопасный доступ / вызов *)
+            | "::" имя                          (* доступ к модулю/варианту *)
+            | "как" тип                          (* приведение *)
+            | "это" тип                          (* проверка типа: 5 это цел *)
+            | "?" ;                              (* ранний возврат ошибки *)
+
+аргументы   = выражение { "," выражение } ;
+</code></pre>
+    </div>
+
+    <h3>13.1 Первичные выражения</h3>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>первичное = INT | FLOAT | STRING | RAW_STRING | CHAR | f_строка
+          | "да" | "нет" | пусто_литерал
+          | "НеРеализовано" [ "(" STRING ")" ]
+          | "НеДоступно"   [ "(" STRING ")" ]
+          | "Устарело"     [ "(" STRING ")" ]
+          | "я" | "это" | "предок"
+          | идентификатор
+          | "(" [ выражение { "," выражение } ] ")"   (* группа () или кортеж (a,b) *)
+          | "[" [ выражение { "," выражение } ] "]"    (* литерал массива *)
+          | лямбда
+          | короткая_лямбда
+          | если_выражение
+          | совпадение_выражение
+          | "новый" ( имя_класса "(" [ аргументы ] ")" | выражение )
+          | "ждать" выражение
+          ;
+
+лямбда           = "лямбда" ( "(" [ лямбда_параметры ] ")" | имя ) [ ":" тип ] "-&gt;" выражение ;
+короткая_лямбда  = имя "=&gt;" выражение
+                 | "(" [ имя { "," имя } ] ")" "=&gt;" выражение ;
+если_выражение   = "если" выражение "то" выражение "иначе" выражение "все" ;
+совпадение_выражение = "совпадение" выражение { "при" паттерн "=&gt;" выражение } "все" ;
+</code></pre>
+    </div>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Конструкция</th><th>Пример</th><th>Разбор</th></tr></thead>
+        <tbody>
+          <tr><td>Литерал массива</td><td><code>[1, 2, 3]</code></td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td>Кортеж</td><td><code>(a, b)</code></td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td>Лямбда</td><td><code>лямбда(x) -&gt; x*x</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Короткая лямбда</td><td><code>x =&gt; x + 1</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Если-выражение</td><td><code>если c то 1 иначе 0 все</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Совпадение-выражение</td><td><code>совпадение x при 0 =&gt; … все</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Диапазон / шаг</td><td><code>1..10</code> · <code>1..=10</code> · <code>1..n шаг 2</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Приведение / проверка</td><td><code>x как вещ</code> · <code>x это цел</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Безопасный доступ / coalesce</td><td><code>o?.поле</code> · <code>x ?? 0</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Конвейер / композиция</td><td><code>x |&gt; f</code> · <code>f &gt;&gt; g</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Разбор ≠ исполнение</span>
+      Ряд разбираемых форм пока не исполняется рантаймом (по аудиту W0): кортежный литерал <code>(a,b)</code>,
+      постфиксный <code>?</code> (десугарится в несуществующий <code>__propagate__</code>), элементы литерала
+      массива, не являющиеся литералами, <code>перемещение</code>/<code>заимствовать</code>/<code>клонировать</code>/<code>копировать</code>.
+      Бейджи выше отражают <em>разбор</em>; исполнение — предмет KITE-13/14.
+    </div>
+    <h3>13.2 Двойная роль <code>это</code></h3>
+    <p>
+      Лексема <code>это</code> (<code>Token::This</code>) в первичной позиции — ссылка на себя (self);
+      в постфиксной позиции после выражения — проверка типа: <code>5 это цел</code>. Правило дизамбигуации:
+      постфиксная позиция (после операнда) означает тип-чек, первичная — self.
+    </p>
+  </section>
+
+  <!-- 14 -->
+  <section class="kite-section" id="prioritet">
+    <h2>14. Приоритет и ассоциативность</h2>
+    <p>
+      Приоритеты бинарных операторов заданы в <code>parser/precedence.rs</code>
+      (<code>binary_precedence</code>): больший уровень связывает сильнее. Правоассоциативны только
+      <code>**</code> и <code>??</code> (<code>is_right_associative</code>). Унарные операторы связывают
+      сильнее любого бинарного; постфиксы (<code>()</code>, <code>[]</code>, <code>.</code>, <code>::</code>) —
+      сильнее унарных.
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Уровень</th><th>Операторы</th><th>Ассоциативность</th></tr></thead>
+        <tbody>
+          <tr><td>1 (низший)</td><td><code>или</code> · <code>??</code></td><td>лево · <strong>право</strong> (<code>??</code>)</td></tr>
+          <tr><td>2</td><td><code>и</code></td><td>лево</td></tr>
+          <tr><td>3</td><td><code>=</code> <code>==</code> · <code>&lt;&gt;</code> <code>!=</code></td><td>лево</td></tr>
+          <tr><td>4</td><td><code>&lt;</code> <code>&gt;</code> <code>&lt;=</code> <code>&gt;=</code></td><td>лево</td></tr>
+          <tr><td>5</td><td><code>..</code> <code>..=</code></td><td>лево</td></tr>
+          <tr><td>6</td><td><code>+</code> <code>-</code></td><td>лево</td></tr>
+          <tr><td>7</td><td><code>*</code> <code>/</code> <code>%</code>&nbsp;(<code>мод</code>) <code>див</code></td><td>лево</td></tr>
+          <tr><td>8</td><td><code>**</code></td><td><strong>право</strong></td></tr>
+          <tr><td>9</td><td><code>|&gt;</code></td><td>лево</td></tr>
+          <tr><td>10 (высший)</td><td><code>&gt;&gt;</code></td><td>лево</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Две таблицы приоритетов в коде</span>
+      В ядре сосуществуют две функции приоритета: <code>parser/precedence.rs::binary_precedence</code> (её
+      использует парсер выражений — таблица выше) и <code>constants/operators.rs::operator_precedence</code>
+      (справочная, с иными уровнями и включением <code>Dot</code>/<code>DoubleColon</code>/<code>Not</code>).
+      <strong>Нормативной является таблица парсера</strong> (<code>precedence.rs</code>); расхождение стоит
+      устранить как технический долг.
+    </div>
+  </section>
+
+  <!-- 15 -->
+  <section class="kite-section" id="tipy">
+    <h2>15. Синтаксис типов</h2>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>тип         = примитив_тип
+            | "таб" тип                          (* массив *)
+            | "указатель" тип                     (* указатель *)
+            | ( "необязательно" | "может" ) [ "&lt;" тип "&gt;" | тип ]   (* Option *)
+            | функц_тип
+            | имя [ "&lt;" тип { "," тип } "&gt;" ] ;   (* пользовательский / generic *)
+
+примитив_тип = "цел" | "вещ" | "лог" | "сим" | "лит" | "авто" | "пустота" ;
+функц_тип    = "(" [ тип { "," тип } ] ")" "-&gt;" тип ;
+</code></pre>
+    </div>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Тип</th><th>Синтаксис</th><th>Разбор</th></tr></thead>
+        <tbody>
+          <tr><td>Примитивы</td><td><code>цел вещ лог сим лит авто</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Массив</td><td><code>таб цел</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Указатель</td><td><code>указатель Точка</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Опциональный</td><td><code>необязательно&lt;цел&gt;</code> · <code>может цел</code></td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td>Обобщённый</td><td><code>Список&lt;цел&gt;</code></td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td>Функциональный</td><td><code>(цел, цел) -&gt; лог</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Размерные типы не имеют синтаксиса</span>
+      Имена вроде <code>цел_8</code>, <code>нат_64</code>, <code>вещ_128</code> и слово <code>любой</code> в
+      позиции типа <strong>не разбираются как встроенные</strong> (нет ключевых слов): они попадут в
+      пользовательский тип <code>имя</code>. Ширины существуют в движке типов, но не в поверхностной
+      грамматике — см. решение №4 в аудите W0. Постфиксные записи <code>T?</code> и <code>T!E</code> из
+      KITE-2 §5 <span class="kite-badge is-proposed">📋</span> — парсером типов не поддержаны.
+    </div>
+  </section>
+
+  <!-- 16 -->
+  <section class="kite-section" id="oop">
+    <h2>16. Объектная модель</h2>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>класс_декл   = [ "абстрактный" ] [ "финальный" ] "класс" имя [ "&lt;" пар_типы "&gt;" ]
+               [ "расширяет" имя ] [ "реализует" имя { "," имя } ] { NL }
+                 { видимость_секция | член }
+               "кон" ;
+
+структура_декл = "структура" имя { NL } { поле } "кон" ;
+
+интерфейс_декл = "интерфейс" имя [ "&lt;" пар_типы "&gt;" ] [ "расширяет" имя { "," имя } ] { NL }
+                   { сигнатура_метода }
+                 "кон" ;
+
+трейт_декл   = "свойство" имя [ "&lt;" пар_типы "&gt;" ] [ ":" имя { "," имя } ] { NL }
+                 { сигнатура_метода | метод_с_умолчанием }
+               "кон" ;
+
+реализация_декл = "реализация" [ имя "для" ] тип [ "&lt;" пар_типы "&gt;" ] { NL }
+                    { метод }
+                  "кон" ;
+
+перечисление_декл = "перечисление" имя [ "&lt;" пар_типы "&gt;" ] { NL }
+                      { вариант }
+                    "кон" ;
+вариант      = имя [ "(" тип { "," тип } ")" ] ;
+
+видимость_секция = ( "открытый" | "закрытый" | "защищённый" ) ":" ;
+член         = [ модификаторы ] ( метод | конструктор | деструктор | поле ) ;
+поле         = [ модификаторы ] тип имя { "," имя } [ ":=" выражение ] ;
+
+конструктор  = "конструктор" "(" [ параметры ] ")" { NL } [ "предок" "(" [ аргументы ] ")" ] { NL }
+               "нач" блок "кон" ;
+деструктор   = "деструктор" { NL } "нач" блок "кон" ;
+
+метод        = [ модификаторы ] "алг" [ тип ] имя [ "(" [ параметры ] ")" ] { NL }
+               [ "дано" выражение ] [ "надо" выражение ]
+               ( "нач" блок "кон" | ) ;   (* абстрактные методы — без тела *)
+
+модификаторы = { "статический" | "виртуальный" | "переопределить" | "финальный"
+               | "абстрактный" | "асинх" } ;
+</code></pre>
+    </div>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Конструкция</th><th>Ключевые слова</th><th>Разбор</th></tr></thead>
+        <tbody>
+          <tr><td>Класс / наследование</td><td><code>класс … расширяет … реализует …</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Структура</td><td><code>структура … кон</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Интерфейс / типаж</td><td><code>интерфейс</code> · <code>свойство</code>(трейт)</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Реализация</td><td><code>реализация Trait для Тип</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Конструктор / деструктор</td><td><code>конструктор(…)</code> · <code>деструктор</code></td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td>Видимость</td><td><code>открытый: закрытый: защищённый:</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Модификаторы</td><td><code>виртуальный абстрактный финальный переопределить статический</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Перечисление с данными</td><td><code>перечисление Цвет … Красный(цел) …</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Generic-параметры</td><td><code>класс Ящик&lt;T&gt;</code></td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 17 -->
+  <section class="kite-section" id="patterny">
+    <h2>17. Паттерны (сопоставление)</h2>
+    <p>Паттерны (<code>parser/pattern.rs</code>) используются в <code>совпадение</code>/<code>при</code>. Верхний уровень допускает or-паттерны, типовую аннотацию и охрану.</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>паттерн       = or_паттерн [ ":" тип ] [ "если" выражение ] ;
+or_паттерн    = атом_паттерн { "|" атом_паттерн } ;
+
+атом_паттерн  = "_"                                   (* wildcard *)
+              | ".."                                  (* rest *)
+              | [ "-" ] INT | FLOAT | STRING | CHAR   (* литерал, вкл. отрицательный *)
+              | "да" | "нет"
+              | пусто_литерал
+              | "Some" "(" паттерн ")"
+              | "Ok" "(" паттерн ")" | "Err" "(" паттерн ")"
+              | "(" [ паттерн { "," паттерн } ] ")"   (* пара/тройка/кортеж *)
+              | "[" [ паттерн { "," паттерн } [ "," ".." [ имя ] ] ] "]"  (* массив с rest *)
+              | "&amp;" [ "измен" ] паттерн            (* ссылка *)
+              | "^" паттерн                            (* разыменование *)
+              | "измен" имя                            (* изменяемая привязка *)
+              | имя "@" паттерн                        (* привязка @ *)
+              | INT ( ".." | "..=" ) INT               (* диапазон *)
+              | имя "{" поле_паттерн { "," поле_паттерн } [ "," ".." ] "}"  (* структурный *)
+              | имя "::" имя [ "(" паттерн { "," паттерн } ")" ]            (* вариант перечисления *)
+              | имя ;                                  (* привязка переменной *)
+
+поле_паттерн  = имя [ ":" паттерн ] ;
+</code></pre>
+    </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Разнообразие паттернов</span>
+      Парсер производит ~23 разновидности паттернов: wildcard, rest, литералы (в т.ч. отрицательные),
+      <code>Some/Ok/Err</code>, кортежные (пара/тройка), массивные с хвостом <code>..имя</code>, ссылочные,
+      разыменование, изменяемые привязки, <code>@</code>-привязки, типизированные, диапазонные, структурные,
+      варианты перечислений, or-паттерны и охраны <code>если</code>. Исполняется пока преимущественно
+      enum-часть; полнота — предмет отдельной работы (аудит W0).
+    </div>
+  </section>
+
+  <!-- 18 -->
+  <section class="kite-section" id="rust">
+    <h2>18. Rust-вставки</h2>
+    <p>Kumir 3 умеет встраивать Rust-код двумя способами (<code>lexer/rust_blocks.rs</code>).</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>rust_вставка = "РастВставкаНЦ" ? код Rust ? "РастВставкаКЦ"
+             | ( "ржавчина" | "Ржавчина" | "rust" ) "нач" ? код Rust ? "кон" ;
+</code></pre>
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Границы слов</span>
+      Во второй форме <code>нач</code> и завершающий <code>кон</code> распознаются как отдельные слова
+      (следующий символ не должен быть частью идентификатора). Незакрытая вставка — ошибка
+      <code>UnterminatedRustBlock</code>. Разбор содержимого Rust не входит в эту грамматику.
+    </div>
+  </section>
+
+  <!-- 19 -->
+  <section class="kite-section" id="status-tablica">
+    <h2>19. Сводка реализованности грамматики</h2>
+    <p>Обзор того, что <em>разбирается</em> фронтендом. Полнота исполнения — в KITE-13/14/15 и аудите W0.</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Область</th><th>Разбор</th><th>Замечание</th></tr></thead>
+        <tbody>
+          <tr><td>Лексика (числа, строки, f-строки, raw, комментарии, <code>1_000_000</code>)</td><td><span class="kite-badge is-available">✅</span></td><td>Полностью реализована, 45 тестов лексера.</td></tr>
+          <tr><td><code>мод</code> (%) и <code>див</code> как операторы-слова</td><td><span class="kite-badge is-available">✅</span></td><td><code>build.rs</code>: <code>мод</code>→Percent, <code>див</code>→IntDiv (недавнее добавление).</td></tr>
+          <tr><td>Алгоритмы, параметры, умолчания, дано/надо</td><td><span class="kite-badge is-available">✅</span></td><td>Классический и современный синтаксис.</td></tr>
+          <tr><td>Управление потоком (если/выбор/нц во всех формах)</td><td><span class="kite-badge is-available">✅</span></td><td><code>выбор</code> десугарится в <code>совпадение</code>.</td></tr>
+          <tr><td>Выражения, приоритеты, лямбды, if/match-выражения</td><td><span class="kite-badge is-available">✅</span></td><td>10 уровней приоритета, право-<code>**</code>/<code>??</code>.</td></tr>
+          <tr><td>ООП (классы/структуры/интерфейсы/трейты/impl/перечисления)</td><td><span class="kite-badge is-available">✅</span></td><td>Полный AST; конструкторы <span class="kite-badge is-experimental">🧪</span>.</td></tr>
+          <tr><td>Паттерн-матчинг (~23 вида)</td><td><span class="kite-badge is-available">✅</span></td><td>Разбор полон; исполнение — частично.</td></tr>
+          <tr><td>Rust-вставки</td><td><span class="kite-badge is-available">✅</span></td><td>Обе формы.</td></tr>
+          <tr><td>Async-синтаксис (<code>асинх</code>/<code>ждать</code>/<code>запустить</code>/<code>уступить</code>)</td><td><span class="kite-badge is-experimental">🧪</span></td><td>Разбирается; исполнение синхронно/заглушка (KITE-3).</td></tr>
+          <tr><td>Generic-ограничения <code>где</code></td><td><span class="kite-badge is-proposed">📋</span></td><td>Токен есть; полная продукция не зафиксирована.</td></tr>
+          <tr><td>Постфиксный тип <code>T?</code> / <code>T!E</code></td><td><span class="kite-badge is-proposed">📋</span></td><td>Не разбирается в позиции типа; Option — через <code>необязательно</code>/<code>может</code>.</td></tr>
+          <tr><td>Литералы <code>{…}</code> / <code>{k: v}</code> (множество/словарь)</td><td><span class="kite-badge is-proposed">📋</span></td><td><code>LBrace</code> не входит в первичные выражения.</td></tr>
+          <tr><td>Деструктуризация <code>пусть (a, b) := …</code></td><td><span class="kite-badge is-proposed">📋</span></td><td>Есть в AST, но парсер её не производит.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-important">
+      <span class="kite-callout-title">Аспирационные области</span>
+      Помечены <span class="kite-badge is-proposed">📋</span>: размерные числовые типы и <code>любой</code> в
+      позиции типа, постфиксные обёртки <code>T?</code>/<code>T!E</code>, литералы множества/словаря
+      <code>{…}</code>, деструктуризация <code>пусть (a,b)</code>, полная продукция generic-ограничений
+      <code>где</code>. Эти конструкции упомянуты в KITE-2, но поверхностного синтаксиса пока не имеют —
+      их следует реализовать до перевода данного KITE в <em>Active</em>.
+    </div>
+  </section>
+
+  <!-- 20 -->
+  <section class="kite-section" id="istochniki">
+    <h2>20. Источники истины</h2>
+    <p>Грамматика сверена с кодом на дату создания документа. Файлы-источники:</p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Слой</th><th>Файлы</th></tr></thead>
+        <tbody>
+          <tr><td>Токены</td><td><code>shared/src/types/token.rs</code></td></tr>
+          <tr><td>Таблицы (phf)</td><td><code>shared/build.rs</code> (KEYWORDS 193 · OPERATORS 39 · BUILTINS 81)</td></tr>
+          <tr><td>Лексер</td><td><code>shared/src/lexer/{mod,scanner,identifiers,numbers,strings,comments,operators,rust_blocks}.rs</code></td></tr>
+          <tr><td>Парсер</td><td><code>shared/src/parser/{core,decl,stmt,expr,types,oop,pattern}.rs</code></td></tr>
+          <tr><td>Приоритеты</td><td><code>shared/src/parser/precedence.rs</code> (нормативная) · <code>shared/src/constants/operators.rs</code> (справочная)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Правило синхронизации</span>
+      Любое изменение лексера/парсера, затрагивающее принимаемый язык, обязано сопровождаться правкой этого
+      документа. Расхождение «грамматика ↔ парсер» — блокер ревью (KITE-0). Перевод в <em>Active</em> — после
+      появления conformance-тестов, проверяющих продукции разделов 3–17.
+    </div>
+  </section>
+
+  <footer class="kite-footer">
+    <span>KITE 12 · Формальная грамматика (EBNF)</span>
+    <span>Kumir3 House 🐾🦀 · 2026-07-22</span>
+  </footer>
+
+</article>
+<script src="./assets/kite.js" defer></script>
