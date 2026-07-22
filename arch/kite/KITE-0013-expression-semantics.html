@@ -397,11 +397,19 @@
     </p>
 
     <h3>9.3. Композиция <code>&gt;&gt;</code></h3>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Разобрано, но не вычисляется</span>
-      Оператор композиции функций <code>f &gt;&gt; g</code> <em>разбирается</em> парсером, но в
-      вычислителе для него нет ветви — вычисление даёт ошибку «не реализовано».
-      <span class="kite-badge is-proposed">📋</span>
+    <p>
+      <code>f &gt;&gt; g</code> вычисляется в <strong>значение-лямбду одного параметра</strong>,
+      эквивалентную <code>лямбда(x) -&gt; g(f(x))</code>: сначала применяется левый операнд, затем
+      правый. Композиция <em>вкладывается</em> (<code>f &gt;&gt; g &gt;&gt; h</code> — левоассоциативно,
+      промежуточный результат сам является лямбдой и захватывается). Операндом может быть имя
+      алгоритма/встроенной функции (разрешается при вызове) либо значение-лямбда (захватывается
+      в замыкание). Если операнд — значение не-функция, выдаётся ясная ошибка: «Операнды
+      композиции '&gt;&gt;' должны быть функциями, получено значение типа …».
+      <code>evaluator/pipe.rs</code> → <code>eval_compose</code>. <span class="kite-badge is-available">✅</span>
+    </p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>удв_затем_инк := удвоить &gt;&gt; увеличить   | лямбда(x) -&gt; увеличить(удвоить(x))
+вывод удв_затем_инк(5)</code></pre>
     </div>
   </section>
 
@@ -420,16 +428,20 @@
           <tr><td><code>вещ</code></td><td>число / строка</td><td><code>F64</code>. <code>"2.5" как вещ → 2.5</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>лит</code></td><td>любое</td><td>строковое представление. <code>42 как лит → "42"</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>лог</code></td><td>любое</td><td>истинность (§12). <code>1 как лог → да</code>, <code>0 как лог → нет</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>сим</code></td><td>—</td><td><strong>не поддержано</strong> — <code>65 как сим</code> сейчас ошибка</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>сим</code></td><td>символ / целое / строка длины&nbsp;1</td><td>символ: тождество; целое → символ Unicode с этим кодом (<code>65 как сим → 'A'</code>); строка ровно из одного символа → этот символ. Прочее (вещ, лог, пустая или многосимвольная строка, код вне диапазона / суррогат) — ясная ошибка</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td>прочие типы</td><td>—</td><td>ошибка «приведение к типу … не реализовано»</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Известный дефект: <code>как сим</code></span>
-      Приведение к <code>сим</code> (символ) пока не реализовано и даёт ошибку
-      (характеризация <code>char_cast_to_char_is_unsupported</code>). Починка — предмет будущей
-      работы; тест фиксирует <em>текущее</em> поведение как ошибку намеренно.
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Нормативно: <code>как сим</code></span>
+      Источник символа — <strong>кодовая точка</strong> либо <strong>строка ровно из одного
+      символа</strong>. Целое приводится к <code>char</code> через скалярное значение Unicode:
+      отрицательные, суррогатные и выходящие за диапазон коды дают ошибку
+      «… не является кодом символа Unicode». Строка иной длины (включая пустую) — ошибка
+      «строка "…" должна состоять ровно из одного символа». Вещественное, логическое, массив,
+      объект к <code>сим</code> не приводятся. Все формулировки — <code>ops/cast.rs</code> →
+      <code>cast_to_char</code>; поведение закреплено характеризационными тестами.
     </div>
 
     <h3>10.2. Проверка типа <code>выражение это Тип</code></h3>
@@ -628,8 +640,8 @@
           <tr><td><code>?</code></td><td>развёрнутое значение</td><td>ранний возврат ошибки/пусто</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>..</code> / <code>..=</code> [<code>шаг</code>]</td><td>диапазон</td><td>целочисленный диапазон</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>|&gt;</code></td><td>результат вызова</td><td>подстановка первым аргументом</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>&gt;&gt;</code></td><td>—</td><td>композиция: разобрана, не вычисляется</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>как</code></td><td>целевой тип</td><td>каст (цел/вещ/лит/лог/любой); <code>сим</code> — ошибка</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>&gt;&gt;</code></td><td>лямбда одного параметра</td><td>композиция: <code>f &gt;&gt; g</code> ≡ <code>лямбда(x) -&gt; g(f(x))</code>; вкладывается; не-функция — ясная ошибка</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>как</code></td><td>целевой тип</td><td>каст (цел/вещ/лит/лог/сим/любой); прочие типы — ошибка</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>это</code> (постфикс)</td><td>лог</td><td>проверка типа</td><td><span class="kite-badge is-available">✅</span></td></tr>
         </tbody>
       </table>
@@ -646,8 +658,6 @@
       <li><strong>Адопция typesys</strong> (§5, §11): подключить <code>result_of_binop</code> и
         lossless-сравнение смешанных чисел; каждое изменение поведения — со ссылкой на
         характеризационный тест.</li>
-      <li><strong><code>как сим</code></strong> (§10): реализовать приведение число→символ.</li>
-      <li><strong>Композиция <code>&gt;&gt;</code></strong> (§9.3): добавить ветвь вычисления.</li>
       <li><strong>Стрингификация в f-строках</strong> (§14.6): автоматически превращать
         встраиваемые значения в строку.</li>
       <li><strong>Модель ошибок и <code>T!E</code></strong>: поверхностный синтаксис для

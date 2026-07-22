@@ -6,7 +6,7 @@
        · Существующие примеры: examples/*.kum (7 файлов на весь репозиторий)
        · Характеризация поведения: interpreter/src/interpreter/typeops_characterization.rs
        · Характеризация констант: shared/tests/constants_characterization.rs
-     Раннер и корпус — ПРЕДЛОЖЕНО (к постройке в Волне 2 мастер-плана).
+     Раннер и корпус — предложены к реализации.
 ============================================================================== -->
 <article class="kite" data-kite="0018" data-status="draft" lang="ru">
 
@@ -88,8 +88,8 @@
       </div>
     </div>
     <div class="kite-callout is-note">
-      <span class="kite-callout-title">Целевые объёмы (из мастер-плана)</span>
-      <strong>100+ программ</strong> к концу первой волны кода (Волна&nbsp;2), <strong>500+ программ</strong>
+      <span class="kite-callout-title">Целевые объёмы</span>
+      <strong>100+ программ</strong> на первом этапе, <strong>500+ программ</strong>
       к концу года. Тестовая планка ядра: с текущих 455&nbsp;<code>#[test]</code> → 700+ юнитов
       + 100&nbsp;golden-программ.
     </div>
@@ -393,7 +393,7 @@
     <div class="kite-callout is-warning">
       <span class="kite-callout-title">Правда о доступности фич</span>
       Корпус проверяет <em>реально исполнимое</em>. Программа уровня 5, опирающаяся на пока-неисполнимую фичу
-      (<code>?</code>-пропагация, <code>T!E</code>, настоящий async — см. аудит правды), помечается
+      (<code>?</code>-пропагация, <code>T!E</code>, настоящий async), помечается
       <code>| ПРОПУСТИТЬ: KITE-0014</code> и активируется, когда фича появится. Так корпус растёт вместе с
       языком, не давая ложно-зелёных или вечно-красных тестов.
     </div>
@@ -419,7 +419,7 @@
   <!-- ───────────────────────── 10 ───────────────────────── -->
   <section class="kite-section" id="runner">
     <h2>10. Golden-раннер <span class="kite-badge is-proposed">📋&nbsp;Предложено</span></h2>
-    <p>Раннер (<em>к постройке в Волне&nbsp;2</em>) — тестовый харнес в крейте интерпретатора. Алгоритм:</p>
+    <p>Раннер (<em>планируется</em>) — тестовый харнес в крейте интерпретатора. Алгоритм:</p>
     <ol>
       <li><strong>Обход</strong>: рекурсивно найти все <code>examples/corpus/**/*.kum</code>.</li>
       <li><strong>Предпарсинг</strong>: текстовым сканером извлечь блоки кейсов из комментариев <code>|</code>
@@ -467,9 +467,9 @@ fn golden_corpus() {
     <ul>
       <li><strong>Зелёный корпус — условие мержа</strong>: любой упавший кейс блокирует CI, как обычный тест.</li>
       <li><strong>Покрытие как метрика</strong>: доля фич языка, у которых есть хотя бы один golden-кейс; растёт
-        от волны к волне (цель — каждая ✅-фича KITE покрыта корпусом).</li>
+        от этапа к этапу (цель — каждая ✅-фича KITE покрыта корпусом).</li>
       <li><strong>Счётчик объёма</strong>: число программ по уровням — публичный индикатор прогресса
-        (100+ → Волна&nbsp;2, 500+ → год).</li>
+        (100+ → первый этап, 500+ → год).</li>
       <li><strong>Эталон КуМир-2</strong>: подкаталог <code>kumir2-etalon/</code> — приёмочный критерий
         режима совместимости (бит-в-бит; <a href="./KITE-0006-kumir2-compatibility.html">KITE&nbsp;6</a>).</li>
     </ul>
@@ -486,7 +486,7 @@ fn golden_corpus() {
           <tr><td>2</td><td>Движок сравнения: режимы <code>точно/пробелы/вещ/регэксп</code> + diff.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
           <tr><td>3</td><td>Харнес <code>cargo test</code> с обходом <code>examples/corpus/</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
           <tr><td>4</td><td>Проверка ожидаемых ошибок (§6) после стабилизации <a href="./KITE-0014-error-handling.html">KITE&nbsp;14</a>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>5</td><td>Первая волна корпуса: 100+ программ уровней 1–4 (4 параллельных автора).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>5</td><td>Первый этап корпуса: 100+ программ уровней 1–4.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
           <tr><td>6</td><td>Захват вывода через поток памяти STDIO (<a href="./KITE-0007-stdio.html">KITE&nbsp;7</a>), а не глобальный буфер.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
           <tr><td>7</td><td>Уровень 5 + эталон КуМир-2 (после Робота и режима совместимости).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
         </tbody>

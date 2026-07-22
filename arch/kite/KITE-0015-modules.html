@@ -11,7 +11,7 @@
        interpreter/src/interpreter/library_bridge.rs (LibraryManager, resolve_import_path)
        interpreter/src/interpreter/executor/import.rs (регистрация в среде)
        interpreter/src/interpreter/executor/statements.rs (execute_module_decl/export)
-       interpreter/src/interpreter/evaluator/mod.rs (ModuleAccess — not_implemented)
+       interpreter/src/interpreter/evaluator/module.rs (ModuleAccess / Модуль::член — реализовано)
 ============================================================================== -->
 <article class="kite" data-kite="0015" data-status="draft" lang="ru">
 
@@ -254,8 +254,8 @@
   <section class="kite-section" id="dostup">
     <h2>5. Доступ к членам модуля</h2>
     <p>
-      Kumir 3 синтаксически различает два оператора доступа к члену. Их фактическая
-      поддержка <strong>принципиально разная</strong>:
+      Kumir 3 синтаксически различает два оператора доступа к члену. Обе формы
+      <strong>исполняются</strong> и приводятся к одному и тому же разрешению имени:
     </p>
     <div class="kite-table">
       <table>
@@ -270,8 +270,8 @@
           <tr>
             <td><code>Модуль::член</code><br><span class="kite-eyebrow">двойное двоеточие</span></td>
             <td>Постфиксный <code>::</code> → <code>Expr::ModuleAccess("Модуль", "член")</code>; вызов <code>Модуль::функция(…)</code> → <code>Expr::Call("Модуль::функция", …)</code>.</td>
-            <td>Голый <code>Expr::ModuleAccess</code> в вычислителе — <strong>ошибка «не реализовано»</strong> (<code>not_implemented</code>).</td>
-            <td><span class="kite-badge is-proposed">📋</span></td>
+            <td>Обе формы приводятся к <strong>точечному полному имени</strong> <code>Модуль.член</code> и разрешаются так же, как точечная запись (<code>evaluator/module.rs</code>). <strong>Работает.</strong></td>
+            <td><span class="kite-badge is-available">✅</span></td>
           </tr>
         </tbody>
       </table>
@@ -282,15 +282,20 @@
 алг Тест
 нач
     вывод мат.квадрат(5)   | ✅ работает: вызов алгоритма "мат.квадрат"
-    | вывод мат::квадрат(5)  | 📋 ModuleAccess не реализован — ошибка исполнения
+    вывод мат::квадрат(5)  | ✅ работает: то же имя "мат.квадрат"
 кон</code></pre>
     </div>
     <div class="kite-callout is-important">
-      <span class="kite-callout-title">Нормативно: точка — рабочий разделитель пространства имён</span>
-      Сегодня <strong>точечная</strong> запись <code>Модуль.член</code> — единственный работающий
-      способ обратиться к члену импортированного модуля. Оператор <code>::</code> зарезервирован
-      под пространства имён и enum-конструкторы, но для доступа к членам модуля <em>не исполняется</em>.
-      До реализации <code>ModuleAccess</code> примеры и учебные материалы обязаны использовать точку.
+      <span class="kite-callout-title">Нормативно: <code>.</code> и <code>::</code> — равноправные разделители</span>
+      Обе записи — <code>Модуль.член</code> и <code>Модуль::член</code> — обращаются к <em>одному и тому же</em>
+      члену: <code>::</code> нормализуется в точечное полное имя <code>Модуль.член</code>, под которым импорт и
+      объявление <code>модуль … кон</code> регистрируют алгоритмы. Порядок разрешения
+      <code>Модуль::член</code> в позиции значения: вариант перечисления → переменная модуля под полным
+      именем → алгоритм модуля (ясная ошибка с подсказкой вызвать его) → ошибка «член не найден»,
+      называющая и модуль, и член. Для вызова <code>Модуль::член(…)</code>: алгоритм → вариант перечисления
+      с данными → функция загруженной библиотеки. Тем же путём впервые заработали
+      <strong>литералы вариантов перечисления</strong> <code>Перечисление::Вариант</code> — ранее они
+      уходили в ту же ветку «не реализовано».
     </div>
     <p>
       Для <strong>библиотек</strong> вызов идёт через отдельный путь: функции регистрируются под
@@ -473,7 +478,7 @@ main = "src/lib.kum"</code></pre>
       <table>
         <thead><tr><th>Ограничение</th><th>Статус</th></tr></thead>
         <tbody>
-          <tr><td>Оператор <code>Модуль::член</code> не исполняется (<code>ModuleAccess</code> → not_implemented); работает только точечная запись <code>Модуль.член</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Оператор <code>Модуль::член</code> исполняется наравне с точечной записью <code>Модуль.член</code> (обе формы разрешаются в одно полное имя).</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>экспорт</code> внутри <code>модуль … кон</code> не ограничивает видимость (заглушка <code>execute_export</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
           <tr><td>Глобальный код и переменные импортируемого файла не инициализируются (<code>globals</code> пуст).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
           <tr><td>Перегруженные алгоритмы модуля импортируются только первой реализацией.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
@@ -486,8 +491,8 @@ main = "src/lib.kum"</code></pre>
     </div>
     <div class="kite-callout is-warning">
       <span class="kite-callout-title">Целевое направление</span>
-      Норматив на будущее: (1) реализовать <code>ModuleAccess</code> так, чтобы <code>::</code>
-      был равноправным разделителем пространства имён; (2) сделать <code>экспорт</code>
+      Норматив на будущее: (1) ✅ <s>реализовать <code>ModuleAccess</code></s> — сделано, <code>::</code>
+      равноправен точке; (2) сделать <code>экспорт</code>
       действующим и в именованных модулях; (3) исполнять инициализацию модуля предсказуемо;
       (4) унифицировать регистрацию имён (одна процедура вместо двух); (5) определить правило
       разрешения коллизий при импорте без алиаса.
@@ -510,7 +515,7 @@ main = "src/lib.kum"</code></pre>
           <tr><td>Мост библиотек: <code>LibraryManager</code>, <code>resolve_import_path</code></td><td><code>interpreter/src/interpreter/library_bridge.rs</code></td></tr>
           <tr><td>Регистрация имён при импорте (executor)</td><td><code>interpreter/src/interpreter/executor/import.rs</code></td></tr>
           <tr><td><code>execute_module_decl</code> / <code>execute_export</code></td><td><code>interpreter/src/interpreter/executor/statements.rs</code></td></tr>
-          <tr><td><code>ModuleAccess</code> — not_implemented</td><td><code>interpreter/src/interpreter/evaluator/mod.rs</code></td></tr>
+          <tr><td>Разрешение <code>Модуль::член</code> и <code>Модуль::член(…)</code></td><td><code>interpreter/src/interpreter/evaluator/module.rs</code></td></tr>
           <tr><td>Манифест проекта <code>KumirConfig</code> (kumir.toml)</td><td><code>shared/src/types/config.rs</code></td></tr>
         </tbody>
       </table>
@@ -531,5 +536,3 @@ main = "src/lib.kum"</code></pre>
 
 </article>
 <script src="./assets/kite.js" defer></script>
-</content>
-</invoke>

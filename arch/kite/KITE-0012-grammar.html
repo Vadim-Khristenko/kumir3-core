@@ -1,7 +1,7 @@
 <link rel="stylesheet" href="./assets/kite.css">
 <!-- =============================================================================
      KITE 12 — Формальная грамматика (EBNF)
-     Источники истины (сверено с кодом 2026-07-22):
+     Источники истины:
        Лексика:   shared/src/lexer/{mod,scanner,identifiers,numbers,strings,comments,operators,rust_blocks}.rs
        Токены:    shared/src/types/token.rs
        Таблицы:   shared/build.rs (KEYWORDS/OPERATORS/BUILTINS, phf)
@@ -547,6 +547,15 @@ doc_комментарий  = "///" { ? …до конца строки ? } ;
 аргументы   = выражение { "," выражение } ;
 </code></pre>
     </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Постфикс <code>::</code> вычисляется</span>
+      Обе формы <code>Имя::член</code> и <code>Имя::член(…)</code> не только разбираются, но и
+      <strong>исполняются</strong>: они разрешаются в то же полное имя, что и точечная запись
+      <code>Имя.член</code> (нормируется в <a href="./KITE-0015-modules.html">KITE 15</a>). Тем самым
+      впервые вычисляются и <strong>литералы вариантов перечисления</strong>
+      <code>Перечисление::Вариант</code> / <code>Перечисление::Вариант(x)</code> — раньше они уходили в
+      ту же ветку «не реализовано» (см. <a href="./KITE-0011-oop.html">KITE 11</a>).
+    </div>
 
     <h3>13.1 Первичные выражения</h3>
     <div class="kite-code" data-lang="kumir">
@@ -593,7 +602,7 @@ doc_комментарий  = "///" { ? …до конца строки ? } ;
     </div>
     <div class="kite-callout is-warning">
       <span class="kite-callout-title">Разбор ≠ исполнение</span>
-      Ряд разбираемых форм пока не исполняется рантаймом (по аудиту W0): кортежный литерал <code>(a,b)</code>,
+      Ряд разбираемых форм пока не исполняется рантаймом: кортежный литерал <code>(a,b)</code>,
       постфиксный <code>?</code> (десугарится в несуществующий <code>__propagate__</code>), элементы литерала
       массива, не являющиеся литералами, <code>перемещение</code>/<code>заимствовать</code>/<code>клонировать</code>/<code>копировать</code>.
       Бейджи выше отражают <em>разбор</em>; исполнение — предмет KITE-13/14.
@@ -634,12 +643,16 @@ doc_комментарий  = "///" { ? …до конца строки ? } ;
       </table>
     </div>
     <div class="kite-callout is-important">
-      <span class="kite-callout-title">Две таблицы приоритетов в коде</span>
-      В ядре сосуществуют две функции приоритета: <code>parser/precedence.rs::binary_precedence</code> (её
-      использует парсер выражений — таблица выше) и <code>constants/operators.rs::operator_precedence</code>
-      (справочная, с иными уровнями и включением <code>Dot</code>/<code>DoubleColon</code>/<code>Not</code>).
-      <strong>Нормативной является таблица парсера</strong> (<code>precedence.rs</code>); расхождение стоит
-      устранить как технический долг.
+      <span class="kite-callout-title">Единственная таблица приоритетов (долг закрыт)</span>
+      Раньше в ядре сосуществовали две расходившиеся функции приоритета; дубликат
+      <code>constants/operators.rs::operator_precedence</code> (он переставлял <code>|&gt;</code> ниже
+      сложения, не знал <code>??</code> и числил <code>Dot</code>/<code>DoubleColon</code>/<code>Not</code>
+      бинарными) <strong>удалён</strong>. Нормативна и единственна таблица парсера —
+      <code>shared/src/parser/precedence.rs::binary_precedence</code> (она же приведена выше);
+      предикат <code>constants::operators::is_binary_operator</code> теперь <em>выводится</em> из неё
+      (<code>binary_precedence(t).is_some()</code>) и разойтись с ней не может. Порядок ярусов, плоскость
+      каждого яруса, отсутствие приоритета у <code>.</code>/<code>::</code>/<code>не</code>/<code>:=</code>
+      и согласие предикатов с таблицей закреплены тестами-стражами.
     </div>
   </section>
 
@@ -676,7 +689,7 @@ doc_комментарий  = "///" { ? …до конца строки ? } ;
       Имена вроде <code>цел_8</code>, <code>нат_64</code>, <code>вещ_128</code> и слово <code>любой</code> в
       позиции типа <strong>не разбираются как встроенные</strong> (нет ключевых слов): они попадут в
       пользовательский тип <code>имя</code>. Ширины существуют в движке типов, но не в поверхностной
-      грамматике — см. решение №4 в аудите W0. Постфиксные записи <code>T?</code> и <code>T!E</code> из
+      грамматике. Постфиксные записи <code>T?</code> и <code>T!E</code> из
       KITE-2 §5 <span class="kite-badge is-proposed">📋</span> — парсером типов не поддержаны.
     </div>
   </section>
@@ -778,7 +791,7 @@ or_паттерн    = атом_паттерн { "|" атом_паттерн } ;
       <code>Some/Ok/Err</code>, кортежные (пара/тройка), массивные с хвостом <code>..имя</code>, ссылочные,
       разыменование, изменяемые привязки, <code>@</code>-привязки, типизированные, диапазонные, структурные,
       варианты перечислений, or-паттерны и охраны <code>если</code>. Исполняется пока преимущественно
-      enum-часть; полнота — предмет отдельной работы (аудит W0).
+      enum-часть; полнота — предмет отдельной работы.
     </div>
   </section>
 
@@ -802,7 +815,7 @@ or_паттерн    = атом_паттерн { "|" атом_паттерн } ;
   <!-- 19 -->
   <section class="kite-section" id="status-tablica">
     <h2>19. Сводка реализованности грамматики</h2>
-    <p>Обзор того, что <em>разбирается</em> фронтендом. Полнота исполнения — в KITE-13/14/15 и аудите W0.</p>
+    <p>Обзор того, что <em>разбирается</em> фронтендом. Полнота исполнения — в KITE-13/14/15.</p>
     <div class="kite-table">
       <table>
         <thead><tr><th>Область</th><th>Разбор</th><th>Замечание</th></tr></thead>
@@ -836,16 +849,16 @@ or_паттерн    = атом_паттерн { "|" атом_паттерн } ;
   <!-- 20 -->
   <section class="kite-section" id="istochniki">
     <h2>20. Источники истины</h2>
-    <p>Грамматика сверена с кодом на дату создания документа. Файлы-источники:</p>
+    <p>Грамматика соответствует текущей реализации. Файлы-источники:</p>
     <div class="kite-table">
       <table>
         <thead><tr><th>Слой</th><th>Файлы</th></tr></thead>
         <tbody>
           <tr><td>Токены</td><td><code>shared/src/types/token.rs</code></td></tr>
-          <tr><td>Таблицы (phf)</td><td><code>shared/build.rs</code> (KEYWORDS 193 · OPERATORS 39 · BUILTINS 81)</td></tr>
+          <tr><td>Таблицы (phf)</td><td><code>shared/build.rs</code> (KEYWORDS 193 · OPERATORS 39 · BUILTINS 188)</td></tr>
           <tr><td>Лексер</td><td><code>shared/src/lexer/{mod,scanner,identifiers,numbers,strings,comments,operators,rust_blocks}.rs</code></td></tr>
           <tr><td>Парсер</td><td><code>shared/src/parser/{core,decl,stmt,expr,types,oop,pattern}.rs</code></td></tr>
-          <tr><td>Приоритеты</td><td><code>shared/src/parser/precedence.rs</code> (нормативная) · <code>shared/src/constants/operators.rs</code> (справочная)</td></tr>
+          <tr><td>Приоритеты</td><td><code>shared/src/parser/precedence.rs</code> — <strong>единственная нормативная таблица</strong>; <code>shared/src/constants/operators.rs</code> только выводит из неё предикаты (собственной таблицы не держит)</td></tr>
         </tbody>
       </table>
     </div>

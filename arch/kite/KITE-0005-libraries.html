@@ -155,8 +155,8 @@ stable = true</code></pre>
       <table>
         <thead><tr><th>Форма</th><th>Смысл</th><th>Доступность</th></tr></thead>
         <tbody>
-          <tr><td><code>Библиотека.функция(…)</code></td><td>Точечная форма — единственная работающая.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>Модуль::член</code></td><td>Двойное двоеточие. Парсится, но <strong>не исполняется</strong>: обращение через <code>::</code> даёт ошибку «не реализовано».</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>Библиотека.функция(…)</code></td><td>Точечная форма.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>Модуль::член</code> · <code>Модуль::член(…)</code></td><td>Двойное двоеточие. <strong>Исполняется</strong> и разрешается в то же полное имя, что и точечная форма (<code>Модуль.член</code>); для загруженной библиотеки — через квалифицированный вызов.</td><td><span class="kite-badge is-available">✅</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -169,8 +169,8 @@ stable = true</code></pre>
     </div>
     <div class="kite-callout is-note">
       <span class="kite-callout-title">Норматив</span>
-      Правила разрешения имён при импорте, семантика модулей и целевая судьба <code>::</code>
-      и <code>экспорт</code> нормируются в <a href="./KITE-0015-modules.html">KITE 15</a>;
+      Правила разрешения имён при импорте, семантика модулей, порядок разрешения <code>::</code>
+      и судьба <code>экспорт</code> нормируются в <a href="./KITE-0015-modules.html">KITE 15</a>;
       грамматика форм импорта — в <a href="./KITE-0012-grammar.html">KITE 12</a>.
     </div>
   </section>

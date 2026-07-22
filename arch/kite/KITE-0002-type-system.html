@@ -122,11 +122,15 @@
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Ограничение приведения</span>
-      Приведение <code>x как сим</code> сегодня <strong>не поддержано</strong> — вычисление
-      завершается ошибкой. Символ получают из строки (индексацией/функциями), а не кастом.
-      Полная каст-матрица — нормативно в <a href="./KITE-0013-expression-semantics.html">KITE 13</a>.
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Приведение к <code>сим</code></span>
+      <code>x как сим</code> <strong>поддержано</strong> <span class="kite-badge is-available">✅</span>:
+      источником символа может быть сам символ (тождество), <strong>целое</strong> — кодовая точка
+      Unicode (<code>65 как сим → 'A'</code>) или <strong>строка ровно из одного символа</strong>.
+      Вещественное, логическое, пустая или многосимвольная строка, а также код вне диапазона
+      скалярных значений Unicode дают ясную ошибку. Символ можно получить и из строки
+      (индексацией/функциями). Полная каст-матрица — нормативно в
+      <a href="./KITE-0013-expression-semantics.html">KITE 13</a>.
     </div>
   </section>
 
@@ -214,7 +218,7 @@
       <table>
         <thead><tr><th>Имя</th><th>En</th><th>Что это</th><th>Доступность</th></tr></thead>
         <tbody>
-          <tr><td><code>перечисление</code></td><td>Enum</td><td>Перечисление с вариантами и данными.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>перечисление</code></td><td>Enum</td><td>Перечисление с вариантами и данными. Литералы вариантов <code>Перечисление::Вариант</code> и <code>Перечисление::Вариант(x)</code> <strong>вычисляются</strong> (разрешаются тем же путём, что и члены модуля — <a href="./KITE-0015-modules.html">KITE 15</a>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>объект</code></td><td>Object</td><td>Экземпляр класса/структуры с полями (см. <a href="./KITE-0011-oop.html">KITE 11</a>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>@нативный</code></td><td>Native</td><td>Объект, реализованный в Rust. Нативные <em>функции</em> существуют и вызываются; нативных <em>объектов</em> нет — такое значение нигде не создаётся.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
           <tr><td><code>Имя&lt;…&gt;</code></td><td>Generic</td><td>Параметризованный (обобщённый) тип: <strong>разбирается, но не проверяется</strong> — параметры типа рантайм игнорирует.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
@@ -349,7 +353,7 @@
           <tr><td><code>|&gt;</code></td><td>Конвейер вызовов (pipe).</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>див</code> · <code>мод</code></td><td>Целочисленное деление и остаток (<code>/</code> всегда вещественное).</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>?</code></td><td>Ранний возврат: <em>Некоторое(v)</em>/<em>Успех(v)</em> разворачивается до <code>v</code>; <em>Ничего</em>/<code>пусто</code>/<em>Ошибка</em> — ранний возврат объемлющего алгоритма.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>&gt;&gt;</code></td><td>Композиция функций. Разбирается, но <strong>не вычисляется</strong>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>&gt;&gt;</code></td><td>Композиция функций: <code>f &gt;&gt; g</code> даёт лямбду одного параметра, эквивалентную <code>g(f(x))</code>; вкладывается. Не-функция в операнде — ясная ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
         </tbody>
       </table>
     </div>

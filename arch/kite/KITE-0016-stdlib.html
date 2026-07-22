@@ -5,8 +5,11 @@
        • phf-таблица BUILTINS (категории Math/String/Io/Other) — shared/build.rs
        • реализации встроенных функций — interpreter/src/interpreter/builtins/*.rs
        • is_builtin_function / builtin_category — shared/src/constants/builtins.rs
+       • инварианты реестра — interpreter/src/interpreter/builtins/tests.rs
+       • золотой снимок — shared/tests/golden/builtins.snapshot (188 имён)
        • библиотеки — shared/src/libraries/{time,syscall,files,net}/*.rs
-     Каталог сгенерирован из кода (Bun-скрипт, .local/kite0016/), сверен с W0-аудитом.
+     Каталог отражает текущий состав встроенных функций.
+     Правило состава реестра: диспетчеризуемые имена МИНУС ключевые слова языка (см. §1.1).
 ============================================================================== -->
 <article class="kite" data-kite="0016" data-status="draft" lang="ru">
 
@@ -50,31 +53,75 @@
     <h2>1. О документе и легенда</h2>
     <p>
       Это нормативный <strong>реестр всех встроенных имён</strong> Kumir&nbsp;3: функций ядра
-      (builtins) и функций четырёх стандартных библиотек. Каталог сгенерирован прямо из исходного
-      кода (Bun-скрипт в <code>.local/</code>): имена и категории builtins — из phf-таблицы
+      (builtins) и функций четырёх стандартных библиотек. Каталог отражает текущий состав
+      реализации: имена и категории builtins — из phf-таблицы
       <code>BUILTINS</code> в <code>shared/build.rs</code>; сигнатуры и фактические реализации —
       из <code>interpreter/src/interpreter/builtins/*.rs</code>; функции библиотек, их псевдонимы,
       параметры и описания — из <code>shared/src/libraries/</code>.
     </p>
     <div class="kite-callout is-important">
-      <span class="kite-callout-title">Легенда доступности (честная по W0)</span>
+      <span class="kite-callout-title">Легенда доступности</span>
       <span class="kite-badge is-available">✅&nbsp;Доступно</span> — имя <em>вызывается</em>: для builtin —
-      <code>is_builtin_function</code> истинно <strong>и</strong> есть реализация в интерпретаторе;
-      для библиотеки — функция зарегистрирована и исполняется.
-      <span class="kite-badge is-experimental">🧪&nbsp;Экспериментально</span> — работает, но интерфейс/поведение могут меняться.
-      <span class="kite-badge is-proposed">📋&nbsp;Предложено</span> — имя присутствует в таблице/спецификации,
+      имя есть в таблице <code>BUILTINS</code> <strong>и</strong> его диспетчеризует
+      <code>Builtins::try_call</code> (для категорий Math/String/Io при этом
+      <code>is_builtin_function</code> истинно); для библиотеки — функция зарегистрирована и исполняется.
+      <span class="kite-badge is-experimental">🧪&nbsp;Экспериментально</span> — работает, но интерфейс/поведение могут меняться;
+      в §6 дополнительно означает «вызывается, но <code>is_builtin_function == false</code> по определению категории Other».
+      <span class="kite-badge is-proposed">📋&nbsp;Предложено</span> — имя присутствует в спецификации,
       но реализации на поверхности языка ещё нет.
     </div>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Таблица и реализация синхронизированы</span>
+      Раньше присутствие имени в <code>BUILTINS</code> ничего не гарантировало: 53 зарегистрированных
+      имени не имели реализации, а 86 реализованных отсутствовали в таблице. Таблица приведена к правилу
+      «<strong>диспетчеризуемые имена минус ключевые слова языка</strong>» (§1.1) и выросла со&nbsp;124
+      до&nbsp;<strong>188</strong> имён. Расхождение теперь невозможно молча: пара инвариантных тестов в
+      <code>interpreter/src/interpreter/builtins/tests.rs</code> прогоняет <em>каждое</em> зарегистрированное
+      имя через вычисление (<code>every_registered_builtin_is_dispatched</code>) и проверяет, что ключевые
+      слова в таблицу не попали (<code>keyword_colliding_names_are_not_registered</code>), а реализованные
+      русские имена — попали (<code>implemented_russian_names_are_registered</code>). Зонд-пробник сам
+      защищён тестом <code>is_dispatched_probe_is_not_vacuous</code>.
+    </div>
+
+    <h3>1.1 Правило коллизии с ключевыми словами (нормативное)</h3>
+    <p>
+      <strong>Имя, совпадающее с ключевым словом языка, не может быть вызвано как функция.</strong>
+      Лексер порождает для такого написания keyword-токен, поэтому запись <code>имя(x)</code> либо не
+      разбирается вовсе, либо разбирается как языковая конструкция — до диспетчера встроенных функций
+      вызов не доходит. Это свойство лексики, а не пробел в реализации: добавить арм в
+      <code>Builtins::try_call</code> недостаточно, имя всё равно останется недостижимым.
+    </p>
+    <p>
+      Отсюда <strong>нормативное правило состава реестра</strong>: <code>BUILTINS</code> = множество имён,
+      диспетчеризуемых <code>Builtins::try_call</code>, <em>минус</em> ключевые слова языка. Имя-ключевое
+      слово в таблице — ошибка (падает тест <code>keyword_colliding_names_are_not_registered</code>).
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Запись</th><th>Что делает лексер</th><th>Итог</th></tr></thead>
+        <tbody>
+          <tr><td><code>печать(1)</code> · <code>chr(1)</code> · <code>тип(1)</code></td><td>идентификатор</td><td>вызов встроенной функции <span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>print(1)</code> · <code>вывод(1)</code> · <code>ввод(1)</code></td><td><code>Token::Output</code> / <code>Token::Input</code></td><td>инструкция языка, вызовом не является</td></tr>
+          <tr><td><code>int(1)</code> · <code>цел(1)</code> · <code>вещ(1)</code> · <code>лог(1)</code> · <code>лит(1)</code> · <code>str(1)</code> · <code>float(1)</code> · <code>bool(1)</code></td><td>токен типа (<code>IntType</code>, <code>FloatType</code>, <code>BoolType</code>, <code>StringType</code>&nbsp;…)</td><td>имя типа, вызовом не является</td></tr>
+          <tr><td><code>mod(1)</code> · <code>модуль(1)</code></td><td><code>Token::Module</code></td><td>объявление модуля, вызовом не является</td></tr>
+          <tr><td><code>утв(1)</code> · <code>assert(1)</code></td><td><code>Token::Assert</code></td><td>инструкция утверждения</td></tr>
+          <tr><td><code>таб(…)</code> · <code>array(…)</code> · <code>пусто</code> · <code>ничего</code> · <code>пауза(…)</code> · <code>ждать x</code> · <code>char(…)</code> · <code>type(…)</code></td><td>keyword-токен</td><td>конструкция языка; в реестре отсутствуют, хотя армы в диспетчере есть</td></tr>
+        </tbody>
+      </table>
+    </div>
     <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Важная тонкость</span>
-      Присутствие имени в phf-таблице <code>BUILTINS</code> <strong>не</strong> означает, что функция
-      реализована. Часть имён категорий Math/String/Io зарегистрирована «на будущее» — они проходят
-      проверку <code>is_builtin_function</code>, но вызов падает как «функция не найдена». Такие имена
-      помечены <span class="kite-badge is-proposed">📋</span>. Отдельно: имена категории
-      <strong>Other</strong> (<code>цел</code>, <code>строка</code>, <code>сортировать</code>&nbsp;…)
-      по определению <code>builtins.rs</code> <em>не</em> считаются встроенными функциями
-      (<code>is_builtin_function == false</code>), хотя многие из них исполняются как обычные вызовы
-      (см.&nbsp;§6).
+      <span class="kite-callout-title">17 имён убрано из реестра как недостижимые</span>
+      <code>модуль</code> · <code>int</code> · <code>mod</code> · <code>char</code> · <code>ввод</code> ·
+      <code>input</code> · <code>вывод</code> · <code>output</code> · <code>print</code> · <code>цел</code> ·
+      <code>вещ</code> · <code>float</code> · <code>str</code> · <code>лог</code> · <code>bool</code> ·
+      <code>утв</code> · <code>assert</code>. Для каждого из них в каталоге указан <strong>достижимый
+      псевдоним</strong>: <code>abs</code> вместо <code>модуль</code>, <code>целое</code>/<code>to_int</code>
+      вместо <code>цел</code>/<code>int</code>, <code>остаток</code>/<code>rem</code> вместо <code>mod</code>,
+      <code>печать</code> вместо <code>print</code>, <code>символ</code>/<code>chr</code> вместо
+      <code>char</code>, <code>строка</code>/<code>to_string</code> вместо <code>лит</code>/<code>str</code>
+      и т.&nbsp;д. Отдельно: <code>мод</code>/<code>%</code> и <code>див</code> остаются
+      <em>операторами</em>, а функциональные формы называются <code>остаток</code>/<code>rem</code> и
+      <code>div</code>/<code>цел_деление</code>.
     </div>
   </section>
 
@@ -87,9 +134,11 @@
         <h3>Builtins ядра</h3>
         <p>
           Функции без <code>использовать</code>: математика, строки, ввод-вывод, преобразования.
-          Имена и категории — в phf-таблице <code>BUILTINS</code>; диспетчеризация — в
+          Имена и категории — в phf-таблице <code>BUILTINS</code> (188 имён); диспетчеризация — в
           <code>Builtins::try_call</code> (<code>math → string → array → type → io</code>).
-          Доступны всегда, глобально.
+          Доступны всегда, глобально. Категория = модуль реализации:
+          <code>math.rs → Math</code>, <code>string.rs → String</code>, <code>io.rs → Io</code>,
+          <code>array.rs</code>/<code>types.rs → Other</code>.
         </p>
       </div>
       <div class="kite-card">
@@ -106,10 +155,10 @@
       <table>
         <thead><tr><th>Слой</th><th>Имён в источнике</th><th>Доступно к вызову</th><th>Источник истины</th></tr></thead>
         <tbody>
-          <tr><td>Builtins · Math</td><td>47</td><td>28</td><td><code>build.rs</code> + <code>builtins/math.rs</code></td></tr>
-          <tr><td>Builtins · String</td><td>36</td><td>21</td><td><code>build.rs</code> + <code>builtins/string.rs</code></td></tr>
-          <tr><td>Builtins · Io</td><td>10</td><td>4 (как функции)</td><td><code>build.rs</code> + <code>builtins/io.rs</code></td></tr>
-          <tr><td>Builtins · Other (не <code>is_builtin_function</code>)</td><td>31</td><td>~20 (как обычные вызовы)</td><td><code>build.rs</code> + <code>builtins/{types,array}.rs</code></td></tr>
+          <tr><td>Builtins · Math</td><td>66</td><td>66</td><td><code>build.rs</code> + <code>builtins/math.rs</code></td></tr>
+          <tr><td>Builtins · String</td><td>51</td><td>51</td><td><code>build.rs</code> + <code>builtins/string.rs</code></td></tr>
+          <tr><td>Builtins · Io</td><td>11</td><td>11</td><td><code>build.rs</code> + <code>builtins/io.rs</code></td></tr>
+          <tr><td>Builtins · Other (не <code>is_builtin_function</code>)</td><td>60</td><td>60 (как обычные вызовы)</td><td><code>build.rs</code> + <code>builtins/{types,array}.rs</code></td></tr>
           <tr><td>Библиотека <code>время</code></td><td>40</td><td>40</td><td><code>libraries/time/</code></td></tr>
           <tr><td>Библиотека <code>система</code></td><td>35</td><td>35</td><td><code>libraries/syscall/</code></td></tr>
           <tr><td>Библиотека <code>файлы</code></td><td>29</td><td>29</td><td><code>libraries/files/</code></td></tr>
@@ -130,129 +179,138 @@
   <section class="kite-section" id="builtins-math">
     <h2>3. Встроенные: математика</h2>
     <p>
-      Категория <code>Math</code>: 47 зарегистрированных имён, из них 28 реально вызываются.
-      Имена с <span class="kite-badge is-proposed">📋</span> присутствуют в phf-таблице
-      (<code>is_builtin_function</code> истинно), но <code>builtins/math.rs</code> их не обрабатывает —
-      вызов вернёт «функция не найдена».
+      Категория <code>Math</code>: <strong>66 имён, все вызываются</strong> (реализация —
+      <code>builtins/math.rs</code>). Ниже строки сгруппированы по армам диспетчера: все имена в одной
+      строке — полные синонимы. Ключевое слово <code>модуль</code> из реестра убрано (§1.1) — модуль
+      числа берут функцией <code>abs</code>.
     </p>
     <div class="kite-table">
       <table>
         <thead><tr><th>Имя (псевдонимы)</th><th>Арность / сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
         <tbody>
-          <tr><td><code>abs</code> · <code>модуль</code></td><td><code>(x) → число</code></td><td>Модуль числа (сохраняет тип).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>sqrt</code> · <code>корень</code></td><td><code>(x) → вещ</code></td><td>Квадратный корень.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>abs</code></td><td><code>(x) → число</code></td><td>Модуль числа (сохраняет тип). Имя <code>модуль</code> недоступно — ключевое слово (§1.1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>sqrt</code> · <code>корень</code> · <code>квадратный_корень</code></td><td><code>(x) → вещ</code></td><td>Квадратный корень.</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>sin</code></td><td><code>(x) → вещ</code></td><td>Синус (радианы).</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>cos</code></td><td><code>(x) → вещ</code></td><td>Косинус (радианы).</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>tan</code> · <code>tg</code></td><td><code>(x) → вещ</code></td><td>Тангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>arcsin</code></td><td><code>(x) → вещ</code></td><td>Арксинус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>arccos</code></td><td><code>(x) → вещ</code></td><td>Арккосинус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>arctg</code> · <code>arctan</code></td><td><code>(x) → вещ</code></td><td>Арктангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>asin</code> · <code>arcsin</code></td><td><code>(x) → вещ</code></td><td>Арксинус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>acos</code> · <code>arccos</code></td><td><code>(x) → вещ</code></td><td>Арккосинус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>atan</code> · <code>arctg</code> · <code>arctan</code></td><td><code>(x) → вещ</code></td><td>Арктангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>ctg</code> · <code>cot</code></td><td><code>(x) → вещ</code></td><td>Котангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>arcctg</code> · <code>arccot</code></td><td><code>(x) → вещ</code></td><td>Арккотангенс, непрерывная ветвь на (0, π): <code>π/2 − arctg(x)</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>sh</code> · <code>sinh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический синус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>ch</code> · <code>cosh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический косинус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>th</code> · <code>tanh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический тангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>atan2</code> · <code>arctg2</code></td><td><code>(y, x) → вещ</code></td><td>Арктангенс частного с учётом четверти.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>ln</code> · <code>log</code></td><td><code>(x&gt;0) → вещ</code></td><td>Натуральный логарифм; при <code>x ≤ 0</code> — ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>log10</code> · <code>lg</code></td><td><code>(x&gt;0) → вещ</code></td><td>Десятичный логарифм; при <code>x ≤ 0</code> — ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>exp</code></td><td><code>(x) → вещ</code></td><td>Экспонента e<sup>x</sup>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>ln</code> · <code>log</code></td><td><code>(x&gt;0) → вещ</code></td><td>Натуральный логарифм.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>lg</code></td><td><code>(x&gt;0) → вещ</code></td><td>Десятичный логарифм (реализация <code>log10</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>pow</code> · <code>степень</code></td><td><code>(осн, показ) → число</code></td><td>Возведение в степень.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>floor</code></td><td><code>(x) → цел</code></td><td>Округление вниз.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>ceil</code></td><td><code>(x) → цел</code></td><td>Округление вверх.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>round</code></td><td><code>(x [, знаков]) → цел / вещ</code></td><td>Округление до целого или до N знаков.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>min</code></td><td><code>(a, b, …) → число</code></td><td>Минимум из аргументов.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>max</code></td><td><code>(a, b, …) → число</code></td><td>Максимум из аргументов.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>sign</code> · <code>знак</code></td><td><code>(x) → цел (−1/0/1)</code></td><td>Знак числа.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>rand</code> · <code>random</code></td><td><code>() / (n) / (a, b) → число</code></td><td>Псевдослучайное (реализовано также под именем <code>случайное</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>int</code></td><td><code>(x) → цел</code></td><td>Приведение к целому (реализация в <code>types.rs</code>, см.&nbsp;§6).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>ctg</code> · <code>cot</code></td><td><code>(x) → вещ</code></td><td>Котангенс.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>arcctg</code> · <code>arccot</code></td><td><code>(x) → вещ</code></td><td>Арккотангенс.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>sh</code> · <code>sinh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический синус.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>ch</code> · <code>cosh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический косинус.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>th</code> · <code>tanh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический тангенс.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>цел_часть</code></td><td><code>(x) → цел</code></td><td>Целая часть числа.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>frac</code> · <code>дробь</code></td><td><code>(x) → вещ</code></td><td>Дробная часть числа.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>округл</code></td><td><code>(x) → цел</code></td><td>Псевдоним округления (реализовано <code>round</code>/<code>округлить</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>мин</code> · <code>макс</code></td><td><code>(a, b, …) → число</code></td><td>Русские имена min/max (реализованы <code>минимум</code>/<code>максимум</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>mod</code></td><td><code>(a, b) → цел</code></td><td>Остаток как функция (есть оператор-слово <code>мод</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>div</code></td><td><code>(a, b) → цел</code></td><td>Целочисленное деление как функция (есть оператор-слово <code>див</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>случ</code></td><td><code>() / (n) / (a, b)</code></td><td>Русский псевдоним random (реализовано <code>случайное</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>floor</code> · <code>пол</code></td><td><code>(x) → цел</code></td><td>Округление вниз.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>ceil</code> · <code>потолок</code></td><td><code>(x) → цел</code></td><td>Округление вверх.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>цел_часть</code> · <code>trunc</code></td><td><code>(x) → цел</code></td><td>Целая часть (усечение к нулю): <code>цел_часть(−3.7) → −3</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>frac</code> · <code>дробь</code></td><td><code>(x) → вещ</code></td><td>Дробная часть: <code>дробь(3.5) → 0.5</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>div</code> · <code>цел_деление</code></td><td><code>(a, b) → цел</code></td><td>Целочисленное деление как функция (оператор-слово — <code>див</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>остаток</code> · <code>rem</code></td><td><code>(a, b) → цел</code></td><td>Остаток как функция. Имена <code>mod</code>/<code>модуль</code> недоступны (<code>Token::Module</code>, §1.1); оператор остаётся <code>мод</code>/<code>%</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>round</code> · <code>округлить</code> · <code>округл</code></td><td><code>(x [, знаков]) → цел / вещ</code></td><td>Округление до целого или до N знаков.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>min</code> · <code>минимум</code> · <code>мин</code></td><td><code>(a, b, …) → число</code></td><td>Минимум из аргументов (не менее одного).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>max</code> · <code>максимум</code> · <code>макс</code></td><td><code>(a, b, …) → число</code></td><td>Максимум из аргументов (не менее одного).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>sign</code> · <code>знак</code> · <code>sgn</code></td><td><code>(x) → цел (−1/0/1)</code></td><td>Знак числа.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>пи</code> · <code>pi</code></td><td><code>() → вещ</code></td><td>Константа π.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>е</code> · <code>e</code></td><td><code>() → вещ</code></td><td>Константа e.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>случайное</code> · <code>случ</code> · <code>random</code> · <code>rand</code></td><td><code>() / (n) / (a, b) → число</code></td><td>Псевдослучайное число: без аргументов — вещественное в [0, 1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
         </tbody>
       </table>
     </div>
     <div class="kite-callout is-note">
-      <span class="kite-callout-title">Расхождение имён</span>
-      Реализация распознаёт русские имена, которых нет в phf-таблице: <code>минимум</code>,
-      <code>максимум</code>, <code>округлить</code>, <code>случайное</code>, <code>пол</code>,
-      <code>потолок</code>, <code>квадратный_корень</code>, а также константы <code>пи</code>/<code>pi</code>
-      и <code>е</code>/<code>e</code>. Обратное тоже верно: часть phf-имён (гиперболические, котангенсы,
-      <code>цел_часть</code>, <code>frac</code>) в интерпретаторе не реализована. Унификация номенклатуры —
-      задача §11.
+      <span class="kite-callout-title">Что изменилось</span>
+      Дореализованы и переведены в <span class="kite-badge is-available">✅</span>: гиперболические
+      <code>sh|sinh</code>/<code>ch|cosh</code>/<code>th|tanh</code>, котангенсы
+      <code>ctg|cot</code>/<code>arcctg|arccot</code>, <code>цел_часть|trunc</code>,
+      <code>frac|дробь</code>, <code>div|цел_деление</code>, <code>остаток|rem</code>,
+      <code>округл</code>, <code>мин</code>/<code>макс</code>, <code>случ</code>. Зарегистрированы
+      ранее работавшие, но отсутствовавшие в таблице имена: <code>минимум</code>, <code>максимум</code>,
+      <code>округлить</code>, <code>случайное</code>, <code>пол</code>, <code>потолок</code>,
+      <code>квадратный_корень</code>, <code>asin</code>/<code>acos</code>/<code>atan</code>,
+      <code>atan2</code>/<code>arctg2</code>, <code>log10</code>, <code>sgn</code>, а также константы
+      <code>пи</code>/<code>pi</code> и <code>е</code>/<code>e</code>. Убрано как недостижимое:
+      <code>модуль</code>, <code>int</code>, <code>mod</code> (§1.1).
     </div>
   </section>
 
   <!-- ───────────────────────── 4 ───────────────────────── -->
   <section class="kite-section" id="builtins-string">
     <h2>4. Встроенные: строки</h2>
-    <p>Категория <code>String</code>: 36 имён, 21 вызывается. Реализация — <code>builtins/string.rs</code>.
-       Индексы строк в Кумире — с&nbsp;1.</p>
+    <p>Категория <code>String</code>: <strong>51 имя, все вызываются</strong>. Реализация —
+       <code>builtins/string.rs</code>. Индексы строк в Кумире — с&nbsp;1. Строки в одной строке
+       таблицы — полные синонимы (один арм диспетчера).</p>
     <div class="kite-table">
       <table>
         <thead><tr><th>Имя (псевдонимы)</th><th>Арность / сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
         <tbody>
-          <tr><td><code>длин</code> · <code>len</code> · <code>length</code></td><td><code>(строка/массив/байты/диапазон) → цел</code></td><td>Длина (в символах для строки). Реализовано также как <code>длина</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>символ</code> · <code>chr</code></td><td><code>(код) → сим</code></td><td>Символ Unicode по коду.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>код</code> · <code>ord</code></td><td><code>(сим) → цел</code></td><td>Код символа Unicode.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>substr</code> · <code>substring</code></td><td><code>(строка, старт [, длина]) → лит</code></td><td>Подстрока (реализовано также <code>подстрока</code>, <code>копировать_строку</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>позиция</code> · <code>pos</code> · <code>position</code></td><td><code>(стог, игла) → цел</code></td><td>Позиция подстроки (0 если нет). Также <code>найти</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>upper</code></td><td><code>(строка) → лит</code></td><td>Верхний регистр (также <code>верхний_регистр</code>, <code>to_upper</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>lower</code></td><td><code>(строка) → лит</code></td><td>Нижний регистр (также <code>нижний_регистр</code>, <code>to_lower</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>длина</code> · <code>длин</code> · <code>len</code> · <code>length</code> · <code>размер</code> · <code>size</code></td><td><code>(строка/массив/байты/диапазон) → цел</code></td><td>Длина (в символах для строки).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>байты</code> · <code>bytes</code></td><td><code>(строка/массив/байты) → байты</code></td><td>Преобразование в <code>байты</code> (KITE&nbsp;2).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>строка_из_байт</code> · <code>байты_в_строку</code> · <code>bytes_to_string</code></td><td><code>(байты) → лит</code></td><td>Обратное преобразование <code>байты → лит</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>символ</code> · <code>chr</code></td><td><code>(код) → сим</code></td><td>Символ Unicode по коду. Имя <code>char</code> недоступно — ключевое слово типа <code>сим</code> (§1.1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>код</code> · <code>ord</code> · <code>code</code></td><td><code>(сим/лит) → цел</code></td><td>Код символа Unicode.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>подстрока</code> · <code>substring</code> · <code>substr</code> · <code>копировать_строку</code> · <code>вырезка</code></td><td><code>(строка, старт [, длина]) → лит</code></td><td>Подстрока; индексация с&nbsp;1.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>позиция</code> · <code>position</code> · <code>pos</code> · <code>найти</code> · <code>find</code></td><td><code>(стог, игла) → цел</code></td><td>Позиция подстроки, нумерация с&nbsp;1; 0 — не найдено.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>верхний_регистр</code> · <code>to_upper</code> · <code>upper</code> · <code>верхний</code> · <code>uppercase</code></td><td><code>(строка) → лит</code></td><td>Верхний регистр.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>нижний_регистр</code> · <code>to_lower</code> · <code>lower</code> · <code>нижний</code> · <code>lowercase</code></td><td><code>(строка) → лит</code></td><td>Нижний регистр.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>слева</code> · <code>left</code></td><td><code>(строка, n) → лит</code></td><td>Первые n символов; n &lt; 0 — ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>справа</code> · <code>right</code></td><td><code>(строка, n) → лит</code></td><td>Последние n символов; n &lt; 0 — ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>повторить</code> · <code>repeat</code></td><td><code>(строка, n) → лит</code></td><td>Повтор строки n раз; n &lt; 0 — ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>обрезать</code> · <code>trim</code></td><td><code>(строка) → лит</code></td><td>Убрать пробелы по краям.</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>заменить</code> · <code>replace</code></td><td><code>(строка, из, в) → лит</code></td><td>Замена всех вхождений.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>split</code></td><td><code>(строка, разделитель) → таб</code></td><td>Разбить строку (также <code>разделить</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>разделить</code> · <code>split</code> · <code>разбить</code></td><td><code>(строка, разделитель) → таб</code></td><td>Разбить строку по разделителю.</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td><code>соединить</code> · <code>join</code></td><td><code>(массив, разделитель) → лит</code></td><td>Соединить элементы через разделитель.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>байты</code> · <code>bytes</code></td><td><code>(строка/массив/байты) → байты</code></td><td>Преобразование в <code>байты</code> (KITE&nbsp;2).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>char</code> · <code>code</code></td><td>—</td><td>Английские псевдонимы <code>символ</code>/<code>код</code>: в phf есть, реализация распознаёт только <code>chr</code>/<code>ord</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>вырезка</code></td><td><code>(строка, …) → лит</code></td><td>Русское имя подстроки (реализовано <code>substr</code>/<code>подстрока</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>find</code></td><td><code>(стог, игла) → цел</code></td><td>Английское имя поиска (реализовано <code>позиция</code>/<code>найти</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>верхний</code> · <code>uppercase</code></td><td><code>(строка) → лит</code></td><td>Псевдонимы верхнего регистра (реализовано <code>upper</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>нижний</code> · <code>lowercase</code></td><td><code>(строка) → лит</code></td><td>Псевдонимы нижнего регистра (реализовано <code>lower</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>слева</code> · <code>left</code></td><td><code>(строка, n) → лит</code></td><td>Первые n символов.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>справа</code> · <code>right</code></td><td><code>(строка, n) → лит</code></td><td>Последние n символов.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>повторить</code> · <code>repeat</code></td><td><code>(строка, n) → лит</code></td><td>Повтор строки n раз.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>разбить</code></td><td><code>(строка, разделитель) → таб</code></td><td>Русский псевдоним split (реализовано <code>разделить</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
         </tbody>
       </table>
     </div>
     <div class="kite-callout is-note">
-      <span class="kite-callout-title">Дополнительно реализовано</span>
-      Помимо phf-имён, <code>string.rs</code> предоставляет <code>строка_из_байт</code> ·
-      <code>байты_в_строку</code> · <code>bytes_to_string</code> — обратное преобразование
-      <code>байты → лит</code>.
+      <span class="kite-callout-title">Что изменилось</span>
+      Дореализованы и переведены в <span class="kite-badge is-available">✅</span>:
+      <code>слева|left</code>, <code>справа|right</code>, <code>повторить|repeat</code>,
+      <code>размер|size</code>, <code>code</code>, <code>вырезка</code>, <code>find</code>,
+      <code>верхний|uppercase</code>, <code>нижний|lowercase</code>, <code>разбить</code>.
+      Зарегистрированы ранее работавшие имена: <code>длина</code>, <code>подстрока</code>,
+      <code>копировать_строку</code>, <code>найти</code>, <code>разделить</code>,
+      <code>верхний_регистр</code>/<code>to_upper</code>, <code>нижний_регистр</code>/<code>to_lower</code>,
+      <code>строка_из_байт</code>/<code>байты_в_строку</code>/<code>bytes_to_string</code>.
+      Убрано как недостижимое: <code>char</code> (§1.1).
     </div>
   </section>
 
   <!-- ───────────────────────── 5 ───────────────────────── -->
   <section class="kite-section" id="builtins-io">
     <h2>5. Встроенные: ввод-вывод</h2>
-    <p>Категория <code>Io</code>: 10 имён. Реализация функций — <code>builtins/io.rs</code>.</p>
+    <p>Категория <code>Io</code>: <strong>11 имён, все вызываются</strong>. Реализация функций —
+       <code>builtins/io.rs</code>. Ключевые слова <code>вывод</code>/<code>output</code>/<code>print</code>
+       и <code>ввод</code>/<code>input</code> из реестра убраны: это <em>инструкции</em> языка,
+       вызовом функции они быть не могут (§1.1).</p>
     <div class="kite-table">
       <table>
         <thead><tr><th>Имя (псевдонимы)</th><th>Арность / сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
         <tbody>
-          <tr><td><code>print</code></td><td><code>(…) → пусто</code></td><td>Печать значений через пробел без перевода строки (также <code>печать</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>println</code></td><td><code>(…) → пусто</code></td><td>Печать с переводом строки (также <code>печатьстр</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>нс</code> · <code>newline</code></td><td><code>() → пусто</code></td><td>Вывод пустой строки (также <code>nl</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>вывод</code> · <code>output</code></td><td>инструкция <code>вывод …</code></td><td>Вывод — это <strong>инструкция языка</strong> (ключевое слово), а не вызываемая builtin-функция.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>ввод</code> · <code>input</code></td><td>инструкция <code>ввод …</code></td><td>Ввод — инструкция языка; как builtin-функция не реализован.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>вывод_строки</code></td><td><code>(…) → пусто</code></td><td>Псевдоним println (реализовано <code>println</code>/<code>печатьстр</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>новая_строка</code></td><td><code>() → пусто</code></td><td>Псевдоним newline (реализовано <code>нс</code>/<code>newline</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>печать</code></td><td><code>(…) → пусто</code></td><td>Печать значений через пробел без перевода строки. Имя <code>print</code> недоступно — ключевое слово (§1.1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>печатьстр</code> · <code>println</code> · <code>вывод_строки</code></td><td><code>(…) → пусто</code></td><td>Печать с переводом строки.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>нс</code> · <code>newline</code> · <code>nl</code> · <code>новая_строка</code></td><td><code>() → пусто</code></td><td>Вывод пустой строки.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>время</code> · <code>time</code></td><td><code>() → вещ</code></td><td>Секунды с эпохи Unix (каноническое место — библиотека <code>время</code>, §7).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>sleep</code></td><td><code>(мс)</code></td><td>Блокирующая пауза в миллисекундах. Русское <code>пауза</code> и <code>ждать</code> — ключевые слова, вызовом функции не являются (§1.1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
         </tbody>
       </table>
     </div>
     <div class="kite-callout is-warning">
       <span class="kite-callout-title"><code>ввод</code> / <code>вывод</code> — ключевые слова, не функции</span>
-      В phf-таблице <code>ввод</code>/<code>вывод</code> числятся как Io-builtins, но в интерпретаторе
-      это <strong>инструкции</strong> (<code>Stmt::Input</code>/<code>Stmt::Output</code>), а не арм
-      <code>builtins/io.rs</code>. Как <em>вызов функции</em> <code>вывод(x)</code> не обрабатывается
-      builtin-диспетчером. Формат вывода значений и потоки ввода-вывода специфицируются отдельно —
-      <a href="./KITE-0007-stdio.html">KITE&nbsp;7</a>. Функции <code>время</code>/<code>time</code> и
-      <code>пауза</code>/<code>ждать</code> тоже реализованы в <code>io.rs</code>, но относятся к работе
-      со временем — их каноническое место в библиотеке <code>время</code> (§7).
+      <code>ввод</code>/<code>input</code> и <code>вывод</code>/<code>output</code>/<code>print</code> —
+      <strong>инструкции</strong> (<code>Stmt::Input</code>/<code>Stmt::Output</code>), а не армы
+      <code>builtins/io.rs</code>: запись <code>вывод(x)</code> до builtin-диспетчера не доходит.
+      Поэтому из реестра они <strong>удалены</strong> (§1.1); печать функцией — это
+      <code>печать</code>/<code>печатьстр</code>. Формат вывода значений и потоки ввода-вывода
+      специфицируются отдельно — <a href="./KITE-0007-stdio.html">KITE&nbsp;7</a>. Функции
+      <code>время</code>/<code>time</code> и <code>sleep</code> реализованы в <code>io.rs</code>, но
+      относятся к работе со временем — их каноническое место в библиотеке <code>время</code> (§7);
+      русские <code>пауза</code>/<code>ждать</code> — ключевые слова и в реестр не входят.
     </div>
   </section>
 
@@ -260,45 +318,65 @@
   <section class="kite-section" id="builtins-other">
     <h2>6. Встроенные: преобразования и коллекции</h2>
     <p>
-      Категория <code>Other</code>: 31 имя. По определению
+      Категория <code>Other</code>: <strong>60 имён, все вызываются</strong>. По определению
       <code>constants/builtins.rs</code> для них <code>is_builtin_function == false</code> — они
-      <strong>не</strong> считаются встроенными функциями формально, но многие исполняются как обычные
-      вызовы (реализация — <code>builtins/types.rs</code> и <code>builtins/array.rs</code>). Бейдж
+      <strong>не</strong> считаются встроенными функциями формально, но исполняются как обычные
+      вызовы (реализация — <code>builtins/array.rs</code> и <code>builtins/types.rs</code>). Бейдж
       <span class="kite-badge is-experimental">🧪</span> здесь означает «вызывается, но не входит в
-      <code>is_builtin_function</code>».
+      <code>is_builtin_function</code>», а не «может не работать».
     </p>
     <div class="kite-table">
       <table>
         <thead><tr><th>Имя (псевдонимы)</th><th>Сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
         <tbody>
-          <tr><td><code>цел</code> · <code>int</code> · <code>целое</code></td><td><code>(x) → цел</code></td><td>Приведение к целому.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>вещ</code> · <code>float</code> · <code>вещественное</code></td><td><code>(x) → вещ</code></td><td>Приведение к вещественному.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>строка</code> · <code>str</code></td><td><code>(x) → лит</code></td><td>Приведение к строке.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>лог</code> · <code>bool</code> · <code>логическое</code></td><td><code>(x) → лог</code></td><td>Приведение к логическому (truthiness).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>тип</code> · <code>type</code> · <code>typeof</code></td><td><code>(x) → лит</code></td><td>Строковое имя типа значения.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>массив</code></td><td><code>(…) → таб</code></td><td>Собрать массив из аргументов. Имена <code>таб</code>/<code>array</code> недоступны — ключевые слова (§1.1).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
           <tr><td><code>добавить</code> · <code>push</code> · <code>append</code></td><td><code>(массив, элемент) → таб</code></td><td>Добавить элемент (возвращает новый массив).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>извлечь</code> · <code>pop</code></td><td><code>(массив/опция) → элемент</code></td><td>Снять последний / развернуть опцию (реализация <code>удалить_последний</code> и <code>unwrap</code>).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>обратить</code> · <code>reverse</code></td><td><code>(массив/строка) → тот же тип</code></td><td>Развернуть (также <code>перевернуть</code>).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>удалить_последний</code> · <code>pop</code></td><td><code>(массив) → элемент</code></td><td>Снять последний элемент.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>первый</code> · <code>first</code> · <code>head</code></td><td><code>(массив) → элемент</code></td><td>Первый элемент.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>последний</code> · <code>last</code></td><td><code>(массив) → элемент</code></td><td>Последний элемент.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>сумма</code> · <code>sum</code></td><td><code>(массив) → число</code></td><td>Сумма элементов.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>среднее</code> · <code>avg</code> · <code>average</code></td><td><code>(массив) → вещ</code></td><td>Среднее арифметическое.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>обратить</code> · <code>reverse</code> · <code>перевернуть</code></td><td><code>(массив/строка) → тот же тип</code></td><td>Развернуть.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
           <tr><td><code>сортировать</code> · <code>sort</code></td><td><code>(массив) → таб</code></td><td>Сортировка по возрастанию.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
           <tr><td><code>содержит</code> · <code>contains</code></td><td><code>(массив/строка, x) → лог</code></td><td>Проверка вхождения.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>to_int</code> · <code>to_float</code> · <code>to_string</code> · <code>to_bool</code></td><td><code>(x)</code></td><td>Английские имена приведений: в phf есть, реализация распознаёт русские/короткие имена выше.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>размер</code> · <code>size</code></td><td><code>(коллекция) → цел</code></td><td>Размер коллекции (реализовано через <code>длин</code>).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>индекс</code> · <code>index_of</code></td><td><code>(массив, x) → цел</code></td><td>Индекс элемента.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>утв</code> · <code>assert</code></td><td>инструкция <code>утв …</code></td><td>Утверждение — инструкция языка (ключевое слово), не builtin-функция.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>ошибка</code> · <code>error</code></td><td><code>(сообщение)</code></td><td>Конструктор ошибки — как builtin не реализован.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>индекс</code> · <code>index_of</code></td><td><code>(массив/строка, x) → цел</code></td><td>Индекс элемента или подстроки, нумерация с&nbsp;1; 0 — не найдено.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>empty</code> · <code>is_empty</code></td><td><code>(коллекция/строка) → лог</code></td><td>Пусто? Русское <code>пусто</code> недоступно — ключевое слово (§1.1).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>целое</code> · <code>to_int</code></td><td><code>(x) → цел</code></td><td>Приведение к целому. <code>цел</code>/<code>int</code> — ключевые слова (§1.1).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>вещественное</code> · <code>to_float</code></td><td><code>(x) → вещ</code></td><td>Приведение к вещественному. <code>вещ</code>/<code>float</code> — ключевые слова.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>строка</code> · <code>to_string</code></td><td><code>(x) → лит</code></td><td>Приведение к строке. <code>лит</code>/<code>str</code> — ключевые слова.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>логическое</code> · <code>to_bool</code></td><td><code>(x) → лог</code></td><td>Приведение к логическому (истинность). <code>лог</code>/<code>bool</code> — ключевые слова.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>это_число</code> · <code>is_number</code></td><td><code>(x) → лог</code></td><td>Предикат типа.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>это_строка</code> · <code>is_string</code></td><td><code>(x) → лог</code></td><td>Предикат типа.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>это_массив</code> · <code>is_array</code></td><td><code>(x) → лог</code></td><td>Предикат типа.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>это_пусто</code> · <code>is_null</code></td><td><code>(x) → лог</code></td><td>Предикат «значение пусто».</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>тип</code> · <code>typeof</code> · <code>type_of</code></td><td><code>(x) → лит</code></td><td>Строковое имя типа значения (<code>тип(1) → "цел"</code>). Имя <code>type</code> — ключевое слово.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>ошибка</code> · <code>error</code></td><td><code>(сообщение [, вид]) → ошибка</code></td><td>Конструктор значения-ошибки; вид по умолчанию — <code>"ошибка"</code>.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>пара</code> · <code>pair</code></td><td><code>(a, b) → кортеж</code></td><td>Пара значений.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>тройка</code> · <code>triple</code></td><td><code>(a, b, c) → кортеж</code></td><td>Тройка значений.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>кортеж</code> · <code>tuple</code></td><td><code>(…) → кортеж</code></td><td>Кортеж произвольной длины.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>некоторое</code> · <code>some</code></td><td><code>(v) → опция</code></td><td>Опция со значением. Пустая опция <code>ничего</code>/<code>none</code> — ключевое слово (§1.1).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>есть</code> · <code>is_some</code></td><td><code>(опция) → лог</code></td><td>Опция содержит значение?</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>извлечь</code> · <code>unwrap</code></td><td><code>(опция) → значение</code></td><td>Развернуть опцию.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
         </tbody>
       </table>
     </div>
     <div class="kite-callout is-note">
-      <span class="kite-callout-title">Коллекции сверх phf</span>
-      В <code>array.rs</code> реализованы также имена, которых нет в phf-таблице:
-      <code>таб</code>/<code>массив</code>, <code>первый</code>/<code>first</code>,
+      <span class="kite-callout-title">Что изменилось</span>
+      Дореализованы: <code>индекс|index_of</code>, <code>ошибка|error</code>,
+      <code>to_int</code>/<code>to_float</code>/<code>to_string</code>/<code>to_bool</code>,
+      <code>type_of</code>. Зарегистрированы ранее работавшие, но отсутствовавшие в таблице имена:
+      <code>массив</code>, <code>первый</code>/<code>first</code>/<code>head</code>,
       <code>последний</code>/<code>last</code>, <code>сумма</code>/<code>sum</code>,
-      <code>среднее</code>/<code>avg</code>, <code>пусто</code>/<code>is_empty</code>. А в
-      <code>types.rs</code> — конструкторы <code>пара</code>, <code>тройка</code>, <code>кортеж</code>,
-      опции <code>некоторое</code>/<code>ничего</code>/<code>есть</code>/<code>извлечь</code> и предикаты
-      <code>это_число</code>/<code>это_строка</code>/<code>это_массив</code>/<code>это_пусто</code>.
-      Их формальная номенклатура и место в каталоге — предмет §11.
+      <code>среднее</code>/<code>avg</code>/<code>average</code>, <code>перевернуть</code>,
+      <code>empty</code>/<code>is_empty</code>, <code>целое</code>, <code>вещественное</code>,
+      <code>логическое</code>, предикаты <code>это_*</code>/<code>is_*</code>, конструкторы
+      <code>пара</code>/<code>тройка</code>/<code>кортеж</code> и опции
+      <code>некоторое</code>/<code>есть</code>/<code>извлечь</code>. Убрано из реестра как недостижимое:
+      <code>цел</code>, <code>int</code>, <code>вещ</code>, <code>float</code>, <code>str</code>,
+      <code>лог</code>, <code>bool</code>, <code>утв</code>, <code>assert</code> (§1.1). Диспетчер
+      обрабатывает также <code>таб</code>, <code>array</code>, <code>пусто</code>, <code>ничего</code>,
+      <code>none</code>, <code>type</code>, <code>лит</code> — но это ключевые слова, вызвать их нельзя,
+      поэтому в реестре их нет.
     </div>
   </section>
 
@@ -513,22 +591,22 @@
       <li><strong>Библиотека</strong> — всё, что требует ОС/сети/времени или образует связную предметную
         область. Подключается через <code>использовать</code>, версионируется по SemVer.</li>
     </ul>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Известная фрагментация (долг)</span>
-      Математика сейчас размазана по трём местам: phf-имена в <code>build.rs</code>, реализации в
-      <code>builtins/math.rs</code> и константы в <code>shared/src/constants/math.rs</code>. Из-за
-      этого phf-таблица и реальная реализация <strong>расходятся</strong>: 19 Math-имён и 15
-      String-имён зарегистрированы, но не исполняются, а часть работающих русских имён (например,
-      <code>минимум</code>, <code>округлить</code>, <code>случайное</code>) в таблице отсутствует.
-      Унификация — привести phf-таблицу к списку фактически реализованных имён (единый источник правды)
-      либо дореализовать недостающие армы.
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Фрагментация исходников (остаточный долг)</span>
+      Математика по-прежнему живёт в трёх местах: имена в <code>build.rs</code>, реализации в
+      <code>builtins/math.rs</code>, константы в <code>shared/src/constants/math.rs</code>.
+      <strong>Но расхождение таблицы и реализации устранено</strong>: реестр приведён к правилу
+      «диспетчеризуемые имена минус ключевые слова» (§1.1) и удерживается инвариантными тестами.
+      Остаётся физическая раскладка по файлам — это вопрос организации кода, а не правдивости каталога.
     </div>
     <h3>11.2 Правило доступности (нормативное)</h3>
     <p>
       Имя считается <span class="kite-badge is-available">✅ Доступно</span> в каталоге только если оно
-      реально вызывается. Для builtin это значит: <code>is_builtin_function</code> истинно
-      <strong>и</strong> есть соответствующий арм в <code>Builtins::try_call*</code>. Регистрация в phf
-      без реализации — <span class="kite-badge is-proposed">📋 Предложено</span>. Изменение builtins или
+      реально вызывается: имя есть в <code>BUILTINS</code> <strong>и</strong> есть соответствующий арм в
+      <code>Builtins::try_call*</code>. Обе стороны этого равенства проверяются тестами
+      (§1), поэтому «зарегистрировано, но не реализовано» больше не является допустимым состоянием —
+      это провал сборки, а не бейдж <span class="kite-badge is-proposed">📋</span>. Регистрация имени,
+      совпадающего с ключевым словом языка, <strong>запрещена</strong> (§1.1). Изменение builtins или
       библиотек без обновления этого каталога — блокер ревью (принцип KITE&nbsp;0 «документация не врёт»).
     </p>
     <h3>11.3 Версионирование библиотек</h3>
@@ -548,11 +626,12 @@
         <thead><tr><th>Область</th><th>Что добавить</th><th>Статус</th></tr></thead>
         <tbody>
           <tr><td>Математика для школы</td><td><code>НОД</code>, <code>НОК</code>, проверка простоты, факторизация.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>Гиперболические и котангенсы</td><td>Дореализовать <code>sh/ch/th</code>, <code>ctg/cot</code>, <code>arcctg</code> (имена уже в phf).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>Целая/дробная часть</td><td>Дореализовать <code>цел_часть</code>, <code>frac</code>/<code>дробь</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Гиперболические и котангенсы</td><td><code>sh/ch/th</code>, <code>ctg/cot</code>, <code>arcctg/arccot</code> — реализованы (§3).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Целая/дробная часть</td><td><code>цел_часть</code>/<code>trunc</code>, <code>frac</code>/<code>дробь</code> — реализованы (§3).</td><td><span class="kite-badge is-available">✅</span></td></tr>
           <tr><td>Конвейер коллекций</td><td><code>отобразить</code>/map, <code>отфильтровать</code>/filter, <code>свернуть</code>/reduce для <code>|&gt;</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>Строки</td><td>Дореализовать <code>слева</code>/<code>справа</code>, <code>повторить</code>; выровнять псевдонимы с phf.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>Унификация номенклатуры</td><td>Свести phf-таблицу и реализацию к одному источнику правды (см.&nbsp;§11.1).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Строки</td><td><code>слева</code>/<code>справа</code>/<code>повторить</code> реализованы, псевдонимы выровнены с реестром (§4).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Унификация номенклатуры</td><td>Реестр и реализация сведены к одному правилу и удерживаются инвариантными тестами (§1.1, §11.1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td>Достижимые синонимы для ключевых слов</td><td>Для каждого удалённого keyword-имени существует вызываемый псевдоним; проверить полноту покрытия и зафиксировать в KITE&nbsp;12 список коллизий.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -568,11 +647,14 @@
         (<code>is_builtin_function</code>, <code>builtin_category</code>, <code>get_all_builtin_names</code>).</li>
       <li><strong>Реализации builtins</strong>: <code>interpreter/src/interpreter/builtins/{math,string,array,io,types}.rs</code>
         (диспетчер <code>Builtins::try_call</code> в <code>builtins/mod.rs</code>).</li>
+      <li><strong>Инварианты реестра</strong> (реестр ↔ диспетчер ↔ ключевые слова):
+        <code>interpreter/src/interpreter/builtins/tests.rs</code>; золотой снимок реестра —
+        <code>shared/tests/golden/builtins.snapshot</code> (188 строк, из них 128 с
+        <code>is_builtin=true</code> — категории Math/String/Io).</li>
+      <li><strong>Ключевые слова языка</strong> (источник коллизий, §1.1): таблица <code>KEYWORDS</code>
+        в <code>shared/build.rs</code>; грамматика — <a href="./KITE-0012-grammar.html">KITE&nbsp;12</a>.</li>
       <li><strong>Библиотеки</strong>: <code>shared/src/libraries/{time,syscall,files,net}/</code>;
         реестр — <code>libraries/registry.rs</code>.</li>
-      <li><strong>Сверка честности</strong>: аудит W0 (<code>.local/superpowers/plans/2026-07-22-W0-spec-truth-audit.md</code>).</li>
-      <li><strong>Генерация каталога</strong>: throwaway Bun-скрипты в <code>.local/kite0016/</code>
-        (парсинг <code>LibFunctionDef::new</code> и кросс-сверка phf ↔ реализация).</li>
     </ul>
     <div class="kite-callout is-note">
       <span class="kite-callout-title">Связанные документы</span>
