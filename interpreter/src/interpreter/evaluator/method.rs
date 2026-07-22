@@ -22,6 +22,18 @@ impl ExprEvaluator {
             return Self::eval_super_method_call(method, args, env);
         }
 
+        // [KITE-0002] Оператор раннего возврата `?`.
+        //
+        // Парсер десугарит `expr?` в `expr.__propagate__()`. Семантика:
+        //   * Ok(v)  / Некоторое(v) / не-null-значение  → развернуть до `v`;
+        //   * Err(e) / Ничего / null                    → распространить
+        //     (ранний возврат объемлющего алгоритма с этим значением);
+        //   * иное                                       → ясная ошибка.
+        if method == "__propagate__" && args.is_empty() {
+            let value = Self::evaluate(object, env)?;
+            return Self::eval_propagate(value);
+        }
+
         // Сначала проверяем, является ли object идентификатором библиотеки или модуля
         // Например: Сеть.http_получить("url") или МояБиблиотека.квадрат(5)
         if let Expr::Variable(lib_name) = object {
@@ -169,6 +181,10 @@ impl ExprEvaluator {
         let return_value = match result {
             Ok(crate::interpreter::ControlFlow::Return(v)) => v,
             Ok(_) => Some(env.get_result_value().cloned().unwrap_or(Value::Null)),
+            // [KITE-0002] Сигнал оператора `?`: ранний возврат этого значения.
+            Err(e) if e.is_propagation() => {
+                Some(*e.propagate.expect("propagation carries a value"))
+            }
             Err(e) => {
                 env.pop_frame();
                 return Err(e);
@@ -177,6 +193,37 @@ impl ExprEvaluator {
 
         env.pop_frame();
         Ok(return_value.unwrap_or(Value::Null))
+    }
+
+    /// [KITE-0002] Реализует семантику оператора `?` (ранний возврат ошибки).
+    ///
+    /// * `Result::Ok(v)` / `Option::Some(v)` → развернуть до `v`.
+    /// * `Result::Err(e)` → распространить `Err(e)` (ранний возврат).
+    /// * `Option::None` / `Null` → распространить `Пусто` (ранний возврат).
+    /// * `Value::Error{..}` → распространить само значение-ошибку.
+    /// * любое другое значение — не распространяемо и не разворачиваемо →
+    ///   ясная ошибка выполнения (не паника).
+    pub(crate) fn eval_propagate(value: Value) -> RuntimeResult<Value> {
+        match value {
+            Value::Result(res) => match *res {
+                Ok(v) => Ok(v),
+                Err(e) => Err(RuntimeError::propagation(e)),
+            },
+            Value::Option(opt) => match *opt {
+                Some(v) => Ok(v),
+                None => Err(RuntimeError::propagation(Value::Null)),
+            },
+            Value::Null => Err(RuntimeError::propagation(Value::Null)),
+            err @ Value::Error { .. } => Err(RuntimeError::propagation(err)),
+            other => Err(RuntimeError::new(
+                format!(
+                    "Оператор '?' применим только к результату (рез), \
+                     необязательному значению или ошибке, а не к {}",
+                    other.type_name_ru()
+                ),
+                RuntimeErrorKind::TypeMismatch,
+            )),
+        }
     }
 
     /// Находит имя класса по TypeId.

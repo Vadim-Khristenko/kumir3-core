@@ -133,6 +133,7 @@ impl Parser {
                 | Token::StringType
                 | Token::ArrayType
                 | Token::AutoType
+                | Token::AnyType
                 | Token::PointerType => {
                     globals.push(self.parse_var_decl_global()?);
                 }
@@ -553,6 +554,7 @@ impl Parser {
                 | Token::StringType
                 | Token::ArrayType
                 | Token::AutoType
+                | Token::AnyType
                 | Token::PointerType => {
                     body.push(self.parse_var_decl_global()?);
                 }

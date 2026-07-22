@@ -637,6 +637,7 @@ impl Parser {
                 | Token::StringType
                 | Token::ArrayType
                 | Token::AutoType
+                | Token::AnyType
                 | Token::PointerType
                 | Token::Alg
                 | Token::Import
@@ -676,6 +677,7 @@ impl Parser {
                 | Token::StringType
                 | Token::ArrayType
                 | Token::AutoType
+                | Token::AnyType
                 | Token::PointerType
         )
     }

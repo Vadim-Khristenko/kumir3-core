@@ -382,6 +382,48 @@ fn trig_tg_ctg_basic() {
 }
 
 #[test]
+fn int_div_basic() {
+    // Integer quotient, truncated toward zero.
+    let r = MathOperators::int_div(Value::from(7i32), Value::from(2i32), false).unwrap();
+    assert_eq!(r, Value::from(3i32));
+
+    let r = MathOperators::int_div(Value::from(20i64), Value::from(5i64), false).unwrap();
+    assert_eq!(r, Value::from(4i64));
+}
+
+#[test]
+fn int_div_negative_truncates_toward_zero() {
+    let r = MathOperators::int_div(Value::from(-7i64), Value::from(2i64), false).unwrap();
+    assert_eq!(r, Value::from(-3i64));
+}
+
+#[test]
+fn int_div_matches_mod_identity() {
+    // a == (a int_div b) * b + (a modulus b)
+    for (a, b) in [(17i64, 4i64), (-17, 4), (17, -4), (100, 7)] {
+        let q = MathOperators::int_div(Value::from(a), Value::from(b), false).unwrap();
+        let r = MathOperators::modulus(Value::from(a), Value::from(b), false).unwrap();
+        let q = if let Value::Number(Number::I64(v)) = q {
+            v
+        } else {
+            panic!("expected I64 quotient");
+        };
+        let r = if let Value::Number(Number::I64(v)) = r {
+            v
+        } else {
+            panic!("expected I64 remainder");
+        };
+        assert_eq!(q * b + r, a, "identity failed for {a}, {b}");
+    }
+}
+
+#[test]
+fn int_div_by_zero_errors() {
+    let e = MathOperators::int_div(Value::from(5i64), Value::from(0i64), false);
+    assert!(e.is_err());
+}
+
+#[test]
 fn abs_basic() {
     // Integer
     let r = MathOperators::abs(Value::from(-10)).unwrap();

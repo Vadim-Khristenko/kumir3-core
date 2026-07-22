@@ -61,6 +61,43 @@ fn char_binary_mod_percent() {
 }
 
 #[test]
+fn char_binary_intdiv_keyword() {
+    // `див` is the integer-division operator (keyword lexed to Token::IntDiv):
+    // the integer quotient, truncated toward zero (mirrors Rust `/` on ints).
+    assert_eq!(eval("7 див 2").unwrap(), Value::Number(Number::I64(3)));
+    assert_eq!(eval("10 див 3").unwrap(), Value::Number(Number::I64(3)));
+    assert_eq!(eval("20 див 5").unwrap(), Value::Number(Number::I64(4)));
+}
+
+#[test]
+fn char_binary_intdiv_mod_identity() {
+    // Identity: (a див b) * b + (a мод b) == a, for a few (a, b) pairs.
+    for (a, b) in [(7_i64, 2_i64), (10, 3), (20, 5), (17, 4), (100, 7)] {
+        let q = eval(&format!("{a} див {b}")).unwrap();
+        let r = eval(&format!("{a} мод {b}")).unwrap();
+        let (q, r) = match (q, r) {
+            (Value::Number(Number::I64(q)), Value::Number(Number::I64(r))) => (q, r),
+            other => panic!("expected I64 quotient/remainder, got {:?}", other),
+        };
+        assert_eq!(q * b + r, a, "identity failed for {a} див/мод {b}");
+    }
+}
+
+#[test]
+fn char_binary_intdiv_negative_truncates_toward_zero() {
+    // Convention implemented: truncation toward zero (Rust `/`).
+    // -7 див 2 == -3 (not floor -4).
+    assert_eq!(eval("-7 див 2").unwrap(), Value::Number(Number::I64(-3)));
+    assert_eq!(eval("7 див -2").unwrap(), Value::Number(Number::I64(-3)));
+}
+
+#[test]
+fn char_binary_intdiv_by_zero_is_error() {
+    // Division by zero must be a clear runtime error, never a panic.
+    assert!(eval("5 див 0").is_err());
+}
+
+#[test]
 fn char_binary_power() {
     let v = eval("2 ** 3").unwrap();
     match v {
@@ -226,6 +263,61 @@ fn char_typecheck_mismatch_false() {
 }
 
 // =============================================================================
+//                    ANY / DYNAMIC TYPE  (любой — the top type)
+// =============================================================================
+//
+// `любой` is the surface spelling for the top type (TypeKind::Any). Everything
+// is-a `любой`, so `x это любой` is always true, and `x как любой` is identity.
+
+#[test]
+fn char_typecheck_any_int_true() {
+    assert_eq!(eval("5 это любой").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_typecheck_any_string_true() {
+    assert_eq!(eval("\"x\" это любой").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_typecheck_any_bool_true() {
+    assert_eq!(eval("да это любой").unwrap(), Value::Boolean(true));
+}
+
+#[test]
+fn char_cast_any_int_identity() {
+    // `значение как любой` returns the value unchanged (never errors).
+    assert_eq!(eval("5 как любой").unwrap(), Value::Number(Number::I64(5)));
+}
+
+#[test]
+fn char_cast_any_string_identity() {
+    assert_eq!(
+        eval("\"hi\" как любой").unwrap(),
+        Value::String("hi".to_string())
+    );
+}
+
+#[test]
+fn char_any_variable_holds_int_then_string() {
+    // A `любой` variable (type-first declaration, like `цел x`) can hold an int
+    // then a string across assignments.
+    let prog = "\
+алг Тест
+нач
+    любой x
+    x := 5
+    вывод x
+    x := \"привет\"
+    вывод x
+кон
+";
+    let out = run_and_get_output(prog).unwrap();
+    assert!(out.contains('5'), "got {:?}", out);
+    assert!(out.contains("привет"), "got {:?}", out);
+}
+
+// =============================================================================
 //                    TRUTHINESS  (если <val> то ... иначе ... все)
 // =============================================================================
 
@@ -292,4 +384,211 @@ fn char_default_string() {
 fn char_default_char() {
     // CAPTURED: default символьный (char) is the NUL character '\0'.
     assert_eq!(default_output("сим x"), "\0\n");
+}
+
+// =============================================================================
+//   DEFECT FIXES (W0) — corrected behaviors for crashy / silently-wrong nodes
+// =============================================================================
+//
+// Each test below pins the CORRECTED behavior of a defect that previously
+// crashed (runtime "not implemented" / "method not found") or silently
+// produced wrong values. See .local/.../W0-spec-truth-audit.md.
+
+// -----------------------------------------------------------------------------
+//   DEFECT 1 — `?` error-propagation operator (`__propagate__`)
+// -----------------------------------------------------------------------------
+
+// `?` on a present Option (`некоторое(v)`) unwraps to the inner value.
+#[test]
+fn char_propagate_unwraps_some() {
+    // `?` on a present Option does NOT fire early-return; it unwraps to 7,
+    // which is then printed normally.
+    let prog = "алг Тест\nнач\n    цел y\n    y := некоторое(7)?\n    вывод y\nкон\n";
+    assert_eq!(run_and_get_output(prog).unwrap().trim(), "7");
+}
+
+// `?` on `пусто` (Null) propagates: the enclosing algorithm returns early
+// (before the `вывод`), so nothing is printed.
+#[test]
+fn char_propagate_null_short_circuits_algorithm() {
+    let prog = "алг Тест\nнач\n    цел y\n    y := пусто?\n    вывод \"после\"\nкон\n";
+    let out = run_and_get_output(prog).unwrap();
+    assert!(
+        !out.contains("после"),
+        "propagation must short-circuit before the print, got {:?}",
+        out
+    );
+}
+
+// `?` on `пусто` exercises the early-return path from the enclosing algorithm
+// and must never crash.
+#[test]
+fn char_propagate_null_does_not_crash() {
+    let prog = "алг Тест\nнач\n    цел y\n    y := пусто?\nкон\n";
+    assert!(
+        run_and_get_output(prog).is_ok(),
+        "propagation must not crash"
+    );
+}
+
+// `?` on a plain non-propagatable, non-unwrappable value is a CLEAR error
+// (TypeMismatch), not a panic and not "method not found".
+#[test]
+fn char_propagate_on_plain_value_is_clear_error() {
+    let err = eval("5?").unwrap_err();
+    assert_eq!(err.kind, crate::interpreter::RuntimeErrorKind::TypeMismatch);
+    assert!(
+        err.message.contains("Оператор '?'"),
+        "got {:?}",
+        err.message
+    );
+}
+
+// -----------------------------------------------------------------------------
+//   DEFECT 2 — constructor errors must surface (no more `let _ =`)
+// -----------------------------------------------------------------------------
+
+// A constructor body that raises a runtime error must make `новый` fail,
+// instead of the error being silently swallowed.
+#[test]
+fn char_constructor_error_propagates() {
+    let prog = "\
+класс Тчк
+цел x
+конструктор()
+нач
+    x := 1 / \"строка\"
+кон
+кон
+алг Тест
+нач
+    p := новый Тчк()
+кон
+";
+    // The failing constructor body must surface as an error from `новый`.
+    assert!(
+        run_and_get_output(prog).is_err(),
+        "constructor error must propagate out of `новый`"
+    );
+
+    // Control: the identical class with a valid constructor body succeeds,
+    // proving the error above comes from the body (not from parsing).
+    let ok_prog = "\
+класс Тчк
+цел x
+конструктор()
+нач
+    x := 1
+кон
+кон
+алг Тест
+нач
+    p := новый Тчк()
+кон
+";
+    assert!(
+        run_and_get_output(ok_prog).is_ok(),
+        "valid constructor must succeed"
+    );
+}
+
+// -----------------------------------------------------------------------------
+//   DEFECT 3 — `ждать` / `запустить` in expression position (sync passthrough)
+// -----------------------------------------------------------------------------
+
+#[test]
+fn char_await_in_expression_position() {
+    // KITE-3 §6 shape: `y := ждать <expr>` evaluates synchronously.
+    let prog = "алг Тест\nнач\n    цел y\n    y := ждать (40 + 2)\n    вывод y\nкон\n";
+    assert_eq!(run_and_get_output(prog).unwrap().trim(), "42");
+}
+
+#[test]
+fn char_spawn_in_expression_position() {
+    // `запустить <expr>` in value position does not crash; passthrough value.
+    let v = eval("запустить (1 + 2)").unwrap();
+    assert_eq!(v, Value::Number(Number::I64(3)));
+}
+
+// -----------------------------------------------------------------------------
+//   DEFECT 4 — tuple literal `(a, b)` evaluates to Value::Tuple
+// -----------------------------------------------------------------------------
+
+#[test]
+fn char_tuple_literal_evaluates() {
+    let v = eval("(1, 2, 3)").unwrap();
+    assert_eq!(
+        v,
+        Value::Tuple(vec![
+            Value::Number(Number::I64(1)),
+            Value::Number(Number::I64(2)),
+            Value::Number(Number::I64(3)),
+        ])
+    );
+}
+
+#[test]
+fn char_tuple_literal_evaluates_elements() {
+    // Non-literal elements are evaluated, not dropped.
+    let v = eval("(1 + 1, 2 * 3)").unwrap();
+    assert_eq!(
+        v,
+        Value::Tuple(vec![
+            Value::Number(Number::I64(2)),
+            Value::Number(Number::I64(6)),
+        ])
+    );
+}
+
+// -----------------------------------------------------------------------------
+//   DEFECT 5 — array literal evaluates each element (no more Undefined)
+// -----------------------------------------------------------------------------
+
+#[test]
+fn char_array_literal_evaluates_nonliteral_elements() {
+    // Previously `[x, y+1]` degraded to `[Undefined, Undefined]`.
+    let prog = "алг Тест\nнач\n    цел x\n    x := 10\n    вывод [x, x + 1, x * 2]\nкон\n";
+    let out = run_and_get_output(prog).unwrap();
+    assert!(out.contains("10"), "got {:?}", out);
+    assert!(out.contains("11"), "got {:?}", out);
+    assert!(out.contains("20"), "got {:?}", out);
+    assert!(
+        !out.to_lowercase().contains("undefined") && !out.contains("неопред"),
+        "array must not contain Undefined placeholders, got {:?}",
+        out
+    );
+}
+
+#[test]
+fn char_array_literal_of_literals_still_works() {
+    let v = eval("[1, 2, 3]").unwrap();
+    assert_eq!(
+        v,
+        Value::Array(vec![
+            Value::Number(Number::I64(1)),
+            Value::Number(Number::I64(2)),
+            Value::Number(Number::I64(3)),
+        ])
+    );
+}
+
+// -----------------------------------------------------------------------------
+//   DEFECT 6 — multidimensional indexing `arr[i, j]` is a CLEAN error
+// -----------------------------------------------------------------------------
+
+#[test]
+fn char_multidim_index_is_clean_not_implemented_error() {
+    // Build a 1-D array, then index it with two subscripts `a[1, 2]`.
+    // Multidimensional indexing is intentionally a CLEAR NotImplemented error,
+    // never a panic.
+    let prog = "алг Тест\nнач\n    a := [10, 20, 30]\n    вывод a[1, 2]\nкон\n";
+    let err = run_and_get_output(prog).unwrap_err();
+    assert_eq!(
+        err.kind,
+        crate::interpreter::RuntimeErrorKind::NotImplemented,
+        "got {:?}: {}",
+        err.kind,
+        err.message
+    );
+    assert!(err.message.contains("многомерные"), "got {:?}", err.message);
 }

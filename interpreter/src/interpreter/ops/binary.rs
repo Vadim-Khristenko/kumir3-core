@@ -23,6 +23,8 @@ impl TypeOps {
                 .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
             Token::Slash => MathOperators::div(left, right, false)
                 .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
+            Token::IntDiv => MathOperators::int_div(left, right, false)
+                .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
             Token::Percent => MathOperators::modulus(left, right, false)
                 .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other)),
             Token::Power => MathOperators::pow(left, right, false)

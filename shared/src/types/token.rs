@@ -39,6 +39,7 @@ pub enum Token {
     PointerType,  // указатель — pointer to a value/memory cell
     EnumType,     // перечисление — enum type declaration
     AutoType,     // авто     — compiler-driven type inference
+    AnyType,      // любой    — dynamic/any (top) type
     NoneType,     // пустота  — void/absence of value
     OptionalType, // необязательно — optional value container
 
@@ -229,7 +230,8 @@ pub enum Token {
     Plus,    // +        — addition
     Minus,   // -        — subtraction
     Star,    // *        — multiplication
-    Slash,   // /        — division
+    Slash,   // /        — division (floating-point)
+    IntDiv,  // див      — integer division (integer quotient)
     Percent, // %        — modulo
     Power,   // **       — exponentiation
 

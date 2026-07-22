@@ -159,6 +159,28 @@ impl Interpreter {
         self.env.set_debug_mode(enabled);
     }
 
+    /// [W0] Включает/выключает строгий режим.
+    ///
+    /// В строгом режиме присваивание ранее необъявленной переменной
+    /// (например, опечатка `хyz := 5`) становится ошибкой выполнения вместо
+    /// молчаливого создания переменной. По умолчанию выключен — поведение и
+    /// вывод существующих программ не меняются.
+    pub fn set_strict(&mut self, enabled: bool) {
+        self.env.set_strict(enabled);
+    }
+
+    /// [W0] Проверяет, включён ли строгий режим.
+    pub fn is_strict(&self) -> bool {
+        self.env.is_strict()
+    }
+
+    /// [W0] Возвращает предупреждения, собранные во время выполнения
+    /// (например, об использовании необъявленных переменных). Они НЕ попадают
+    /// в вывод программы (`вывод`/stdout).
+    pub fn warnings(&self) -> &[String] {
+        self.env.warnings()
+    }
+
     /// Возвращает ссылку на среду выполнения.
     pub fn environment(&self) -> &Environment {
         &self.env
@@ -1165,6 +1187,130 @@ mod tests {
             "вывод: {}",
             interpreter.get_output()
         );
+    }
+
+    // =========================================================================
+    //         [W0] Диагностика необъявленных переменных + строгий режим
+    // =========================================================================
+
+    #[test]
+    fn test_undeclared_lenient_default_unchanged_but_warns() {
+        // Мягкий режим (по умолчанию): присваивание необъявленной переменной
+        // ПРЕЖНЕЕ поведение — переменная создаётся, вывод не меняется, но в
+        // коллекторе предупреждений появляется запись с её именем.
+        let source = r#"
+алг Тест
+нач
+    хyz := 5
+    вывод хyz
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(
+            interpreter.get_output().contains("5"),
+            "вывод должен остаться прежним: {}",
+            interpreter.get_output()
+        );
+        let warnings = interpreter.warnings();
+        assert_eq!(warnings.len(), 1, "ожидалось ровно одно предупреждение");
+        assert!(
+            warnings[0].contains("хyz"),
+            "предупреждение должно называть переменную: {}",
+            warnings[0]
+        );
+    }
+
+    #[test]
+    fn test_declared_variable_no_warning() {
+        // Объявленная переменная (`цел x`) с последующим присваиванием —
+        // никаких предупреждений.
+        let source = r#"
+алг Тест
+нач
+    цел x
+    x := 5
+    вывод x
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert!(interpreter.get_output().contains("5"));
+        assert_eq!(
+            interpreter.warnings().len(),
+            0,
+            "объявленная переменная не должна давать предупреждений: {:?}",
+            interpreter.warnings()
+        );
+    }
+
+    #[test]
+    fn test_loop_var_and_result_no_warning() {
+        // Переменная цикла `для i` и возврат через `знач` — легитимные неявные
+        // имена, не должны считаться необъявленными.
+        let source = r#"
+алг цел Сумма
+нач
+    цел с
+    с := 0
+    нц для i от 1 до 3
+        с := с + i
+    кц
+    знач := с
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.run(source).unwrap();
+        assert_eq!(
+            interpreter.warnings().len(),
+            0,
+            "переменная цикла и знач не должны предупреждать: {:?}",
+            interpreter.warnings()
+        );
+    }
+
+    #[test]
+    fn test_strict_mode_errors_on_undeclared() {
+        // Строгий режим: присваивание необъявленной переменной — ошибка (Err),
+        // а не паника и не молчаливое создание.
+        let source = r#"
+алг Тест
+нач
+    хyz := 5
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.set_strict(true);
+        let err = interpreter.run(source).unwrap_err();
+        assert_eq!(err.kind, RuntimeErrorKind::UndefinedVariable);
+        assert!(
+            err.message.contains("хyz"),
+            "ошибка должна называть переменную: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn test_strict_mode_ok_for_declared() {
+        // Строгий режим не мешает объявленным переменным и параметрам.
+        let source = r#"
+алг цел Квадрат(арг цел x)
+нач
+    цел r
+    r := x * x
+    знач := r
+кон
+
+алг Тест
+нач
+    вывод Квадрат(6)
+кон
+"#;
+        let mut interpreter = Interpreter::new();
+        interpreter.set_strict(true);
+        interpreter.run(source).unwrap();
+        assert!(interpreter.get_output().contains("36"));
+        assert_eq!(interpreter.warnings().len(), 0);
     }
 
     #[test]

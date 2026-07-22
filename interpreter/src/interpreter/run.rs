@@ -127,6 +127,8 @@ impl Interpreter {
         match result {
             Ok(ControlFlow::Return(value)) => Ok(value.unwrap_or(Value::Null)),
             Ok(_) => Ok(return_value.unwrap_or(Value::Null)),
+            // [KITE-0002] Сигнал оператора `?`: ранний возврат этого значения.
+            Err(e) if e.is_propagation() => Ok(*e.propagate.expect("propagation carries a value")),
             Err(e) => Err(e),
         }
     }

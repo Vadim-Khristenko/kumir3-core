@@ -78,15 +78,25 @@ impl ExprEvaluator {
                 env.define_local(name, value);
             }
 
-            // Выполняем тело конструктора
-            let _ = super::super::executor::Executor::execute_stmts(
+            // Выполняем тело конструктора. Ошибка тела конструктора = ошибка
+            // выражения `новый` (её нельзя молча проглатывать — иначе объект
+            // «наполовину сконструирован»). Кадр обязательно снимаем.
+            let result = super::super::executor::Executor::execute_stmts(
                 constructor.algorithm.body.as_deref().unwrap_or(&[]),
                 env,
             );
 
-            // Получаем обновлённый объект
+            // Получаем обновлённый объект (до снятия кадра — `это` живёт в кадре).
             let updated_obj = env.get_this().cloned().unwrap_or(obj);
             env.pop_frame();
+
+            match result {
+                Ok(_) => {}
+                // [KITE-0002] Оператор `?` в теле конструктора: ранний возврат
+                // конструктора (значением становится сконструированный объект).
+                Err(e) if e.is_propagation() => {}
+                Err(e) => return Err(e),
+            }
 
             return Ok(updated_obj);
         }

@@ -27,6 +27,10 @@ pub struct Cli {
     #[arg(short, long)]
     pub debug: bool,
 
+    /// Строгий режим: присваивание необъявленной переменной — ошибка
+    #[arg(long, visible_alias = "строгий")]
+    pub strict: bool,
+
     /// Измерять время выполнения
     #[arg(short, long)]
     pub time: bool,

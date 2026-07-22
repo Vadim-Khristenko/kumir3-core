@@ -637,17 +637,15 @@ impl Parser {
 
     /// Parses `[a, b, c]` — array literal.
     ///
-    /// When all elements are compile-time literals, produces
-    /// `Expr::Literal(Value::Array(...))`.  Otherwise produces
-    /// a `Value::Array` with `Value::Undefined` placeholders
-    /// for runtime-computed elements.
+    /// Produces `Expr::ArrayLiteral`, carrying each element as an expression so
+    /// the interpreter evaluates them at runtime. (Previously non-literal
+    /// elements were silently lowered to `Value::Undefined` — a footgun.)
     fn parse_array_literal(&mut self) -> ParseResult<Expr> {
         self.advance(); // consume `[`
         let elements = self.comma_sep(&Token::RBracket, |p| p.parse_expr())?;
         self.expect(&Token::RBracket, "]")?;
 
-        let values: Vec<Value> = elements.into_iter().map(expr_to_value).collect();
-        Ok(Expr::Literal(Value::Array(values)))
+        Ok(Expr::ArrayLiteral(elements))
     }
 
     // =========================================================================
@@ -890,21 +888,5 @@ impl Parser {
         };
         let _ = self.match_token(&Token::RParen);
         msg
-    }
-}
-
-// =============================================================================
-//         SECTION: UTILITY FUNCTIONS
-// =============================================================================
-
-/// Best-effort conversion of `Expr` → `Value` for compile-time array literals.
-///
-/// Returns `Value::Undefined` for non-literal expressions (these will
-/// be evaluated at runtime by the interpreter).
-fn expr_to_value(expr: Expr) -> Value {
-    match expr {
-        Expr::Literal(v) => v,
-        Expr::None => Value::Null,
-        _ => Value::Undefined,
     }
 }

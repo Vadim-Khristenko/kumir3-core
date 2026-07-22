@@ -226,6 +226,35 @@ impl ExprEvaluator {
                 }
             }
 
+            // [KITE-0002] Литерал массива `[a, b, c]` → Value::Array.
+            // Каждый элемент вычисляется штатным вычислителем (ранее не-литералы
+            // молча превращались в Undefined на этапе разбора).
+            Expr::ArrayLiteral(elems) => {
+                let values = elems
+                    .iter()
+                    .map(|e| Self::evaluate(e, env))
+                    .collect::<RuntimeResult<Vec<_>>>()?;
+                Ok(Value::Array(values))
+            }
+
+            // [KITE-0002] Кортежный литерал `(a, b, c)` → Value::Tuple.
+            // Каждый элемент вычисляется штатным вычислителем выражений.
+            Expr::TupleExpr(elems) => {
+                let values = elems
+                    .iter()
+                    .map(|e| Self::evaluate(e, env))
+                    .collect::<RuntimeResult<Vec<_>>>()?;
+                Ok(Value::Tuple(values))
+            }
+
+            // [KITE-0003] Async в позиции выражения — синхронный passthrough.
+            // Модель асинхронности Кумира сейчас упрощена/кооперативна: `ждать`
+            // и `запустить` просто вычисляют вложенное выражение синхронно и
+            // отдают его значение. Это делает работоспособным пример KITE-3 §6
+            // (`знач := ждать f()`) и снимает падение `запустить` в выражении.
+            Expr::Await(inner) => Self::evaluate(inner, env),
+            Expr::Spawn(inner) => Self::evaluate(inner, env),
+
             // Все остальные выражения (не реализованы)
             _ => Err(RuntimeError::not_implemented("данное выражение")),
         }

@@ -88,6 +88,7 @@ impl Parser {
             | Token::StringType
             | Token::ArrayType
             | Token::PointerType
+            | Token::AnyType
             | Token::OptionalType => self.parse_var_decl(),
 
             // ── Auto-declaration: авто x := expr ────────────────────

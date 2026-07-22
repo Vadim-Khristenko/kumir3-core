@@ -232,6 +232,29 @@ impl MathOperators {
         }
     }
 
+    /// [STABLE] Performs integer division (integer quotient).
+    ///
+    /// The counterpart to [`modulus`](Self::modulus): both operate on integers
+    /// only and truncate toward zero, so the identity
+    /// `a == (a int_div b) * b + (a modulus b)` holds.
+    ///
+    /// # Arguments
+    /// * `a` - Dividend
+    /// * `b` - Divisor (must not be zero)
+    /// * `fo_e` - If true, overflow causes error; if false, auto-widens type.
+    ///
+    /// # Returns
+    /// * `Ok(Value)` - Integer quotient
+    /// * `Err(String)` - Error message (division by zero, type mismatch)
+    pub fn int_div(a: Value, b: Value, fo_e: bool) -> Result<Value, String> {
+        match (a, b) {
+            (Value::Number(na), Value::Number(nb)) => Self::num_int_div(na, nb, fo_e)
+                .map(Value::Number)
+                .map_err(|e| e.msg()),
+            _ => Err(MathErr::TypeMismatch("операция целочисленного деления").msg()),
+        }
+    }
+
     /// [STABLE] Performs exponentiation.
     ///
     /// # Arguments
@@ -841,6 +864,34 @@ impl MathOperators {
             (U64(x), U64(y)) => Ok(U64(x % y)),
             (U32(x), U32(y)) => Ok(U32(x % y)),
             _ => Err(MathErr::TypeMismatch("остаток только для целых")),
+        }
+    }
+
+    /// Internal integer division (integer quotient).
+    ///
+    /// Mirrors [`num_mod`](Self::num_mod): integer-only, truncating toward zero
+    /// (Rust `/`), so `a == (a / b) * b + (a % b)`.
+    ///
+    /// # Arguments
+    /// * `a` - Dividend
+    /// * `b` - Divisor (must not be zero)
+    /// * `_fo_e` - Overflow flag (unused; kept for signature parity with siblings)
+    ///
+    /// # Returns
+    /// * `Result<Number, MathErr>` - Integer quotient or error
+    fn num_int_div(a: Number, b: Number, _fo_e: bool) -> Result<Number, MathErr> {
+        use self::Number::*;
+        if Self::is_zero_num(&b) {
+            return Err(MathErr::DivisionByZero);
+        }
+        match (a, b) {
+            (I64(x), I64(y)) => Ok(I64(x / y)),
+            (I32(x), I32(y)) => Ok(I32(x / y)),
+            (U64(x), U64(y)) => Ok(U64(x / y)),
+            (U32(x), U32(y)) => Ok(U32(x / y)),
+            _ => Err(MathErr::TypeMismatch(
+                "целочисленное деление только для целых",
+            )),
         }
     }
 

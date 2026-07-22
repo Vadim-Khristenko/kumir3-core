@@ -10,6 +10,9 @@ impl TypeOps {
     pub fn cast(value: Value, target: &TypeKind) -> RuntimeResult<Value> {
         // [typesys-seam] будущее: приведение/coercion через shared::typesys.
         match target {
+            // `любой` (top type): приведение к нему — тождество; принимает любое
+            // значение и никогда не ошибается. Всё является подтипом `любой`.
+            TypeKind::Any => Ok(value),
             TypeKind::Int64 => {
                 let n = value
                     .as_int()
@@ -43,6 +46,11 @@ impl TypeOps {
     /// Проверяет, соответствует ли значение указанному типу.
     pub fn type_check(value: &Value, check: &TypeKind) -> bool {
         // [typesys-seam] будущее: conformance через shared::typesys.
+        // `любой` (top type): любое значение является его подтипом, поэтому
+        // `значение это любой` всегда истинно.
+        if matches!(check, TypeKind::Any) {
+            return true;
+        }
         matches!(
             (check, value),
             (TypeKind::Int64, Value::Number(Number::I64(_)))
