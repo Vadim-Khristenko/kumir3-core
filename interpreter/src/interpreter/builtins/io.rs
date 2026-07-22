@@ -21,13 +21,13 @@ impl Builtins {
                 Ok(Some(Value::Null))
             }
 
-            "печатьстр" | "println" => {
+            "печатьстр" | "println" | "вывод_строки" => {
                 let output: Vec<String> = vals.iter().map(|v| v.to_string()).collect();
                 env.println(&output.join(" "));
                 Ok(Some(Value::Null))
             }
 
-            "нс" | "newline" | "nl" => {
+            "нс" | "newline" | "nl" | "новая_строка" => {
                 // Вывод новой строки
                 env.println("");
                 Ok(Some(Value::Null))

@@ -17,6 +17,9 @@ pub mod math;
 pub mod string;
 pub mod types;
 
+#[cfg(test)]
+mod tests;
+
 /// Встроенные функции.
 pub struct Builtins;
 
@@ -88,6 +91,26 @@ impl Builtins {
             Value::Boolean(b) => Ok(if *b { 1 } else { 0 }),
             _ => Err(RuntimeError::type_mismatch("целое", "другой тип")),
         }
+    }
+
+    /// Извлекает строку из значения (строгий вариант: только `Value::String`).
+    fn as_str(value: &Value) -> RuntimeResult<String> {
+        match value {
+            Value::String(s) => Ok(s.clone()),
+            _ => Err(RuntimeError::type_mismatch("строка", "не строка")),
+        }
+    }
+
+    /// Извлекает неотрицательное количество (для `слева`/`справа`/`повторить`).
+    fn as_count(value: &Value) -> RuntimeResult<usize> {
+        let n = Self::to_int(value)?;
+        if n < 0 {
+            return Err(RuntimeError::new(
+                "Количество не может быть отрицательным",
+                RuntimeErrorKind::Other,
+            ));
+        }
+        Ok(n as usize)
     }
 
     fn abs(value: &Value) -> RuntimeResult<Value> {

@@ -1,4 +1,4 @@
-use std::f64::consts::{E, PI};
+use std::f64::consts::{E, FRAC_PI_2, PI};
 
 use shared::math::MathOperators;
 use shared::types::{Expr, Number, Value};
@@ -58,6 +58,35 @@ impl Builtins {
                 Ok(Some(Self::trig_func(&vals[0], f64::atan)?))
             }
 
+            "ctg" | "cot" => {
+                Self::check_args(name, &vals, 1)?;
+                MathOperators::ctg(vals[0].clone())
+                    .map(Some)
+                    .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other))
+            }
+
+            "arcctg" | "arccot" => {
+                Self::check_args(name, &vals, 1)?;
+                // arcctg(x) = π/2 − arctg(x), непрерывная ветвь на (0, π).
+                let x = Self::to_f64(&vals[0])?;
+                Ok(Some(Value::Number(Number::F64(FRAC_PI_2 - x.atan()))))
+            }
+
+            "sh" | "sinh" => {
+                Self::check_args(name, &vals, 1)?;
+                Ok(Some(Self::trig_func(&vals[0], f64::sinh)?))
+            }
+
+            "ch" | "cosh" => {
+                Self::check_args(name, &vals, 1)?;
+                Ok(Some(Self::trig_func(&vals[0], f64::cosh)?))
+            }
+
+            "th" | "tanh" => {
+                Self::check_args(name, &vals, 1)?;
+                Ok(Some(Self::trig_func(&vals[0], f64::tanh)?))
+            }
+
             "atan2" | "arctg2" => {
                 Self::check_args(name, &vals, 2)?;
                 let y = Self::to_f64(&vals[0])?;
@@ -114,7 +143,37 @@ impl Builtins {
                 Ok(Some(Value::Number(Number::I64(x.ceil() as i64))))
             }
 
-            "round" | "округлить" => {
+            "цел_часть" | "trunc" => {
+                Self::check_args(name, &vals, 1)?;
+                let x = Self::to_f64(&vals[0])?;
+                Ok(Some(Value::Number(Number::I64(x.trunc() as i64))))
+            }
+
+            "frac" | "дробь" => {
+                Self::check_args(name, &vals, 1)?;
+                let x = Self::to_f64(&vals[0])?;
+                Ok(Some(Value::Number(Number::F64(x.fract()))))
+            }
+
+            // Целочисленное деление и остаток как ВЫЗЫВАЕМЫЕ функции.
+            // Слова-операторы `див` / `мод` — это ключевые слова языка; английские
+            // `mod` / `модуль` заняты ключевым словом «модуль» (Token::Module),
+            // поэтому русский псевдоним остатка — `остаток`, а не `mod`.
+            "div" | "цел_деление" => {
+                Self::check_args(name, &vals, 2)?;
+                MathOperators::int_div(vals[0].clone(), vals[1].clone(), false)
+                    .map(Some)
+                    .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other))
+            }
+
+            "остаток" | "rem" => {
+                Self::check_args(name, &vals, 2)?;
+                MathOperators::modulus(vals[0].clone(), vals[1].clone(), false)
+                    .map(Some)
+                    .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other))
+            }
+
+            "round" | "округлить" | "округл" => {
                 if vals.is_empty() || vals.len() > 2 {
                     return Err(RuntimeError::argument_count(name, 1, vals.len()));
                 }
@@ -130,7 +189,7 @@ impl Builtins {
                 }
             }
 
-            "min" | "минимум" => {
+            "min" | "минимум" | "мин" => {
                 if vals.is_empty() {
                     return Err(RuntimeError::argument_count(name, 1, 0));
                 }
@@ -144,7 +203,7 @@ impl Builtins {
                 Ok(Some(min))
             }
 
-            "max" | "максимум" => {
+            "max" | "максимум" | "макс" => {
                 if vals.is_empty() {
                     return Err(RuntimeError::argument_count(name, 1, 0));
                 }
@@ -176,7 +235,7 @@ impl Builtins {
             "е" | "e" => Ok(Some(Value::Number(Number::F64(E)))),
 
             // ===== СЛУЧАЙНЫЕ ЧИСЛА =====
-            "случайное" | "random" | "rand" => {
+            "случайное" | "случ" | "random" | "rand" => {
                 if vals.is_empty() {
                     // случайное число от 0.0 до 1.0
                     let r = Self::simple_random();

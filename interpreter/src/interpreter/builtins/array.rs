@@ -137,6 +137,37 @@ impl Builtins {
                 }
             }
 
+            // Индекс элемента (массив) или подстроки (строка), нумерация с 1;
+            // 0 означает «не найдено» — как у `позиция`.
+            "индекс" | "index_of" => {
+                Self::check_args(name, &vals, 2)?;
+                match &vals[0] {
+                    Value::Array(a) => {
+                        let idx = a
+                            .iter()
+                            .position(|v| v == &vals[1])
+                            .map(|p| p as i64 + 1)
+                            .unwrap_or(0);
+                        Ok(Some(Value::Number(Number::I64(idx))))
+                    }
+                    Value::String(s) => {
+                        let needle = match &vals[1] {
+                            Value::String(n) => n.clone(),
+                            other => other.to_string(),
+                        };
+                        let idx = s
+                            .find(&needle)
+                            .map(|p| s[..p].chars().count() as i64 + 1)
+                            .unwrap_or(0);
+                        Ok(Some(Value::Number(Number::I64(idx))))
+                    }
+                    _ => Err(RuntimeError::type_mismatch(
+                        "массив или строка",
+                        "другой тип",
+                    )),
+                }
+            }
+
             "пусто" | "empty" | "is_empty" => {
                 Self::check_args(name, &vals, 1)?;
                 let empty = match &vals[0] {

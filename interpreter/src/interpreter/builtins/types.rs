@@ -14,24 +14,24 @@ impl Builtins {
         let vals = Self::eval_args(args, env)?;
         match name {
             // ===== ПРЕОБРАЗОВАНИЕ ТИПОВ =====
-            "цел" | "int" | "целое" => {
+            "цел" | "int" | "целое" | "to_int" => {
                 Self::check_args(name, &vals, 1)?;
                 let i = Self::to_int(&vals[0])?;
                 Ok(Some(Value::Number(Number::I64(i))))
             }
 
-            "вещ" | "float" | "вещественное" => {
+            "вещ" | "float" | "вещественное" | "to_float" => {
                 Self::check_args(name, &vals, 1)?;
                 let f = Self::to_f64(&vals[0])?;
                 Ok(Some(Value::Number(Number::F64(f))))
             }
 
-            "лит" | "str" | "строка" => {
+            "лит" | "str" | "строка" | "to_string" => {
                 Self::check_args(name, &vals, 1)?;
                 Ok(Some(Value::String(vals[0].to_string())))
             }
 
-            "лог" | "bool" | "логическое" => {
+            "лог" | "bool" | "логическое" | "to_bool" => {
                 Self::check_args(name, &vals, 1)?;
                 Ok(Some(Value::Boolean(ExprEvaluator::is_truthy(&vals[0]))))
             }
@@ -59,10 +59,24 @@ impl Builtins {
                 )))
             }
 
-            "тип" | "type" | "typeof" => {
+            "тип" | "type" | "typeof" | "type_of" => {
                 Self::check_args(name, &vals, 1)?;
                 let type_name = Self::type_name(&vals[0]);
                 Ok(Some(Value::String(type_name)))
+            }
+
+            // ===== ОШИБКИ =====
+            // ошибка(сообщение) или ошибка(сообщение, вид)
+            "ошибка" | "error" => {
+                if vals.is_empty() || vals.len() > 2 {
+                    return Err(RuntimeError::argument_count(name, 1, vals.len()));
+                }
+                let message = vals[0].to_string();
+                let kind = vals
+                    .get(1)
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "ошибка".to_string());
+                Ok(Some(Value::error(message, kind)))
             }
 
             // ===== ПАРЫ И КОРТЕЖИ =====

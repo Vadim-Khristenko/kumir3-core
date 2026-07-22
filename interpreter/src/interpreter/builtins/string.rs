@@ -14,7 +14,7 @@ impl Builtins {
         let vals = Self::eval_args(args, env)?;
         match name {
             // ===== СТРОКОВЫЕ ФУНКЦИИ =====
-            "длина" | "длин" | "len" | "length" => {
+            "длина" | "длин" | "len" | "length" | "размер" | "size" => {
                 Self::check_args(name, &vals, 1)?;
                 match &vals[0] {
                     Value::String(s) => {
@@ -81,7 +81,7 @@ impl Builtins {
                 Ok(Some(Value::Char(c)))
             }
 
-            "код" | "ord" => {
+            "код" | "ord" | "code" => {
                 Self::check_args(name, &vals, 1)?;
                 match &vals[0] {
                     Value::Char(c) => Ok(Some(Value::Number(Number::I64(
@@ -97,7 +97,8 @@ impl Builtins {
                 }
             }
 
-            "подстрока" | "substring" | "substr" | "копировать_строку" => {
+            "подстрока" | "substring" | "substr" | "копировать_строку" | "вырезка" =>
+            {
                 if vals.len() < 2 || vals.len() > 3 {
                     return Err(RuntimeError::argument_count(name, 2, vals.len()));
                 }
@@ -128,7 +129,7 @@ impl Builtins {
                 Ok(Some(Value::String(result)))
             }
 
-            "позиция" | "position" | "pos" | "найти" => {
+            "позиция" | "position" | "pos" | "найти" | "find" => {
                 Self::check_args(name, &vals, 2)?;
                 let haystack = match &vals[0] {
                     Value::String(s) => s.clone(),
@@ -150,7 +151,8 @@ impl Builtins {
                 Ok(Some(Value::Number(Number::I64(pos))))
             }
 
-            "верхний_регистр" | "to_upper" | "upper" => {
+            "верхний_регистр" | "to_upper" | "upper" | "верхний" | "uppercase" =>
+            {
                 Self::check_args(name, &vals, 1)?;
                 let s = match &vals[0] {
                     Value::String(s) => s.to_uppercase(),
@@ -159,13 +161,37 @@ impl Builtins {
                 Ok(Some(Value::String(s)))
             }
 
-            "нижний_регистр" | "to_lower" | "lower" => {
+            "нижний_регистр" | "to_lower" | "lower" | "нижний" | "lowercase" => {
                 Self::check_args(name, &vals, 1)?;
                 let s = match &vals[0] {
                     Value::String(s) => s.to_lowercase(),
                     _ => return Err(RuntimeError::type_mismatch("строка", "не строка")),
                 };
                 Ok(Some(Value::String(s)))
+            }
+
+            "слева" | "left" => {
+                Self::check_args(name, &vals, 2)?;
+                let s = Self::as_str(&vals[0])?;
+                let n = Self::as_count(&vals[1])?;
+                Ok(Some(Value::String(s.chars().take(n).collect())))
+            }
+
+            "справа" | "right" => {
+                Self::check_args(name, &vals, 2)?;
+                let s = Self::as_str(&vals[0])?;
+                let n = Self::as_count(&vals[1])?;
+                let total = s.chars().count();
+                Ok(Some(Value::String(
+                    s.chars().skip(total.saturating_sub(n)).collect(),
+                )))
+            }
+
+            "повторить" | "repeat" => {
+                Self::check_args(name, &vals, 2)?;
+                let s = Self::as_str(&vals[0])?;
+                let n = Self::as_count(&vals[1])?;
+                Ok(Some(Value::String(s.repeat(n))))
             }
 
             "обрезать" | "trim" => {
@@ -194,7 +220,7 @@ impl Builtins {
                 Ok(Some(Value::String(s.replace(&from, &to))))
             }
 
-            "разделить" | "split" => {
+            "разделить" | "split" | "разбить" => {
                 Self::check_args(name, &vals, 2)?;
                 let s = match &vals[0] {
                     Value::String(s) => s.clone(),
