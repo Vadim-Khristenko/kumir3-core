@@ -41,6 +41,17 @@ impl ExprEvaluator {
             return Self::call_lambda(lambda.as_ref(), args, env);
         }
 
+        // Функция подключённой библиотеки (`использовать время` → `текущий_год()`).
+        // Ищется после алгоритмов-значений, но до пользовательских алгоритмов:
+        // программа вправе определить свой алгоритм с тем же именем и закрыть им
+        // библиотечный, как это делают перегрузки.
+        if !env.has_algorithm(name)
+            && env.is_library_function(name)
+            && let Some(result) = Self::call_library(name, args, env)?
+        {
+            return Ok(result);
+        }
+
         // Проверяем перегруженные алгоритмы
         if let Some(overloaded) = env.get_overloaded_algorithm(name).cloned() {
             // Выбираем подходящую перегрузку (упрощённо - по количеству аргументов)
@@ -75,6 +86,22 @@ impl ExprEvaluator {
         }
 
         Self::call_algorithm(&algorithm, args, env)
+    }
+
+    /// Вызывает функцию подключённой библиотеки.
+    ///
+    /// Обработчики библиотек принимают готовые значения, поэтому аргументы
+    /// вычисляются здесь; ленивость им не нужна — это обычные функции.
+    fn call_library(
+        name: &str,
+        args: &[Expr],
+        env: &mut Environment,
+    ) -> RuntimeResult<Option<Value>> {
+        let mut values = Vec::with_capacity(args.len());
+        for arg in args {
+            values.push(Self::evaluate(arg, env)?);
+        }
+        env.call_library_function(name, &values)
     }
 
     pub(crate) fn call_algorithm(

@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use super::error::{RuntimeError, RuntimeResult};
+use super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 use super::file_importer::FileImporter;
 use super::library_bridge::LibraryManager;
 use shared::runtime::KumirRuntime;
@@ -706,6 +706,37 @@ impl Environment {
     /// Получает менеджер библиотек.
     pub fn library_manager(&self) -> Option<&Arc<RwLock<LibraryManager>>> {
         self.library_manager.as_ref()
+    }
+
+    /// Известно ли имя как функция подключённой библиотеки.
+    ///
+    /// Без менеджера (или при отравленной блокировке) отвечает «нет»: вызов
+    /// тогда разрешается обычным путём и даёт понятную ошибку об алгоритме.
+    pub fn is_library_function(&self, name: &str) -> bool {
+        self.library_manager
+            .as_ref()
+            .and_then(|m| m.read().ok())
+            .is_some_and(|m| m.is_library_function(name))
+    }
+
+    /// Вызывает функцию подключённой библиотеки.
+    ///
+    /// `Ok(None)` означает «такой функции нет» — вызывающий продолжает поиск.
+    pub fn call_library_function(
+        &self,
+        name: &str,
+        args: &[Value],
+    ) -> RuntimeResult<Option<Value>> {
+        let Some(manager) = self.library_manager.as_ref() else {
+            return Ok(None);
+        };
+        let manager = manager.read().map_err(|_| {
+            RuntimeError::new(
+                "Не удалось получить доступ к библиотекам",
+                RuntimeErrorKind::Other,
+            )
+        })?;
+        manager.call_function(name, args)
     }
 
     /// Устанавливает импортер файлов.
