@@ -1,109 +1,165 @@
 <link rel="stylesheet" href="./assets/kite.css">
 <!-- =============================================================================
      KITE 5 — Библиотеки: встроенные и пользовательские
-     Источники истины: shared/src/libraries/*, types/import_spec.rs, types/config.rs,
-     docs/USER_LIBRARIES.md
+     Спецификация: виды библиотек, манифест, подключение, обращение к членам,
+     версии и окружения.
 ============================================================================== -->
 <article class="kite" data-kite="0005" data-status="active" lang="ru">
 
+  <!-- ───────────────────────── ШАПКА ───────────────────────── -->
   <header class="kite-header">
     <span class="kite-eyebrow">KITE 5 · Спецификация</span>
     <h1>Библиотеки: встроенные и пользовательские</h1>
     <dl class="kite-meta">
       <dt>Номер</dt>            <dd>KITE 5</dd>
-      <dt>Название</dt>         <dd>Библиотеки и система подключения</dd>
-      <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
+      <dt>Название</dt>         <dd>Библиотеки: встроенные и пользовательские</dd>
       <dt>Тип</dt>              <dd>Спецификация</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
+      <dt>Версия документа</dt> <dd>1.1.0</dd>
       <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
       <dt>Создан</dt>           <dd>2026-05-30</dd>
-      <dt>Версия документа</dt> <dd>1.0.0</dd>
+      <dt>Обновлён</dt>         <dd>2026-07-22</dd>
     </dl>
   </header>
 
-  <nav class="kite-toc" aria-label="Содержание">
+  <!-- ───────────────────────── СОДЕРЖАНИЕ ───────────────────────── -->
+  <nav class="kite-toc" data-auto aria-label="Содержание">
     <h2>Содержание</h2>
     <ol>
-      <li><a href="#vidy">Два вида библиотек</a></li>
-      <li><a href="#vstroennye">Встроенные библиотеки</a></li>
-      <li><a href="#polzovatelskie">Пользовательские библиотеки</a></li>
-      <li><a href="#konfig">Конфигурация kumir.toml</a></li>
-      <li><a href="#podklyuchenie">Подключение и импорт</a></li>
-      <li><a href="#kak-rabotaet">Как это работает внутри</a></li>
-      <li><a href="#versii">Версии, зависимости, окружения</a></li>
-      <li><a href="#ogranicheniya">Ограничения</a></li>
-      <li><a href="#native">Нативные расширения (C/C++/Rust)</a></li>
-      <li><a href="#predlozheno">Предложенное</a></li>
+      <li><a href="#oblast">1. Область применения</a></li>
+      <li><a href="#terminy">2. Термины и обозначения</a></li>
+      <li><a href="#pravila">3. Нормативные правила</a></li>
+      <li><a href="#primery">4. Примеры</a></li>
+      <li><a href="#sovmestimost">5. Совместимость</a></li>
     </ol>
   </nav>
 
-  <!-- 1 -->
-  <section class="kite-section" id="vidy">
-    <h2>1. Два вида библиотек</h2>
+  <!-- ───────────────────────── 1 ───────────────────────── -->
+  <section class="kite-section" id="oblast">
+    <h2>1. Область применения</h2>
+    <p>
+      Документ определяет <strong>библиотеки</strong> Kumir&nbsp;3: два вида библиотек и их
+      равноправие для программы, состав встроенных библиотек, устройство пользовательской
+      библиотеки, манифест библиотеки, формы подключения, обращение к членам библиотеки,
+      загрузку и кэширование, спецификации версий, а также нативные расширения и управление
+      пакетами.
+    </p>
+    <p>Документ не решает следующих вопросов:</p>
     <ul>
-      <li><strong>Встроенные</strong> — реализованы в ядре на Rust, дают нативную скорость и доступ к системе.</li>
-      <li><strong>Пользовательские</strong> — написаны на Кумире (<code>.kum</code>), исполняются интерпретатором.</li>
-      <li><strong>Нативные расширения</strong> — скомпилированные модули на C / C++ / Rust, подключаемые как библиотеки (см. раздел 9). <span class="kite-badge is-proposed">📋</span></li>
+      <li>пофункциональный состав встроенных библиотек — в
+        <a href="./KITE-0016-stdlib.html">KITE 16</a>;</li>
+      <li>порядок резолюции импорта, регистрация имён, пространства имён и
+        <code>экспорт</code> — в <a href="./KITE-0015-modules.html">KITE 15</a>;</li>
+      <li>форма записи импортов и операторов <code>.</code> и <code>::</code> — в
+        <a href="./KITE-0012-grammar.html">KITE 12</a>;</li>
+      <li>система типов, в том числе тип <code>@нативный</code>, — в
+        <a href="./KITE-0002-type-system.html">KITE 2</a>;</li>
+      <li>окружения, в которые попадают имена библиотеки, — в
+        <a href="./KITE-0004-environments-scope.html">KITE 4</a>.</li>
     </ul>
-    <p>Подключаются они единообразно; для пользователя разница невидима.</p>
   </section>
 
-  <!-- 2 -->
-  <section class="kite-section" id="vstroennye">
-    <h2>2. Встроенные библиотеки</h2>
+  <!-- ───────────────────────── 2 ───────────────────────── -->
+  <section class="kite-section" id="terminy">
+    <h2>2. Термины и обозначения</h2>
+    <p>
+      <strong>Библиотека</strong> — именованный набор алгоритмов и типов, подключаемый к
+      программе целиком или выборочно. <strong>Встроенная библиотека</strong> — библиотека,
+      входящая в состав языка и доступная по имени без установки.
+      <strong>Пользовательская библиотека</strong> — библиотека, написанная на Kumir&nbsp;3 и
+      расположенная в файле или директории. <strong>Нативное расширение</strong> — библиотека,
+      реализованная на внешнем языке и подключаемая через двоичный интерфейс.
+      <strong>Манифест</strong> — файл <code>kumir.toml</code>, описывающий библиотеку или
+      проект. <strong>Член библиотеки</strong> — публичный алгоритм, класс или константа
+      библиотеки.
+    </p>
+    <p>
+      Ключевые слова требований — <strong>ДОЛЖЕН</strong>, <strong>НЕ ДОЛЖЕН</strong>,
+      <strong>СЛЕДУЕТ</strong>, <strong>МОЖЕТ</strong> — применяются в значении
+      KITE&nbsp;0&nbsp;§&nbsp;2.2. Метки стабильности — по KITE&nbsp;0&nbsp;§&nbsp;5; метка
+      стоит в строке таблицы или в конце пункта и в тексте не повторяется.
+    </p>
+  </section>
+
+  <!-- ───────────────────────── 3 ───────────────────────── -->
+  <section class="kite-section" id="pravila">
+    <h2>3. Нормативные правила</h2>
+
+    <h3 id="vidy">3.1. Виды библиотек</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя (ru/en)</th><th>Назначение</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Вид</th><th>Чем является</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>время</code> / time</td><td>Дата/время, форматирование, таймеры, паузы.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>система</code> / syscall</td><td>Окружение, пути, процессы, сведения о системе.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>файлы</code> / files</td><td>Чтение/запись, операции с файлами, каталоги, метаданные.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>сеть</code> / net</td><td>Сетевое взаимодействие: TCP- и UDP-сокеты, HTTP-запросы, URL-кодирование, Base64, DNS.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr>
+            <td><strong>Встроенная</strong></td>
+            <td>Часть языка; исполняется средствами реализации и даёт доступ к системным
+              возможностям.</td>
+            <td><span class="kite-badge is-available">стабильно</span></td>
+          </tr>
+          <tr>
+            <td><strong>Пользовательская</strong></td>
+            <td>Файл <code>.kum</code> либо директория с манифестом; исполняется как обычный
+              код Kumir&nbsp;3.</td>
+            <td><span class="kite-badge is-available">стабильно</span></td>
+          </tr>
+          <tr>
+            <td><strong>Нативное расширение</strong></td>
+            <td>Скомпилированный модуль на внешнем языке, экспортирующий алгоритмы и типы
+              (§&nbsp;3.9).</td>
+            <td><span class="kite-badge is-proposed">предложено</span></td>
+          </tr>
         </tbody>
       </table>
     </div>
-    <p>Математические функции доступны как часть ядра. Набор встроенных библиотек расширяется.
-       Пофункциональный состав встроенных библиотек нормируется в
-       <a href="./KITE-0016-stdlib.html">KITE 16</a>.</p>
-  </section>
+    <p>
+      Все виды библиотек подключаются одинаково. Программа НЕ ДОЛЖНА зависеть от того, каким
+      видом является подключаемая библиотека: разница в записи подключения и в обращении к
+      членам отсутствует.
+    </p>
 
-  <!-- 3 -->
-  <section class="kite-section" id="polzovatelskie">
-    <h2>3. Пользовательские библиотеки</h2>
-    <p>Самый простой вариант — один <code>.kum</code> файл с алгоритмами:</p>
-    <div class="kite-code" data-lang="kumir">
-<pre><code>| моя_библиотека.kum
-алг цел удвоить(цел x)
-нач
-  знач := x * 2
-кон</code></pre>
+    <h3 id="vstroennye">3.2. Встроенные библиотеки</h3>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Имя (ru&nbsp;/&nbsp;en)</th><th>Назначение</th><th>Стабильность</th></tr></thead>
+        <tbody>
+          <tr><td><code>время</code> / <code>time</code></td><td>Дата и время, форматирование, таймеры, паузы.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>система</code> / <code>syscall</code></td><td>Окружение процесса, пути, процессы, сведения о системе.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>файлы</code> / <code>files</code></td><td>Чтение и запись файлов, операции с файлами, каталоги, метаданные.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>сеть</code> / <code>net</code></td><td>Сокеты TCP и UDP, HTTP-запросы, URL-кодирование, Base64, DNS.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+        </tbody>
+      </table>
     </div>
-    <p>И его использование:</p>
-    <div class="kite-code" data-lang="kumir">
-<pre><code>использовать "моя_библиотека.kum"
+    <p>
+      Математические функции входят в ядро языка и подключения библиотеки не требуют.
+      Пофункциональный состав встроенных библиотек нормируется в
+      <a href="./KITE-0016-stdlib.html">KITE 16</a>.
+    </p>
 
-алг Главный
-нач
-  вывод удвоить(5)   | 10
-кон</code></pre>
-    </div>
-    <p>Полноценная библиотека — это директория с конфигурацией:</p>
+    <h3 id="polzovatelskie">3.3. Пользовательские библиотеки</h3>
+    <p>
+      Пользовательской библиотекой является отдельный файл <code>.kum</code> с алгоритмами либо
+      директория с манифестом <code>kumir.toml</code>. Директория СЛЕДУЕТ организовывать так:
+    </p>
     <div class="kite-code" data-lang="дерево">
 <pre><code>моя_библиотека/
-├── kumir.toml      | конфигурация
+├── kumir.toml      | манифест
 ├── src/lib.kum     | исходный код
 ├── README.md       | документация
 └── examples/       | примеры</code></pre>
     </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Автоопределение типа</span>
-      Путь на <code>.kum</code> → простая библиотека; директория с <code>kumir.toml</code> → проект;
-      имя без расширения → встроенная библиотека.
-    </div>
-  </section>
+    <p>
+      Вид подключаемой сущности определяется по форме пути: путь на файл <code>.kum</code> —
+      простая библиотека; директория с манифестом — библиотека-проект; простое имя — встроенная
+      библиотека. Полный порядок резолюции нормируется в
+      <a href="./KITE-0015-modules.html">KITE 15</a>&nbsp;§&nbsp;3.3.
+      <span class="kite-badge is-available">стабильно</span>
+    </p>
 
-  <!-- 4 -->
-  <section class="kite-section" id="konfig">
-    <h2>4. Конфигурация kumir.toml</h2>
+    <h3 id="konfig">3.4. Манифест библиотеки</h3>
+    <p>
+      Манифест <code>kumir.toml</code> задаёт имя, версию, авторов, описание, зависимости,
+      настройки сборки и список экспортируемых членов.
+    </p>
     <div class="kite-code" data-lang="toml">
 <pre><code>[package]
 name = "моя_библиотека"
@@ -127,122 +183,190 @@ category = "математика"
 tags = ["math", "utils"]
 stable = true</code></pre>
     </div>
-    <p>Из конфигурации извлекаются имя, версия, авторы, описание, зависимости, настройки сборки и список экспортируемых функций.</p>
-  </section>
-
-  <!-- 5 -->
-  <section class="kite-section" id="podklyuchenie">
-    <h2>5. Подключение и импорт</h2>
-    <p>Структурная форма — <code>подключить</code>; простая строковая (по пути к файлу) — <code>использовать</code>.</p>
-    <div class="kite-table">
-      <table>
-        <thead><tr><th>Форма</th><th>Смысл</th><th>Доступность</th></tr></thead>
-        <tbody>
-          <tr><td><code>подключить Сокеты</code></td><td>Вся библиотека целиком.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>подключить из Сокеты (TCP_Сервер, UDP_Клиент)</code></td><td>Выборочный импорт элементов.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>подключить из Сокеты:2.0.0 (TCP_Сервер)</code></td><td>С точной версией.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>подключить из Сокеты:^1.5 (…)</code></td><td>С диапазоном версии (SemVer).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>подключить из ./модуль (функция)</code></td><td>Из локального пути.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>подключить Сокеты как С</code></td><td>Псевдоним всей библиотеки.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>… (TCP_Сервер как Сервер)</code></td><td>Псевдоним элемента.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>использовать "путь/файл.kum"</code></td><td>Прямое подключение файла.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>подключить из https://…</code></td><td>Импорт по URL.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <h3>Обращение к членам библиотеки</h3>
-    <div class="kite-table">
-      <table>
-        <thead><tr><th>Форма</th><th>Смысл</th><th>Доступность</th></tr></thead>
-        <tbody>
-          <tr><td><code>Библиотека.функция(…)</code></td><td>Точечная форма.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>Модуль::член</code> · <code>Модуль::член(…)</code></td><td>Двойное двоеточие. <strong>Исполняется</strong> и разрешается в то же полное имя, что и точечная форма (<code>Модуль.член</code>); для загруженной библиотеки — через квалифицированный вызов.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Объявление модуля и <code>экспорт</code></span>
-      Блок <code>модуль Имя … кон</code> разбирается и исполняется, но инструкция <code>экспорт …</code>
-      внутри него — <strong>пустая операция</strong>: список экспортируемых имён нигде не учитывается,
-      видимость членов модуля она не ограничивает. Единственный работающий способ ограничить
-      публичный API — поле <code>exports</code> в <code>kumir.toml</code> (раздел 4).
-    </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Норматив</span>
-      Правила разрешения имён при импорте, семантика модулей, порядок разрешения <code>::</code>
-      и судьба <code>экспорт</code> нормируются в <a href="./KITE-0015-modules.html">KITE 15</a>;
-      грамматика форм импорта — в <a href="./KITE-0012-grammar.html">KITE 12</a>.
-    </div>
-  </section>
-
-  <!-- 6 -->
-  <section class="kite-section" id="kak-rabotaet">
-    <h2>6. Как это работает внутри</h2>
-    <ol>
-      <li><strong>Менеджер библиотек</strong> (<code>LibraryManager</code>) регистрирует функции библиотек и хранит загруженные.</li>
-      <li>Встроенные функции имеют <strong>нативный обработчик</strong> (Rust); пользовательские исполняются интерпретатором.</li>
-      <li><strong>Импортер файлов</strong> (<code>FileImporter</code>) загружает и парсит <code>.kum</code>-модули.</li>
-      <li><strong>Квалифицированный вызов</strong> <code>Библиотека.функция(...)</code> направляется менеджеру библиотек.</li>
-      <li>Загруженные библиотеки <strong>кэшируются</strong> — повторный импорт берёт готовую версию.</li>
-    </ol>
-  </section>
-
-  <!-- 7 -->
-  <section class="kite-section" id="versii">
-    <h2>7. Версии, зависимости, окружения</h2>
-    <ul>
-      <li><strong>SemVer</strong> и спецификации версий (<code>2.0.0</code>, <code>^1.5</code>) — для зависимостей и импорта.</li>
-      <li><strong>Резолвер зависимостей</strong> строит граф и разрешает версии. <span class="kite-badge is-experimental">🧪</span></li>
-      <li><strong>Виртуальные окружения</strong> изолируют наборы версий библиотек на проект. <span class="kite-badge is-experimental">🧪</span></li>
-    </ul>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Оговорка</span>
-      Спецификации версий <em>парсятся</em> (точная версия, диапазоны SemVer, алиасы), но полнота
-      проверки версии при импорте не подтверждена тестами — оба пункта с
-      <span class="kite-badge is-experimental">🧪</span> помечены к верификации.
-    </div>
-  </section>
-
-  <!-- 8 -->
-  <section class="kite-section" id="ogranicheniya">
-    <h2>8. Ограничения</h2>
-    <ul>
-      <li>Пользовательские библиотеки не имеют нативных обработчиков — функции идут через интерпретатор.</li>
-      <li>Рекурсивные (циклические) зависимости пока не поддерживаются.</li>
-    </ul>
-  </section>
-
-  <!-- 9 -->
-  <section class="kite-section" id="native">
-    <h2>9. Нативные расширения (C/C++/Rust)</h2>
     <p>
-      По аналогии с Python (C-расширения), Rust (крейты) и другими языками, Kumir 3 предусматривает
-      <strong>нативные расширения</strong> — скомпилированные модули на «верховных» языках цепочки
-      (C, C++, Rust), которые экспортируют функции и типы в интерпретатор. Это путь к высокой
-      производительности и переиспользованию существующих нативных библиотек.
+      Ключ <code>exports</code> ограничивает публичный набор библиотеки перечисленными именами.
+      Полный состав секций манифеста нормируется в
+      <a href="./KITE-0015-modules.html">KITE 15</a>&nbsp;§&nbsp;3.10.
+      <span class="kite-badge is-available">стабильно</span>
     </p>
-    <p>Основа уже есть в ядре: нативные <strong>функции</strong> (<code>NativeFn</code>), которыми пользуются встроенные библиотеки. Тип <code>@нативный</code> для нативных <strong>объектов</strong> объявлен в системе типов (см. <a href="./KITE-0002-type-system.html">KITE 2</a>), но такие значения сегодня нигде не создаются <span class="kite-badge is-proposed">📋</span>. Расширения обобщают механизм нативных функций на внешние модули.</p>
+
+    <h3 id="podklyuchenie">3.5. Подключение библиотеки</h3>
+    <p>
+      Библиотека подключается ключевым словом <code>подключить</code> или
+      <code>использовать</code>. Ниже перечислены формы подключения и их смысл; грамматика форм
+      нормируется в <a href="./KITE-0012-grammar.html">KITE 12</a>, порядок резолюции и
+      регистрация имён — в <a href="./KITE-0015-modules.html">KITE 15</a>.
+    </p>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Язык</th><th>Как подключается</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Форма</th><th>Смысл</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><strong>Rust</strong></td><td>Крейт с экспортом через мост Kumir (аналог <code>pyo3</code>); самый «родной» путь — ядро уже на Rust.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><strong>C / C++</strong></td><td>Динамическая библиотека со стабильным C-ABI; функции регистрируются в реестре нативных функций.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>подключить Сокеты</code></td><td>Библиотека целиком.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>подключить из Сокеты (TCP_Сервер, UDP_Клиент)</code></td><td>Выборочный импорт членов.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>подключить из Сокеты:2.0.0 (TCP_Сервер)</code></td><td>Подключение с точной версией.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>подключить из Сокеты:^1.5 (…)</code></td><td>Подключение с диапазоном версий (SemVer).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>подключить из ./модуль (функция)</code></td><td>Подключение по локальному пути.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>подключить Сокеты как С</code></td><td>Псевдоним библиотеки.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>… (TCP_Сервер как Сервер)</code></td><td>Псевдоним отдельного члена.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>использовать "путь/файл.kum"</code></td><td>Подключение файла по пути.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>подключить из https://…</code></td><td>Подключение по сетевому адресу.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Принципы моста (дизайн)</span>
-      <ul>
-        <li>Стабильный ABI и заголовок Kumir: преобразование <code>Value</code> ↔ нативные типы.</li>
-        <li>Манифест расширения в <code>kumir.toml</code> (<code>type = "native"</code>, целевые платформы, символы).</li>
-        <li>Изоляция и безопасность: расширения помечаются как доверенные; песочница их ограничивает.</li>
-        <li>Кроссплатформенная сборка через <code>кумпак</code>: исходники → бинарь под ОС пользователя.</li>
-      </ul>
+
+    <h3 id="dostup">3.6. Обращение к членам библиотеки</h3>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Форма</th><th>Смысл</th><th>Стабильность</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>Библиотека.функция(…)</code></td>
+            <td>Точечная форма: точка входит в полное имя члена.</td>
+            <td><span class="kite-badge is-available">стабильно</span></td>
+          </tr>
+          <tr>
+            <td><code>Модуль::член</code> · <code>Модуль::член(…)</code></td>
+            <td>Форма с двойным двоеточием. Разрешается в то же полное имя
+              <code>Модуль.член</code>, что и точечная форма.</td>
+            <td><span class="kite-badge is-available">стабильно</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Обе формы обращаются к одному и тому же члену. Порядок разрешения имени члена нормируется
+      в <a href="./KITE-0015-modules.html">KITE 15</a>&nbsp;§&nbsp;3.7.
+    </p>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Экспорт внутри блока <code>модуль … кон</code></span>
+      Блок <code>модуль Имя … кон</code> разбирается и исполняется, однако инструкция
+      <code>экспорт …</code> внутри него публичный набор именованного модуля не ограничивает:
+      все алгоритмы такого блока публичны. Публичный набор библиотеки ограничивается ключом
+      <code>exports</code> манифеста (§&nbsp;3.4), публичный набор файлового модуля — инструкцией
+      <code>экспорт</code> в глобальной области файла
+      (<a href="./KITE-0015-modules.html">KITE 15</a>&nbsp;§&nbsp;3.8, §&nbsp;3.9).
+    </div>
+
+    <h3 id="zagruzka">3.7. Загрузка и кэширование</h3>
+    <ol>
+      <li>Подключение библиотеки регистрирует её публичные члены в окружении программы под
+        полным именем <code>Библиотека.член</code> и под объявленными псевдонимами.</li>
+      <li>Члены встроенной библиотеки исполняются средствами реализации; члены
+        пользовательской библиотеки исполняются как обычный код Kumir&nbsp;3. Наблюдаемое
+        поведение вызова от этого не зависит.</li>
+      <li>Квалифицированный вызов <code>Библиотека.функция(…)</code> разрешается в член
+        подключённой библиотеки; если такого члена нет — ошибка времени выполнения.</li>
+      <li>Загруженная библиотека кэшируется: повторное подключение той же библиотеки в одной
+        программе даёт уже загруженный экземпляр и повторного исполнения не вызывает.</li>
+    </ol>
+    <p><span class="kite-badge is-available">стабильно</span></p>
+
+    <h3 id="versii">3.8. Версии, зависимости и окружения</h3>
+    <ul>
+      <li><strong>Версии SemVer.</strong> Версия библиотеки записывается как
+        <code>МАЖОР.МИНОР.ПАТЧ</code>; спецификация версии допускает точное значение
+        (<code>2.0.0</code>) и диапазон (<code>^1.5</code>). Спецификации версий применяются в
+        секции зависимостей манифеста и в форме подключения (§&nbsp;3.5).
+        <span class="kite-badge is-available">стабильно</span></li>
+      <li><strong>Разрешение зависимостей.</strong> Граф зависимостей строится по манифестам, и
+        для каждой библиотеки выбирается версия, удовлетворяющая всем спецификациям.
+        <span class="kite-badge is-experimental">экспериментально</span></li>
+      <li><strong>Виртуальные окружения.</strong> Набор версий библиотек изолируется на уровне
+        проекта, поэтому разные проекты МОГУТ использовать разные версии одной библиотеки.
+        <span class="kite-badge is-experimental">экспериментально</span></li>
+    </ul>
+    <p>
+      Изменение сигнатуры члена библиотеки, нарушающее ранее корректные программы, ДОЛЖНО
+      сопровождаться увеличением мажорной части версии библиотеки (KITE&nbsp;0&nbsp;§&nbsp;9.2).
+    </p>
+
+    <h3 id="native">3.9. Нативные расширения <span class="kite-badge is-proposed">предложено</span></h3>
+    <p>
+      Нативное расширение — скомпилированный модуль на внешнем языке (C, C++, Rust),
+      экспортирующий алгоритмы и типы в программу Kumir&nbsp;3. Подключение и обращение к
+      членам нативного расширения не отличаются от подключения обычной библиотеки
+      (§&nbsp;3.5, §&nbsp;3.6).
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Элемент</th><th>Правило</th></tr></thead>
+        <tbody>
+          <tr><td>Двоичный интерфейс</td><td>Расширение экспортирует символы через стабильный интерфейс, преобразующий значения Kumir&nbsp;3 в значения внешнего языка и обратно.</td></tr>
+          <tr><td>Манифест</td><td>Расширение объявляется в манифесте (<code>type = "native"</code>) с указанием целевых платформ и экспортируемых символов.</td></tr>
+          <tr><td>Доверие</td><td>Расширение помечается как доверенное; окружение с ограниченным набором имён ограничивает его возможности.</td></tr>
+          <tr><td>Сборка</td><td>Расширение собирается под платформу, на которой исполняется программа.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Тип <code>@нативный</code> объявлен в системе типов
+      (<a href="./KITE-0002-type-system.html">KITE 2</a>); значения этого типа программе
+      недоступны. <span class="kite-badge is-proposed">предложено</span>
+    </p>
+
+    <h3 id="predlozheno">3.10. Управление пакетами <span class="kite-badge is-proposed">предложено</span></h3>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Возможность</th><th>Смысл</th></tr></thead>
+        <tbody>
+          <tr><td>Реестр библиотек и пакетный менеджер</td><td>Установка библиотеки по имени и публикация библиотеки в общий реестр.</td></tr>
+          <tr><td>Подключение по сетевому адресу</td><td>Загрузка библиотеки из доверенного источника по URL (§&nbsp;3.5).</td></tr>
+          <tr><td>Файл блокировки версий</td><td>Фиксация выбранных версий, дающая воспроизводимую сборку.</td></tr>
+          <tr><td>Необязательные зависимости и признаки сборки</td><td>Подключение только тех частей библиотеки, которые нужны программе.</td></tr>
+          <tr><td>Рабочие пространства</td><td>Несколько связанных библиотек с общим набором версий.</td></tr>
+          <tr><td>Платформенные зависимости</td><td>Разный состав зависимостей для разных операционных систем.</td></tr>
+          <tr><td>Ре-экспорт членов</td><td>Публикация члена одной библиотеки под именем другой.</td></tr>
+          <tr><td>Подписи и контрольные суммы</td><td>Проверка происхождения и целостности библиотеки при установке.</td></tr>
+          <tr><td>Генерация документации</td><td>Построение справочника по членам библиотеки из исходного текста и манифеста.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 id="ogranicheniya">3.11. Ограничения</h3>
+    <ul>
+      <li>Циклические зависимости между библиотеками НЕ ПОДДЕРЖИВАЮТСЯ: частичное разрешение
+        цикла язык не выполняет.</li>
+      <li>Значения типа <code>@нативный</code> программе недоступны (§&nbsp;3.9).</li>
+      <li>Инструкция <code>экспорт</code> внутри блока <code>модуль … кон</code> публичный набор
+        не ограничивает (§&nbsp;3.6).</li>
+      <li>Разрешение зависимостей и виртуальные окружения гарантий совместимости не имеют
+        (§&nbsp;3.8).</li>
+    </ul>
+  </section>
+
+  <!-- ───────────────────────── 4 ───────────────────────── -->
+  <section class="kite-section" id="primery">
+    <h2>4. Примеры</h2>
+    <p>Примеры информативны и иллюстрируют указанные пункты.</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>| § 3.3 — простая библиотека в одном файле: моя_библиотека.kum
+алг цел удвоить(цел x)
+нач
+  знач := x * 2
+кон</code></pre>
     </div>
     <div class="kite-code" data-lang="kumir">
-<pre><code>| Использование нативного расширения неотличимо от обычной библиотеки:
-подключить БыстраяМатематика        | нативный модуль на Rust/C
+<pre><code>| § 3.5 — подключение файла по пути
+использовать "моя_библиотека.kum"
+
+алг Главный
+нач
+  вывод удвоить(5)   | 10
+кон</code></pre>
+    </div>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>| § 3.6 — обе формы обращения дают один и тот же член
+подключить "моя_библиотека.kum" как мб
+
+алг Главный
+нач
+  вывод мб.удвоить(5)    | 10
+  вывод мб::удвоить(5)   | 10 — то же полное имя
+кон</code></pre>
+    </div>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>| § 3.9 — обращение к нативному расширению не отличается от обычной библиотеки
+подключить БыстраяМатематика
 
 алг Главный
 нач
@@ -251,31 +375,33 @@ stable = true</code></pre>
     </div>
   </section>
 
-  <!-- 10 -->
-  <section class="kite-section" id="predlozheno">
-    <h2>10. Предложенное</h2>
-    <ul>
-      <li><strong>Пакетный менеджер <code>кумпак</code></strong> и онлайн-реестр: установка и публикация библиотек. <span class="kite-badge is-proposed">📋</span></li>
-      <li><strong>Импорт по URL</strong> из доверенных источников. <span class="kite-badge is-proposed">📋</span></li>
-      <li><strong>Файл блокировки</strong> версий для воспроизводимых сборок. <span class="kite-badge is-proposed">📋</span></li>
-      <li><strong>Опциональные зависимости и фичи-флаги</strong> — собирать только нужные части библиотеки. <span class="kite-badge is-proposed">📋</span></li>
-      <li><strong>Рабочие пространства (workspaces)</strong> — несколько связанных пакетов в одном репозитории. <span class="kite-badge is-proposed">📋</span></li>
-      <li><strong>Платформенные зависимости</strong> — разные модули под Windows/macOS/Linux. <span class="kite-badge is-proposed">📋</span></li>
-      <li><strong>Пространства имён и ре-экспорт</strong> — аккуратная организация публичного API библиотеки. <span class="kite-badge is-proposed">📋</span></li>
-      <li><strong>Подписи и контрольные суммы</strong> пакетов — безопасность цепочки поставок. <span class="kite-badge is-proposed">📋</span></li>
-      <li><strong>Документация через <code>кумдок</code></strong> — генерация страниц API из исходников и метаданных. <span class="kite-badge is-proposed">📋</span></li>
-      <li><strong>Политика устаревания</strong> — <code>[DEPRECATED]</code>-пометки и предупреждения при сборке. <span class="kite-badge is-proposed">📋</span></li>
-    </ul>
-    <div class="kite-callout is-tip">
-      <span class="kite-callout-title">Связано</span>
-      Инструменты экосистемы перечислены в <a href="./KITE-0001-language-overview.html">KITE 1</a>; типы — в <a href="./KITE-0002-type-system.html">KITE 2</a>;
-      модули и разрешение имён — в <a href="./KITE-0015-modules.html">KITE 15</a>; состав стандартной библиотеки — в <a href="./KITE-0016-stdlib.html">KITE 16</a>.
-    </div>
+  <!-- ───────────────────────── 5 ───────────────────────── -->
+  <section class="kite-section" id="sovmestimost">
+    <h2>5. Совместимость</h2>
+    <p>
+      КуМир&nbsp;2 библиотек в смысле настоящего документа не имеет: набор доступных алгоритмов
+      там задан исполнителями и встроенными функциями. Слова <code>подключить</code> и
+      <code>использовать</code> — расширения Kumir&nbsp;3; в Kumir&nbsp;3 они являются ключевыми
+      и именами переменных или алгоритмов быть НЕ МОГУТ. Программа без подключений сохраняет
+      поведение КуМир&nbsp;2; правила режима совместимости нормируются в
+      <a href="./KITE-0006-kumir2-compatibility.html">KITE 6</a>.
+    </p>
+    <p>
+      Возможность с меткой <span class="kite-badge is-available">стабильно</span> подчиняется
+      гарантиям KITE&nbsp;0&nbsp;§&nbsp;5.5. Для возможностей с прочими метками гарантии не
+      действуют, и программа НЕ ДОЛЖНА на них полагаться.
+    </p>
+    <p>
+      Смежные документы: <a href="./KITE-0015-modules.html">KITE 15 — Модули и пространства
+      имён</a>, <a href="./KITE-0016-stdlib.html">KITE 16 — Каталог стандартной библиотеки</a>,
+      <a href="./KITE-0002-type-system.html">KITE 2 — Система типов</a>.
+    </p>
   </section>
 
+  <!-- ───────────────────────── ПОДВАЛ ───────────────────────── -->
   <footer class="kite-footer">
-    <span>KITE 5 · Библиотеки</span>
-    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+    <span>KITE 5 · Библиотеки: встроенные и пользовательские</span>
+    <span>Kumir3 House 🐾🦀 · 2026-07-22</span>
   </footer>
 
 </article>
