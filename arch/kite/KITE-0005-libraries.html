@@ -15,7 +15,7 @@
       <dt>Название</dt>         <dd>Библиотеки: встроенные и пользовательские</dd>
       <dt>Тип</dt>              <dd>Спецификация</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
-      <dt>Версия документа</dt> <dd>1.1.0</dd>
+      <dt>Версия документа</dt> <dd>1.2.0</dd>
       <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
       <dt>Создан</dt>           <dd>2026-05-30</dd>
       <dt>Обновлён</dt>         <dd>2026-07-22</dd>
@@ -193,25 +193,38 @@ stable = true</code></pre>
     <h3 id="podklyuchenie">3.5. Подключение библиотеки</h3>
     <p>
       Библиотека подключается ключевым словом <code>подключить</code> или
-      <code>использовать</code>. Ниже перечислены формы подключения и их смысл; грамматика форм
-      нормируется в <a href="./KITE-0012-grammar.html">KITE 12</a>, порядок резолюции и
-      регистрация имён — в <a href="./KITE-0015-modules.html">KITE 15</a>.
+      <code>использовать</code>; оба слова равнозначны. За ключевым словом следует ровно один
+      источник — имя библиотеки либо строковый литерал с путём, — затем необязательный список
+      имён после двоеточия и необязательный псевдоним после <code>как</code>. Ниже перечислены
+      формы подключения и их смысл; грамматика форм нормируется в
+      <a href="./KITE-0012-grammar.html">KITE 12</a>, порядок резолюции и регистрация имён — в
+      <a href="./KITE-0015-modules.html">KITE 15</a>&nbsp;§&nbsp;3.2.
     </p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>подключить  &lt;источник&gt; [: имя1, имя2, …] [как Алиас]
+использовать &lt;источник&gt; [: имя1, имя2, …] [как Алиас]</code></pre>
+    </div>
     <div class="kite-table">
       <table>
         <thead><tr><th>Форма</th><th>Смысл</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>подключить Сокеты</code></td><td>Библиотека целиком.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td><code>подключить из Сокеты (TCP_Сервер, UDP_Клиент)</code></td><td>Выборочный импорт членов.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td><code>подключить из Сокеты:2.0.0 (TCP_Сервер)</code></td><td>Подключение с точной версией.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td><code>подключить из Сокеты:^1.5 (…)</code></td><td>Подключение с диапазоном версий (SemVer).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td><code>подключить из ./модуль (функция)</code></td><td>Подключение по локальному пути.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td><code>подключить Сокеты как С</code></td><td>Псевдоним библиотеки.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td><code>… (TCP_Сервер как Сервер)</code></td><td>Псевдоним отдельного члена.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>подключить Сокеты</code></td><td>Библиотека целиком по имени.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td><code>использовать "путь/файл.kum"</code></td><td>Подключение файла по пути.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td><code>подключить из https://…</code></td><td>Подключение по сетевому адресу.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>подключить "./модуль.kum"</code></td><td>Подключение по локальному пути.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>подключить Сокеты как С</code></td><td>Псевдоним библиотеки.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>подключить Сокеты: TCP_Сервер, UDP_Клиент</code></td><td>Список имён после двоеточия. Список принимается, но публичный набор подключаемой библиотеки не ограничивает: доступными становятся все её публичные члены.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>подключить Сокеты@2.0.0</code> · <code>подключить Сокеты@^1.5</code></td><td>Подключение с указанием версии или диапазона версий (SemVer).</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>подключить (TCP_Сервер как Сервер)</code></td><td>Псевдоним отдельного члена.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>подключить https://…</code></td><td>Подключение по сетевому адресу.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>
       </table>
+    </div>
+    <div class="kite-callout is-warning">
+      <span class="kite-callout-title">Слова <code>из</code> и скобочный список не входят в грамматику</span>
+      Запись <code>подключить из Сокеты (TCP_Сервер, UDP_Клиент)</code> корректной программой
+      Kumir&nbsp;3 не является: слово <code>из</code> ключевым не является, а список членов в
+      круглых скобках после источника грамматике не принадлежит. Список имён записывается
+      после двоеточия: <code>подключить Сокеты: TCP_Сервер, UDP_Клиент</code>.
     </div>
 
     <h3 id="dostup">3.6. Обращение к членам библиотеки</h3>
@@ -265,9 +278,10 @@ stable = true</code></pre>
     <ul>
       <li><strong>Версии SemVer.</strong> Версия библиотеки записывается как
         <code>МАЖОР.МИНОР.ПАТЧ</code>; спецификация версии допускает точное значение
-        (<code>2.0.0</code>) и диапазон (<code>^1.5</code>). Спецификации версий применяются в
-        секции зависимостей манифеста и в форме подключения (§&nbsp;3.5).
-        <span class="kite-badge is-available">стабильно</span></li>
+        (<code>2.0.0</code>) и диапазон (<code>^1.5</code>). Спецификации версий записываются в
+        секции зависимостей манифеста (§&nbsp;3.4); в форме подключения версия не
+        записывается (§&nbsp;3.5).
+        <span class="kite-badge is-experimental">экспериментально</span></li>
       <li><strong>Разрешение зависимостей.</strong> Граф зависимостей строится по манифестам, и
         для каждой библиотеки выбирается версия, удовлетворяющая всем спецификациям.
         <span class="kite-badge is-experimental">экспериментально</span></li>
@@ -331,6 +345,10 @@ stable = true</code></pre>
         не ограничивает (§&nbsp;3.6).</li>
       <li>Разрешение зависимостей и виртуальные окружения гарантий совместимости не имеют
         (§&nbsp;3.8).</li>
+      <li>Версия в форме подключения не записывается: спецификация версии действует только в
+        манифесте (§&nbsp;3.5, §&nbsp;3.8).</li>
+      <li>Список имён после двоеточия публичный набор подключаемой библиотеки не ограничивает
+        (§&nbsp;3.5).</li>
     </ul>
   </section>
 

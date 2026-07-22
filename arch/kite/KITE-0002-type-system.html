@@ -13,7 +13,7 @@
       <dt>Название</dt>         <dd>Система типов Kumir 3</dd>
       <dt>Тип</dt>              <dd>Спецификация</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
-      <dt>Версия документа</dt> <dd>1.1.0</dd>
+      <dt>Версия документа</dt> <dd>1.2.0</dd>
       <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
       <dt>Создан</dt>           <dd>2026-05-30</dd>
       <dt>Обновлён</dt>         <dd>2026-07-22</dd>
@@ -177,8 +177,8 @@
         <tbody>
           <tr><td><code>Необязательно&lt;T&gt;</code> · <code>может T</code></td><td>Option</td><td>Значение есть (<em>Некоторое</em>) или отсутствует (<em>Ничего</em>). Значения строятся функциями <code>некоторое(x)</code> и <code>ничего()</code>.</td><td>Безопасное отсутствие вместо null.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td><code>T?</code> (постфикс)</td><td>Option (краткая запись)</td><td>Краткая запись <em>Option</em> в позиции типа.</td><td>Краткость записи.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
-          <tr><td><code>T!E</code></td><td>Result</td><td><em>Успех(T)</em> или <em>Ошибка(E)</em> как тип, записываемый в программе.</td><td>Обработка ошибок без исключений.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
-          <tr><td><code>указатель T</code></td><td>Pointer</td><td>Адрес значения (<code>ссылка</code>, <code>новый</code>, <code>разыменовать</code>).</td><td>Низкоуровневая работа с памятью.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>T!E</code></td><td>Result</td><td><em>Успех(T)</em> или <em>Ошибка(E)</em> как тип, записываемый в программе. Значения <em>Успех</em>/<em>Ошибка</em> программа не строит (<a href="./KITE-0014-error-handling.html">KITE 14</a>&nbsp;§&nbsp;3.6).</td><td>Обработка ошибок без исключений.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>указатель T</code></td><td>Pointer</td><td>Значение, хранящее другое значение: строится записями <code>новый&nbsp;выражение</code> и <code>&amp;выражение</code>, читается записью <code>^указатель</code>. Указатель хранит <em>копию</em>: изменение исходной переменной на нём не отражается, а запись через указатель (<code>^п := …</code>) грамматике не принадлежит.</td><td>Косвенное хранение значения.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
           <tr><td><code>&amp;T</code> / <code>&amp;измен T</code></td><td>Reference</td><td>Ссылка, неизменяемая либо изменяемая.</td><td>Доступ без передачи владения.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>
       </table>
@@ -186,8 +186,11 @@
     <p>
       Ошибки обрабатываются конструкцией <code>попытка</code>&nbsp;/&nbsp;<code>перехват</code>&nbsp;/
       <code>наконец</code> и оператором <code>бросить</code>. Оператор раннего возврата
-      <code>?</code> <span class="kite-badge is-available">стабильно</span> (§&nbsp;3.12)
-      применяется к <em>Option</em>, к значению <code>пусто</code> и к значению <em>Результат</em>.
+      <code>?</code> (§&nbsp;3.12) применяется к <em>Option</em>, к значению <code>пусто</code> и
+      к значению-ошибке <span class="kite-badge is-available">стабильно</span>; ветвь
+      <em>Результат</em> (<em>Успех</em>&nbsp;/&nbsp;<em>Ошибка</em>) определена, но значений
+      этого вида программа не строит
+      <span class="kite-badge is-experimental">экспериментально</span>.
       Нормативная модель ошибок — <a href="./KITE-0014-error-handling.html">KITE 14</a>.
     </p>
 
@@ -220,7 +223,7 @@
         <tbody>
           <tr><td><code>перечисление</code></td><td>Enum</td><td>Перечисление с вариантами и данными. Литералы вариантов <code>Перечисление::Вариант</code> и <code>Перечисление::Вариант(x)</code> вычисляются и разрешаются тем же путём, что и члены модуля (<a href="./KITE-0015-modules.html">KITE 15</a>).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td><code>объект</code></td><td>Object</td><td>Экземпляр класса или структуры с полями (<a href="./KITE-0011-oop.html">KITE 11</a>).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td><code>@нативный</code></td><td>Native</td><td>Объект, реализованный средствами среды исполнения. Нативные <em>функции</em> вызываются как обычные (<a href="./KITE-0016-stdlib.html">KITE 16</a>).</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>@нативный</code></td><td>Native</td><td>Объект, реализованный средствами среды исполнения. Запись с <code>@</code> в объявлении не разбирается. Нативные <em>функции</em> вызываются как обычные (<a href="./KITE-0016-stdlib.html">KITE 16</a>).</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
           <tr><td><code>Имя&lt;…&gt;</code></td><td>Generic</td><td>Параметризованный (обобщённый) тип. Запись разбирается; параметры типа при исполнении не проверяются.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
         </tbody>
       </table>
@@ -333,7 +336,7 @@
           <tr><td><code>:=</code> <code>+=</code> <code>-=</code> …</td><td>Присваивание и составные операторы присваивания.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td><code>|&gt;</code></td><td>Конвейер вызовов.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td><code>див</code> · <code>мод</code></td><td>Целочисленное деление и остаток; <code>/</code> даёт вещественное.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td><code>?</code></td><td>Ранний возврат: <em>Некоторое(v)</em> и <em>Успех(v)</em> разворачиваются до <code>v</code>; <em>Ничего</em>, <code>пусто</code> и <em>Ошибка</em> дают ранний возврат объемлющего алгоритма.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>?</code></td><td>Ранний возврат: <em>Некоторое(v)</em> разворачивается до <code>v</code>; <em>Ничего</em>, <code>пусто</code> и значение-ошибка дают ранний возврат объемлющего алгоритма (<a href="./KITE-0014-error-handling.html">KITE 14</a>&nbsp;§&nbsp;3.5).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td><code>&gt;&gt;</code></td><td>Композиция функций: <code>f &gt;&gt; g</code> даёт лямбду одного параметра, эквивалентную <code>g(f(x))</code>, и вкладывается. Не-функция в операнде ДОЛЖНА давать ошибку.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td><code>1..10</code> · <code>1..=10</code></td><td>Литералы диапазонов без верхней границы и с ней.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td><code>… шаг 2</code></td><td>Шаг диапазона.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>

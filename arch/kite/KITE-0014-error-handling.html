@@ -14,7 +14,7 @@
       <dt>Название</dt>         <dd>Обработка ошибок</dd>
       <dt>Тип</dt>              <dd>Спецификация</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
-      <dt>Версия документа</dt> <dd>0.2.0</dd>
+      <dt>Версия документа</dt> <dd>0.3.0</dd>
       <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
       <dt>Создан</dt>           <dd>2026-07-22</dd>
       <dt>Обновлён</dt>         <dd>2026-07-22</dd>
@@ -104,10 +104,12 @@
       <div class="kite-card">
         <p><strong>Ошибки-значения</strong> <span class="kite-badge is-experimental">экспериментально</span></p>
         <p>
-          Неудача — обычное <em>значение</em> (<code>T!E</code> — «успех&nbsp;<code>T</code>
-          или ошибка&nbsp;<code>E</code>»), возвращаемое из алгоритма. Оператор <code>?</code>
-          разворачивает успех и выполняет ранний возврат при неудаче. Модель применяется для
-          <strong>ожидаемых</strong> ошибок, которые вызывающая сторона обязана обработать.
+          Неудача — обычное <em>значение</em>, возвращаемое из алгоритма: опция
+          (<code>T?</code>) либо значение-ошибка. Оператор <code>?</code> разворачивает успех и
+          выполняет ранний возврат при неудаче. Тип-результат <code>T!E</code> — «успех
+          <code>T</code> или ошибка&nbsp;<code>E</code>» — этой модели ещё не доступен
+          (§&nbsp;3.6). Модель применяется для <strong>ожидаемых</strong> ошибок, которые
+          вызывающая сторона обязана обработать.
         </p>
       </div>
     </div>
@@ -265,12 +267,17 @@
 кон</code></pre>
     </div>
     <p>
-      Ветви <em>Некоторое</em>, <em>Ничего</em> и <code>пусто</code> строятся из программы
-      встроенными <code>некоторое(v)</code>, <code>ничего()</code> и литералом
-      <code>пусто</code>. Значения <em>Успех</em> и <em>Ошибка</em> оператор <code>?</code>
-      обрабатывает, но конструкторов <code>успех()</code> и <code>ошибка()</code> язык не
-      определяет (§&nbsp;3.6), поэтому результатная половина <code>?</code> несёт метку
-      <span class="kite-badge is-experimental">экспериментально</span>.
+      Ветви <em>Некоторое</em>, <em>Ничего</em>, <code>пусто</code> и значение-ошибка строятся
+      из программы встроенными <code>некоторое(v)</code>, <code>ничего()</code>,
+      <code>ошибка(сообщение&nbsp;[,&nbsp;вид])</code> и литералом <code>пусто</code>: эти
+      ветви оператора <code>?</code> наблюдаемы.
+      <span class="kite-badge is-available">стабильно</span>
+    </p>
+    <p>
+      Значения <em>Успех(v)</em> и <em>Ошибка(e)</em> оператор <code>?</code> обрабатывает, но
+      конструкторов значения-результата язык не определяет (§&nbsp;3.6), поэтому эти две ветви
+      в программе не наблюдаются.
+      <span class="kite-badge is-experimental">экспериментально</span>
     </p>
 
     <h3 id="result">3.6. Результаты <code>T!E</code> и значения-ошибки</h3>
@@ -280,10 +287,13 @@
       <strong>ожидаемые</strong> ошибки.
     </p>
     <ul>
-      <li><span class="kite-badge is-experimental">экспериментально</span> Значение-результат
-        (<code>Успех(v)</code> / <code>Ошибка(e)</code>) и значение-ошибка
-        (<code>&lt;Ошибка вид: сообщение&gt;</code>) существуют, печатаются и обрабатываются
-        оператором <code>?</code> (§&nbsp;3.5).</li>
+      <li><span class="kite-badge is-experimental">экспериментально</span> Значение-ошибка:
+        конструктор <code>ошибка(сообщение&nbsp;[,&nbsp;вид])</code>, печать в виде
+        <code>&lt;Ошибка вид: сообщение&gt;</code> и обработка оператором <code>?</code>
+        (§&nbsp;3.5).</li>
+      <li><span class="kite-badge is-proposed">предложено</span> Значение-результат
+        (<code>Успех(v)</code> / <code>Ошибка(e)</code>): оператор <code>?</code> такое
+        значение обрабатывает, но получить его в программе нечем.</li>
       <li><span class="kite-badge is-available">стабильно</span> Опции <code>T?</code>:
         конструкторы <code>некоторое(v)</code> и <code>ничего()</code>, предикат
         <code>есть(o)</code>, извлечение <code>извлечь(o)</code>, операторы <code>??</code> и
@@ -292,8 +302,9 @@
         <code>T!E</code> в сигнатуре: лексема <code>!</code> в позиции типа не разбирается
         (<a href="./KITE-0012-grammar.html">KITE 12</a>&nbsp;§&nbsp;3.18), поэтому
         <code>цел!ОшибкаВвода</code> в объявлении не записывается.</li>
-      <li><span class="kite-badge is-proposed">предложено</span> Конструкторы
-        <code>успех(v)</code> и <code>ошибка(e)</code>.</li>
+      <li><span class="kite-badge is-proposed">предложено</span> Конструктор
+        <code>успех(v)</code> и конструктор ошибочной половины результата: встроенная
+        <code>ошибка(…)</code> даёт значение-ошибку, а не значение-результат.</li>
       <li><span class="kite-badge is-proposed">предложено</span> Разбор значения-результата в
         <code>совпадение</code> по вариантам <code>Успех</code> и <code>Ошибка</code>.</li>
     </ul>
@@ -397,11 +408,13 @@
           <tr><td>Бросок</td><td><code>бросить <em>выражение</em></code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td>Утверждение</td><td><code>утв <em>условие</em></code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td>Распространение опций</td><td><code>выражение?</code> над <code>Некоторое</code>/<code>Ничего</code>/<code>пусто</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td>Распространение результатов</td><td><code>выражение?</code> над <code>Успех</code>/<code>Ошибка</code>/<code>&lt;Ошибка&gt;</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td>Распространение значений-ошибок</td><td><code>выражение?</code> над <code>&lt;Ошибка …&gt;</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td>Распространение результатов</td><td><code>выражение?</code> над <code>Успех</code>/<code>Ошибка</code></td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
           <tr><td>Опции</td><td><code>некоторое(v)</code>, <code>ничего()</code>, <code>есть</code>, <code>извлечь</code>, <code>??</code>, <code>?.</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td>Значение-результат и значение-ошибка</td><td><code>Успех(v)</code> / <code>Ошибка(e)</code> / <code>&lt;Ошибка …&gt;</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td>Значение-ошибка</td><td><code>ошибка(сообщение [, вид])</code> → <code>&lt;Ошибка …&gt;</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td>Значение-результат</td><td><code>Успех(v)</code> / <code>Ошибка(e)</code></td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
           <tr><td>Тип-результат в сигнатуре</td><td><code>цел!ОшибкаВвода</code></td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
-          <tr><td>Конструкторы результата</td><td><code>успех(v)</code> / <code>ошибка(e)</code></td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td>Конструктор результата</td><td><code>успех(v)</code></td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
           <tr><td>Типизированный перехват</td><td><code>перехват е: ВидОшибки</code> с фильтрацией</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
           <tr><td>Трассировка стека</td><td>цепочка вызовов в сообщении</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>

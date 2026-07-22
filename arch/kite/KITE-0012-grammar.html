@@ -13,7 +13,7 @@
       <dt>Название</dt>         <dd>Формальная грамматика (EBNF)</dd>
       <dt>Тип</dt>              <dd>Спецификация</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
-      <dt>Версия документа</dt> <dd>0.2.0</dd>
+      <dt>Версия документа</dt> <dd>0.3.0</dd>
       <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
       <dt>Создан</dt>           <dd>2026-07-22</dd>
       <dt>Обновлён</dt>         <dd>2026-07-22</dd>
@@ -148,8 +148,19 @@
       Лексема, совпавшая с написанием ключевого слова, ДОЛЖНА давать токен этого ключевого слова;
       иначе она даёт обобщённый идентификатор. Язык определяет <strong>103</strong> ключевых
       слова; каждое имеет каноническое русское написание и МОЖЕТ иметь дополнительные написания
-      — всего <strong>295</strong>. Написания <strong>регистрозависимы</strong>
-      (<code>алг</code>&nbsp;=&nbsp;<code>alg</code>&nbsp;=&nbsp;<code>algorithm</code>).
+      — всего <strong>295</strong>.
+    </p>
+    <p>
+      Сравнение написания <strong>регистрозависимо</strong>: ключевым словом является только
+      написание, перечисленное для этого слова, а лексема, отличающаяся регистром хотя бы
+      одной буквы, ключевым словом не является и даёт обобщённый идентификатор. Так,
+      <code>алг</code> — ключевое слово, а <code>Алг</code> и <code>АЛГ</code> — обычные
+      идентификаторы. По той же причине <code>Пусто</code> и <code>пусто</code> — оба ключевые
+      слова: каждое из этих написаний перечислено отдельно (§&nbsp;3.3). То же правило
+      действует для имён: <code>счёт</code> и <code>Счёт</code> — разные идентификаторы.
+      Дополнительные написания — это <em>синонимы</em>, а не изменение регистра:
+      <code>алг</code>, <code>alg</code> и <code>algorithm</code> — три написания одного
+      ключевого слова. <span class="kite-badge is-available">стабильно</span>
     </p>
     <div class="kite-callout is-important">
       <span class="kite-callout-title">Категоризация идентификаторов</span>
@@ -205,9 +216,14 @@ hex_цифра  = "0"…"9" | "a"…"f" | "A"…"F" ;
     <p>Логические и специальные литералы являются ключевыми словами:</p>
     <div class="kite-code" data-lang="kumir">
 <pre><code>лог_литерал   = "да" | "нет" ;                 (* true / false *)
-пусто_литерал = "Пусто" | "пусто" | "ничего" | "null" | "nil" ;
+пусто_литерал = "Пусто" | "пусто" | "ничего" | "None" | "none" | "nil" | "null" ;
 </code></pre>
     </div>
+    <p>
+      Все семь написаний <code>пусто_литерал</code> дают один и тот же токен и одно и то же
+      значение; каноническое написание — <code>Пусто</code>, а печатается значение как
+      <code>пусто</code>. <span class="kite-badge is-available">стабильно</span>
+    </p>
 
     <h3 id="stroki">3.4. Строки и интерполяция</h3>
     <p>Язык определяет пять форм строковых и символьных литералов.</p>
@@ -632,7 +648,7 @@ doc_комментарий  = "///" { ? …до конца строки ? } ;
         <tbody>
           <tr><td>Примитивы</td><td><code>цел вещ лог сим лит авто</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
           <tr><td>Массив</td><td><code>таб цел</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td>Указатель</td><td><code>указатель Точка</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>Указатель</td><td><code>указатель Точка</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
           <tr><td>Опциональный</td><td><code>необязательно&lt;цел&gt;</code> · <code>может цел</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
           <tr><td>Обобщённый</td><td><code>Список&lt;цел&gt;</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
           <tr><td>Функциональный</td><td><code>(цел, цел) -&gt; лог</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
@@ -777,7 +793,9 @@ or_паттерн    = атом_паттерн { "|" атом_паттерн } ;
           <tr><td>Объектная модель: классы, структуры, интерфейсы, трейты, реализации, перечисления</td><td><span class="kite-badge is-available">стабильно</span></td><td>§&nbsp;3.19</td></tr>
           <tr><td>Паттерны</td><td><span class="kite-badge is-available">стабильно</span></td><td>§&nbsp;3.20</td></tr>
           <tr><td>Rust-вставки</td><td><span class="kite-badge is-available">стабильно</span></td><td>§&nbsp;3.21</td></tr>
-          <tr><td>Асинхронные формы <code>асинх</code>, <code>ждать</code>, <code>запустить</code>, <code>уступить</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td><td>§&nbsp;3.8, KITE 3</td></tr>
+          <tr><td>Асинхронные формы <code>асинх</code>, <code>ждать</code>, <code>запустить</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td><td>§&nbsp;3.8, KITE 3</td></tr>
+          <tr><td>Форма <code>уступить</code>: разбирается, но исполнения не имеет</td><td><span class="kite-badge is-proposed">предложено</span></td><td>§&nbsp;3.8, KITE 3</td></tr>
+          <tr><td>Указатель <code>указатель T</code> в позиции типа</td><td><span class="kite-badge is-experimental">экспериментально</span></td><td>§&nbsp;3.18</td></tr>
           <tr><td>Generic-ограничения <code>где</code></td><td><span class="kite-badge is-proposed">предложено</span></td><td>§&nbsp;3.19</td></tr>
           <tr><td>Постфиксные типы <code>T?</code> и <code>T!E</code></td><td><span class="kite-badge is-proposed">предложено</span></td><td>§&nbsp;3.18</td></tr>
           <tr><td>Литералы <code>{…}</code> и <code>{k: v}</code> (множество, словарь)</td><td><span class="kite-badge is-proposed">предложено</span></td><td>§&nbsp;3.16</td></tr>

@@ -13,7 +13,7 @@
       <dt>Название</dt>         <dd>Асинхронность и среда исполнения</dd>
       <dt>Тип</dt>              <dd>Спецификация</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-experimental">Experimental</span></dd>
-      <dt>Версия документа</dt> <dd>0.2.0</dd>
+      <dt>Версия документа</dt> <dd>0.3.0</dd>
       <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
       <dt>Создан</dt>           <dd>2026-05-30</dd>
       <dt>Обновлён</dt>         <dd>2026-07-22</dd>
@@ -109,6 +109,12 @@
 
     <!-- 3.3 -->
     <h3 id="primitivy">3.3. Примитивы</h3>
+    <p>
+      Слова <code>обещание</code>, <code>генератор</code> и <code>канал</code> ключевыми не
+      являются: в позиции типа они дают ошибку разбора, а значений этих видов программа не
+      получает. Модель, описанная ниже, задаёт замысел примитивов; те же метки несёт
+      <a href="./KITE-0002-type-system.html">KITE 2</a>&nbsp;§&nbsp;3.8.
+    </p>
     <div class="kite-table">
       <table>
         <thead><tr><th>Примитив</th><th>Состояние</th><th>Состояния</th><th>Стабильность</th></tr></thead>
@@ -117,19 +123,19 @@
             <td><code>обещание</code> (Promise)</td>
             <td>идентификатор задачи, состояние, результат, ошибка</td>
             <td>Ожидает · Выполнено · Отклонено</td>
-            <td><span class="kite-badge is-experimental">экспериментально</span></td>
+            <td><span class="kite-badge is-proposed">предложено</span></td>
           </tr>
           <tr>
             <td><code>генератор</code> (Generator)</td>
             <td>идентификатор, состояние, текущее значение</td>
             <td>Создан · Приостановлен · Завершён · Ошибка</td>
-            <td><span class="kite-badge is-experimental">экспериментально</span></td>
+            <td><span class="kite-badge is-proposed">предложено</span></td>
           </tr>
           <tr>
             <td><code>канал</code> (Channel)</td>
             <td>идентификатор, вместимость, признак закрытия</td>
             <td>Открыт · Закрыт</td>
-            <td><span class="kite-badge is-experimental">экспериментально</span></td>
+            <td><span class="kite-badge is-proposed">предложено</span></td>
           </tr>
         </tbody>
       </table>
