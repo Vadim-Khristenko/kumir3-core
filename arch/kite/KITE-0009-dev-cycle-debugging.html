@@ -12,6 +12,7 @@
       <dt>Название</dt>         <dd>Циклы разработки и отладка</dd>
       <dt>Тип</dt>              <dd>Руководство</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
+      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
       <dt>Версия документа</dt> <dd>2.0.0</dd>
       <dt>Создан</dt>           <dd>2026-05-30</dd>
       <dt>Обновлён</dt>         <dd>2026-07-22</dd>
@@ -94,7 +95,7 @@
       Заголовки <code>| КЕЙС</code> и <code>| ОЖИДАЕМЫЙ ВЫВОД</code> разбираются как
       тест-кейс; их грамматика, задание ввода, файлы с несколькими кейсами и правила
       сравнения определены в
-      <a href="./KITE-0018-testing.html#pravila">KITE&nbsp;18&nbsp;§&nbsp;3.2</a>.
+      <a href="./KITE-0018-testing.html#grammatika">KITE&nbsp;18&nbsp;§&nbsp;3.2</a>.
     </p>
     <div class="kite-code" data-lang="kumir">
 <pre><code>| КЕЙС: НОД(48, 36) → 12
@@ -108,7 +109,7 @@
         ломаются чаще середины диапазона.</li>
       <li>Храни примеры рядом с кодом: они одновременно документация и защита от
         повторного появления ошибки
-        (<a href="./KITE-0018-testing.html#pravila">KITE&nbsp;18&nbsp;§&nbsp;3.1</a>).</li>
+        (<a href="./KITE-0018-testing.html#forma-kejsa">KITE&nbsp;18&nbsp;§&nbsp;3.1</a>).</li>
     </ul>
   </section>
 
@@ -146,7 +147,7 @@
       присваивание необъявленному имени создаёт новую переменную, а чтение правильного
       имени падает. Присваивание необъявленному имени даёт предупреждение, а в строгом
       режиме — ошибку
-      (<a href="./KITE-0004-environments-scope.html#prisvaivanie">KITE&nbsp;4&nbsp;§&nbsp;4</a>).
+      (<a href="./KITE-0004-environments-scope.html#prisvaivanie">KITE&nbsp;4&nbsp;§&nbsp;3.4</a>).
       Строгий режим — самый быстрый способ поймать опечатку.
     </div>
     <p>
@@ -204,11 +205,11 @@
       <li>Один и тот же код в одном и том же окружении даёт один и тот же результат;
         расхождение означает, что окружение отличается.</li>
       <li>Фиксируй версии библиотек в конфигурации проекта и работай в виртуальном
-        окружении (<a href="./KITE-0005-libraries.html#versii">KITE&nbsp;5&nbsp;§&nbsp;7</a>).</li>
+        окружении (<a href="./KITE-0005-libraries.html#versii">KITE&nbsp;5&nbsp;§&nbsp;3.8</a>).</li>
       <li>Программа, использующая <code>случайное</code>, повторяемой не является: для
         проверки задавай входные данные явно.</li>
       <li>Порядок обхода коллекций и формат вывода чисел уточняй по
-        <a href="./KITE-0007-stdio.html#vyvod">KITE&nbsp;7&nbsp;§&nbsp;5</a>, а не по
+        <a href="./KITE-0007-stdio.html#vyvod">KITE&nbsp;7&nbsp;§&nbsp;3.3</a>, а не по
         наблюдению за одним запуском.</li>
     </ul>
   </section>
@@ -240,17 +241,17 @@
             <td>«Опечатка в имени переменной обязательно даст ошибку».</td>
             <td>Присваивание с опечаткой создаёт новую переменную; ошибка возникает позже
               и в другом месте
-              (<a href="./KITE-0004-environments-scope.html#prisvaivanie">KITE&nbsp;4&nbsp;§&nbsp;4</a>).</td>
+              (<a href="./KITE-0004-environments-scope.html#prisvaivanie">KITE&nbsp;4&nbsp;§&nbsp;3.4</a>).</td>
           </tr>
           <tr>
             <td>«Глубокая рекурсия просто медленная».</td>
             <td>Глубина вызовов ограничена; её превышение останавливает программу
-              (<a href="./KITE-0004-environments-scope.html#rekursiya">KITE&nbsp;4&nbsp;§&nbsp;6</a>).</td>
+              (<a href="./KITE-0004-environments-scope.html#rekursiya">KITE&nbsp;4&nbsp;§&nbsp;3.6</a>).</td>
           </tr>
           <tr>
             <td>«Печать-отладку можно оставить в готовой программе».</td>
             <td>Лишний вывод ломает сравнение с ожидаемым результатом
-              (<a href="./KITE-0018-testing.html#pravila">KITE&nbsp;18&nbsp;§&nbsp;3.6</a>).</td>
+              (<a href="./KITE-0018-testing.html#sravnenie">KITE&nbsp;18&nbsp;§&nbsp;3.6</a>).</td>
           </tr>
         </tbody>
       </table>
@@ -264,12 +265,12 @@
       <table>
         <thead><tr><th>Раздел руководства</th><th>Норма</th></tr></thead>
         <tbody>
-          <tr><td>§ 4 Проверка примерами</td><td><a href="./KITE-0018-testing.html#pravila">KITE 18 § 3.1</a>, <a href="./KITE-0018-testing.html#pravila">§ 3.2</a>, <a href="./KITE-0018-testing.html#pravila">§ 3.6</a> — формат кейса, грамматика заголовков, сравнение.</td></tr>
+          <tr><td>§ 4 Проверка примерами</td><td><a href="./KITE-0018-testing.html#forma-kejsa">KITE 18 § 3.1</a>, <a href="./KITE-0018-testing.html#grammatika">§ 3.2</a>, <a href="./KITE-0018-testing.html#sravnenie">§ 3.6</a> — формат кейса, грамматика заголовков, сравнение.</td></tr>
           <tr><td>§ 5 Чтение ошибок</td><td><a href="./KITE-0014-error-handling.html#vidy">KITE 14 § 3.2</a> — виды ошибок; <a href="./KITE-0014-error-handling.html#soobshcheniya">§ 3.7</a> — формат сообщения.</td></tr>
-          <tr><td>§ 5 Необъявленные переменные</td><td><a href="./KITE-0004-environments-scope.html#prisvaivanie">KITE 4 § 4</a> — присваивание и строгий режим.</td></tr>
+          <tr><td>§ 5 Необъявленные переменные</td><td><a href="./KITE-0004-environments-scope.html#prisvaivanie">KITE 4 § 3.4</a> — присваивание и строгий режим.</td></tr>
           <tr><td>§ 6 Средства отладки</td><td><a href="./KITE-0014-error-handling.html#utv">KITE 14 § 3.4</a> — утверждения.</td></tr>
-          <tr><td>§ 8 Повторяемость</td><td><a href="./KITE-0005-libraries.html#versii">KITE 5 § 7</a> — версии и окружения; <a href="./KITE-0007-stdio.html#vyvod">KITE 7 § 5</a> — вывод и форматирование.</td></tr>
-          <tr><td>§ 9 Рекурсия</td><td><a href="./KITE-0004-environments-scope.html#rekursiya">KITE 4 § 6</a> — глубина вызовов.</td></tr>
+          <tr><td>§ 8 Повторяемость</td><td><a href="./KITE-0005-libraries.html#versii">KITE 5 § 3.8</a> — версии и окружения; <a href="./KITE-0007-stdio.html#vyvod">KITE 7 § 3.3</a> — вывод и форматирование.</td></tr>
+          <tr><td>§ 9 Рекурсия</td><td><a href="./KITE-0004-environments-scope.html#rekursiya">KITE 4 § 3.6</a> — глубина вызовов.</td></tr>
         </tbody>
       </table>
     </div>

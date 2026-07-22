@@ -10,25 +10,25 @@ Kumir 3 (аналог Python PEP). Документы — это семанти�
 
 | №      | Документ                                                               | Тип            | Статус       |
 |--------|------------------------------------------------------------------------|----------------|--------------|
-| KITE 0 | [Стандарт KITE](KITE-0000-standard.html)                               | Мета / Процесс | Active       |
-| KITE 1 | [Kumir 3: язык, цели и преимущества](KITE-0001-language-overview.html)  | Информационный | Active       |
+| KITE 0 | [Стандарт KITE](KITE-0000-standard.html)                               | Процесс / Мета | Active       |
+| KITE 1 | [Kumir 3: язык, цели и преимущества](KITE-0001-language-overview.html)  | Руководство    | Active       |
 | KITE 2 | [Система типов Kumir 3](KITE-0002-type-system.html)                    | Спецификация   | Active       |
 | KITE 3 | [Асинхронность и среда исполнения](KITE-0003-async-runtime.html)        | Спецификация   | Experimental |
 | KITE 4 | [Окружения, область видимости и поиск переменных](KITE-0004-environments-scope.html) | Спецификация | Active |
 | KITE 5 | [Библиотеки: встроенные и пользовательские](KITE-0005-libraries.html)   | Спецификация   | Active       |
-| KITE 6 | [Режим совместимости с КуМир 2](KITE-0006-kumir2-compatibility.html)    | Дизайн         | Draft        |
-| KITE 7 | [Базовая библиотека STDIO](KITE-0007-stdio.html)                       | Дизайн         | Draft        |
-| KITE 8 | [Как лучше писать на Kumir 3](KITE-0008-style-guide.html)               | Гайдлайны      | Active       |
-| KITE 9 | [Циклы разработки и отладка](KITE-0009-dev-cycle-debugging.html)        | Информационный | Active       |
-| KITE 10 | [Архитектура движка типов](KITE-0010-type-engine.html)                | Спецификация   | Experimental |
-| KITE 11 | [Объектная модель (ООП)](KITE-0011-oop.html)                          | Дизайн         | Draft        |
+| KITE 6 | [Режим совместимости с КуМир 2](KITE-0006-kumir2-compatibility.html)    | Предложение    | Draft        |
+| KITE 7 | [Базовая библиотека STDIO](KITE-0007-stdio.html)                       | Предложение    | Draft        |
+| KITE 8 | [Как лучше писать на Kumir 3](KITE-0008-style-guide.html)               | Руководство    | Active       |
+| KITE 9 | [Циклы разработки и отладка](KITE-0009-dev-cycle-debugging.html)        | Руководство    | Active       |
+| KITE 10 | [Модель отношений между типами](KITE-0010-type-engine.html)           | Предложение    | Draft        |
+| KITE 11 | [Объектная модель](KITE-0011-oop.html)                                | Спецификация   | Draft        |
 | KITE 12 | [Формальная грамматика (EBNF)](KITE-0012-grammar.html)                | Спецификация   | Draft        |
 | KITE 13 | [Семантика выражений и модель вычисления](KITE-0013-expression-semantics.html) | Спецификация | Draft |
-| KITE 14 | [Обработка ошибок](KITE-0014-error-handling.html)                     | Спецификация / Дизайн | Draft |
+| KITE 14 | [Обработка ошибок](KITE-0014-error-handling.html)                     | Спецификация   | Draft        |
 | KITE 15 | [Модули, импорты и пространства имён](KITE-0015-modules.html)         | Спецификация   | Draft        |
-| KITE 16 | [Каталог стандартной библиотеки](KITE-0016-stdlib.html)               | Спецификация / Справочник | Draft |
-| KITE 17 | [Исполнители](KITE-0017-executors.html)                               | Спецификация / Дизайн | Draft |
-| KITE 18 | [Тестирование и учебный корпус программ](KITE-0018-testing.html)      | Спецификация / Процесс | Draft |
+| KITE 16 | [Каталог стандартной библиотеки](KITE-0016-stdlib.html)               | Справочник     | Draft        |
+| KITE 17 | [Исполнители](KITE-0017-executors.html)                               | Предложение    | Draft        |
+| KITE 18 | [Тестирование и учебный корпус программ](KITE-0018-testing.html)      | Спецификация   | Draft        |
 
 ## Как устроено
 

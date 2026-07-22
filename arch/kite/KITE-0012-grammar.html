@@ -13,8 +13,8 @@
       <dt>Название</dt>         <dd>Формальная грамматика (EBNF)</dd>
       <dt>Тип</dt>              <dd>Спецификация</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
-      <dt>Версия документа</dt> <dd>0.3.0</dd>
       <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Версия документа</dt> <dd>0.3.0</dd>
       <dt>Создан</dt>           <dd>2026-07-22</dd>
       <dt>Обновлён</dt>         <dd>2026-07-22</dd>
     </dl>
@@ -638,7 +638,7 @@ doc_комментарий  = "///" { ? …до конца строки ? } ;
             | функц_тип
             | имя [ "&lt;" тип { "," тип } "&gt;" ] ;   (* пользовательский / generic *)
 
-примитив_тип = "цел" | "вещ" | "лог" | "сим" | "лит" | "авто" | "пустота" ;
+примитив_тип = "цел" | "вещ" | "лог" | "сим" | "лит" | "авто" | "любой" | "пустота" ;
 функц_тип    = "(" [ тип { "," тип } ] ")" "-&gt;" тип ;
 </code></pre>
     </div>
@@ -652,18 +652,28 @@ doc_комментарий  = "///" { ? …до конца строки ? } ;
           <tr><td>Опциональный</td><td><code>необязательно&lt;цел&gt;</code> · <code>может цел</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
           <tr><td>Обобщённый</td><td><code>Список&lt;цел&gt;</code></td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
           <tr><td>Функциональный</td><td><code>(цел, цел) -&gt; лог</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
-          <tr><td>Размерные числовые и <code>любой</code></td><td><code>цел_8</code> · <code>нат_64</code> · <code>вещ_128</code> · <code>любой</code></td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td>Динамический (верхний)</td><td><code>любой</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>Размерные числовые</td><td><code>цел_8</code> · <code>нат_64</code> · <code>вещ_128</code></td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
           <tr><td>Постфиксные обёртки</td><td><code>T?</code> · <code>T!E</code></td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>
       </table>
     </div>
     <p>
-      Имена <code>цел_8</code>, <code>нат_64</code>, <code>вещ_128</code> и слово
-      <code>любой</code> в позиции типа встроенными не являются: они разбираются как
-      пользовательское имя типа. Постфиксные записи <code>T?</code> и <code>T!E</code>
-      (<a href="./KITE-0002-type-system.html">KITE 2</a> §&nbsp;5) в позиции типа не
-      разбираются; опциональный тип записывается словом <code>необязательно</code> или
-      <code>может</code>.
+      Слово <code>любой</code> — ключевое слово примитивного типа (§&nbsp;3.2): в позиции
+      типа оно даёт динамический (верхний) тип, принимающий значение любого типа
+      (<a href="./KITE-0002-type-system.html#specialnye">KITE 2</a>&nbsp;§&nbsp;3.9).
+      Проверка <code>x это любой</code> истинна для любого значения
+      (<a href="./KITE-0013-expression-semantics.html#typecheck">KITE 13</a>&nbsp;§&nbsp;3.17),
+      а приведение <code>v как любой</code> тождественно
+      (<a href="./KITE-0013-expression-semantics.html#cast">KITE 13</a>&nbsp;§&nbsp;3.16).
+    </p>
+    <p>
+      Имена <code>цел_8</code>, <code>нат_64</code>, <code>вещ_128</code> в позиции типа
+      встроенными не являются: они разбираются как пользовательское имя типа. Постфиксные
+      записи <code>T?</code> и <code>T!E</code>
+      (<a href="./KITE-0002-type-system.html#obertki">KITE 2</a>&nbsp;§&nbsp;3.4) в позиции
+      типа не разбираются; опциональный тип записывается словом
+      <code>необязательно</code> или <code>может</code>.
     </p>
 
     <h3 id="oop">3.19. Объектная модель</h3>
