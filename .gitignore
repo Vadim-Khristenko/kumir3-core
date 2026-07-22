@@ -1,5 +1,8 @@
 # Build & Testing
 /target
+
+# Собранный сайт KITE (tools/kite-site.ts)
+/_site
 *.env
 *.log
 *.debug
