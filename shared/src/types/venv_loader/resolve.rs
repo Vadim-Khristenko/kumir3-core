@@ -1,0 +1,141 @@
+//! Разрешение библиотек по имени/версии и загрузка со всеми зависимостями.
+
+use crate::types::environment::LibrarySource;
+use crate::types::version::{Version, VersionSpec};
+
+use super::error::{LoaderError, LoaderResult};
+use super::{IntegratedLoader, LoadedLibrary};
+
+impl IntegratedLoader {
+    // =========================================================================
+    //                         ЗАГРУЗКА БИБЛИОТЕК
+    // =========================================================================
+
+    /// Загружает библиотеку по имени
+    pub fn load(&mut self, name: &str) -> LoaderResult<LoadedLibrary> {
+        self.load_with_spec(name, &VersionSpec::any())
+    }
+
+    /// Загружает библиотеку с проверкой версии
+    pub fn load_with_spec(
+        &mut self,
+        name: &str,
+        spec: &VersionSpec,
+    ) -> LoaderResult<LoadedLibrary> {
+        // Проверяем на цикл
+        if self.loading_stack.contains(&name.to_string()) {
+            let mut chain = self.loading_stack.clone();
+            chain.push(name.to_string());
+            return Err(LoaderError::CyclicDependency(chain));
+        }
+
+        self.loading_stack.push(name.to_string());
+        let result = self.load_impl(name, spec);
+        self.loading_stack.pop();
+
+        result
+    }
+
+    /// Загружает конкретную версию
+    pub fn load_version(&mut self, name: &str, version: &Version) -> LoaderResult<LoadedLibrary> {
+        self.load_with_spec(name, &VersionSpec::exact(version.clone()))
+    }
+
+    /// Внутренняя реализация загрузки
+    fn load_impl(&mut self, name: &str, spec: &VersionSpec) -> LoaderResult<LoadedLibrary> {
+        // 1. Проверяем в активном окружении
+        if let Some(lib) = self.env_manager.find_library_matching(name, spec) {
+            return Ok(LoadedLibrary {
+                def: lib.def.clone(),
+                version: lib.version.clone(),
+                source: lib.source.clone(),
+                path: lib.path.clone(),
+                source_code: None,
+                manifest: None,
+            });
+        }
+
+        // 2. Встроенные библиотеки
+        if let Some(def) = self.builtins.get(name) {
+            let version = Version::new(def.version.major, def.version.minor, def.version.patch);
+
+            if spec.matches(&version) {
+                return Ok(LoadedLibrary {
+                    def: def.clone(),
+                    version,
+                    source: LibrarySource::Builtin,
+                    path: None,
+                    source_code: None,
+                    manifest: None,
+                });
+            }
+        }
+
+        // 3. Локальные библиотеки проекта
+        let paths = self.env_manager.active().paths.clone();
+        if let Some(lib) = self.try_load_local(&paths.local_libs, name, spec)? {
+            return Ok(lib);
+        }
+
+        // 4. Глобальный реестр
+        if let Some(lib) = self.try_load_from_registry(&paths.global_cache, name, spec)? {
+            return Ok(lib);
+        }
+
+        // 5. Не найдено
+        let searched_paths = vec![paths.local_libs, paths.global_cache];
+
+        Err(LoaderError::NotFound {
+            name: name.to_string(),
+            searched_paths,
+        })
+    }
+
+    // =========================================================================
+    //                    ЗАГРУЗКА С ЗАВИСИМОСТЯМИ
+    // =========================================================================
+
+    /// Загружает библиотеку со всеми зависимостями
+    pub fn load_with_dependencies(&mut self, name: &str) -> LoaderResult<Vec<LoadedLibrary>> {
+        self.load_with_dependencies_spec(name, &VersionSpec::any())
+    }
+
+    /// Загружает библиотеку с зависимостями и проверкой версии
+    pub fn load_with_dependencies_spec(
+        &mut self,
+        name: &str,
+        spec: &VersionSpec,
+    ) -> LoaderResult<Vec<LoadedLibrary>> {
+        let mut loaded: Vec<LoadedLibrary> = Vec::new();
+        let mut to_load: Vec<(String, VersionSpec)> = vec![(name.to_string(), spec.clone())];
+
+        while let Some((lib_name, lib_spec)) = to_load.pop() {
+            // Пропускаем уже загруженные
+            if loaded
+                .iter()
+                .any(|l| l.def.name.as_ref() == lib_name || l.def.id.as_ref() == lib_name)
+            {
+                continue;
+            }
+
+            let lib = self.load_with_spec(&lib_name, &lib_spec)?;
+
+            // Добавляем зависимости в очередь
+            if let Some(ref manifest) = lib.manifest {
+                for dep in &manifest.dependencies {
+                    if !dep.optional {
+                        to_load.push((dep.name.clone(), dep.version.clone()));
+                    }
+                }
+            }
+
+            // Регистрируем в окружении
+            let versioned = lib.clone().into_versioned();
+            self.env_manager.active_mut().register(versioned);
+
+            loaded.push(lib);
+        }
+
+        Ok(loaded)
+    }
+}
