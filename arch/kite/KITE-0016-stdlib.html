@@ -1,316 +1,333 @@
 <link rel="stylesheet" href="./assets/kite.css">
 <!-- =============================================================================
-     KITE 16 — Каталог стандартной библиотеки
-     Источники истины:
-       • phf-таблица BUILTINS (категории Math/String/Io/Other) — shared/build.rs
-       • реализации встроенных функций — interpreter/src/interpreter/builtins/*.rs
-       • is_builtin_function / builtin_category — shared/src/constants/builtins.rs
-       • инварианты реестра — interpreter/src/interpreter/builtins/tests.rs
-       • золотой снимок — shared/tests/golden/builtins.snapshot (188 имён)
-       • библиотеки — shared/src/libraries/{time,syscall,files,net}/*.rs
-     Каталог отражает текущий состав встроенных функций.
-     Правило состава реестра: диспетчеризуемые имена МИНУС ключевые слова языка (см. §1.1).
+     KITE 16 — Каталог стандартной библиотеки (Справочник)
 ============================================================================== -->
 <article class="kite" data-kite="0016" data-status="draft" lang="ru">
 
   <!-- ───────────────────────── HEADER ───────────────────────── -->
   <header class="kite-header">
-    <span class="kite-eyebrow">KITE 16 · Спецификация / Справочник</span>
+    <span class="kite-eyebrow">KITE 16 · Справочник</span>
     <h1>Каталог стандартной библиотеки</h1>
     <dl class="kite-meta">
       <dt>Номер</dt>            <dd>KITE 16</dd>
-      <dt>Название</dt>         <dd>Каталог встроенных функций и библиотек</dd>
+      <dt>Название</dt>         <dd>Каталог стандартной библиотеки</dd>
+      <dt>Тип</dt>              <dd>Справочник</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
-      <dt>Тип</dt>              <dd>Спецификация / Справочник</dd>
-      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Версия документа</dt> <dd>1.0.0</dd>
       <dt>Создан</dt>           <dd>2026-07-22</dd>
-      <dt>Версия документа</dt> <dd>0.1.0</dd>
+      <dt>Обновлён</dt>         <dd>2026-07-22</dd>
     </dl>
   </header>
 
   <!-- ───────────────────────── TOC ───────────────────────── -->
-  <nav class="kite-toc" aria-label="Содержание">
+  <nav class="kite-toc" data-auto aria-label="Содержание">
     <h2>Содержание</h2>
     <ol>
-      <li><a href="#o-dokumente">О документе и легенда</a></li>
-      <li><a href="#modeli">Две модели: builtins ядра и библиотеки</a></li>
-      <li><a href="#builtins-math">Встроенные: математика</a></li>
-      <li><a href="#builtins-string">Встроенные: строки</a></li>
-      <li><a href="#builtins-io">Встроенные: ввод-вывод</a></li>
-      <li><a href="#builtins-other">Встроенные: преобразования и коллекции</a></li>
-      <li><a href="#biblioteka-vremya">Библиотека <code>время</code></a></li>
-      <li><a href="#biblioteka-sistema">Библиотека <code>система</code></a></li>
-      <li><a href="#biblioteka-fajly">Библиотека <code>файлы</code></a></li>
-      <li><a href="#biblioteka-set">Библиотека <code>сеть</code></a></li>
-      <li><a href="#politika">Политика именования и версионирования</a></li>
-      <li><a href="#plan">План расширения</a></li>
-      <li><a href="#istoki">Источники истины</a></li>
+      <li><a href="#o-dokumente">1. Область применения</a></li>
+      <li><a href="#soglasheniya">2. Соглашения записи</a></li>
+      <li><a href="#builtins-math">3. Встроенные: математика</a></li>
+      <li><a href="#builtins-string">4. Встроенные: строки</a></li>
+      <li><a href="#builtins-io">5. Встроенные: ввод-вывод</a></li>
+      <li><a href="#builtins-other">6. Встроенные: преобразования и коллекции</a></li>
+      <li><a href="#biblioteka-vremya">7. Библиотека <code>время</code></a></li>
+      <li><a href="#biblioteka-sistema">8. Библиотека <code>система</code></a></li>
+      <li><a href="#biblioteka-fajly">9. Библиотека <code>файлы</code></a></li>
+      <li><a href="#biblioteka-set">10. Библиотека <code>сеть</code></a></li>
+      <li><a href="#ukazatel">11. Указатель</a></li>
     </ol>
   </nav>
 
   <!-- ───────────────────────── 1 ───────────────────────── -->
   <section class="kite-section" id="o-dokumente">
-    <h2>1. О документе и легенда</h2>
+    <h2>1. Область применения</h2>
     <p>
-      Это нормативный <strong>реестр всех встроенных имён</strong> Kumir&nbsp;3: функций ядра
-      (builtins) и функций четырёх стандартных библиотек. Каталог отражает текущий состав
-      реализации: имена и категории builtins — из phf-таблицы
-      <code>BUILTINS</code> в <code>shared/build.rs</code>; сигнатуры и фактические реализации —
-      из <code>interpreter/src/interpreter/builtins/*.rs</code>; функции библиотек, их псевдонимы,
-      параметры и описания — из <code>shared/src/libraries/</code>.
+      Документ каталогизирует <strong>все имена стандартного функционала Kumir&nbsp;3</strong>,
+      доступные программе: встроенные функции ядра и функции четырёх стандартных библиотек.
+      Признак включения — вызываемость: имя входит в каталог тогда и только тогда, когда
+      запись <code>имя(…)</code> приводит к вызову соответствующей функции (§&nbsp;2.5).
     </p>
-    <div class="kite-callout is-important">
-      <span class="kite-callout-title">Легенда доступности</span>
-      <span class="kite-badge is-available">✅&nbsp;Доступно</span> — имя <em>вызывается</em>: для builtin —
-      имя есть в таблице <code>BUILTINS</code> <strong>и</strong> его диспетчеризует
-      <code>Builtins::try_call</code> (для категорий Math/String/Io при этом
-      <code>is_builtin_function</code> истинно); для библиотеки — функция зарегистрирована и исполняется.
-      <span class="kite-badge is-experimental">🧪&nbsp;Экспериментально</span> — работает, но интерфейс/поведение могут меняться;
-      в §6 дополнительно означает «вызывается, но <code>is_builtin_function == false</code> по определению категории Other».
-      <span class="kite-badge is-proposed">📋&nbsp;Предложено</span> — имя присутствует в спецификации,
-      но реализации на поверхности языка ещё нет.
-    </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Таблица и реализация синхронизированы</span>
-      Раньше присутствие имени в <code>BUILTINS</code> ничего не гарантировало: 53 зарегистрированных
-      имени не имели реализации, а 86 реализованных отсутствовали в таблице. Таблица приведена к правилу
-      «<strong>диспетчеризуемые имена минус ключевые слова языка</strong>» (§1.1) и выросла со&nbsp;124
-      до&nbsp;<strong>188</strong> имён. Расхождение теперь невозможно молча: пара инвариантных тестов в
-      <code>interpreter/src/interpreter/builtins/tests.rs</code> прогоняет <em>каждое</em> зарегистрированное
-      имя через вычисление (<code>every_registered_builtin_is_dispatched</code>) и проверяет, что ключевые
-      слова в таблицу не попали (<code>keyword_colliding_names_are_not_registered</code>), а реализованные
-      русские имена — попали (<code>implemented_russian_names_are_registered</code>). Зонд-пробник сам
-      защищён тестом <code>is_dispatched_probe_is_not_vacuous</code>.
+    <p>
+      Каталог нормативен в части сигнатур и описанного поведения. Он не определяет форму
+      записи вызова (<a href="./KITE-0012-grammar.html#vyrazheniya">KITE&nbsp;12&nbsp;§&nbsp;3.16</a>),
+      правила вычисления аргументов и приведения типов
+      (<a href="./KITE-0013-expression-semantics.html">KITE&nbsp;13</a>), механику импорта
+      библиотек (<a href="./KITE-0005-libraries.html">KITE&nbsp;5</a>) и форматы
+      ввода-вывода (<a href="./KITE-0007-stdio.html">KITE&nbsp;7</a>). Типы, встречающиеся
+      в сигнатурах, определены в
+      <a href="./KITE-0002-type-system.html">KITE&nbsp;2</a>.
+    </p>
+
+    <h3>1.1. Два механизма поставки</h3>
+    <div class="kite-grid">
+      <div class="kite-card">
+        <h3>Встроенные функции ядра</h3>
+        <p>
+          Доступны всегда и глобально, без <code>использовать</code>: математика, строки,
+          ввод-вывод, преобразования и элементарные коллекции. Каталог встроенных функций —
+          §&nbsp;3&nbsp;… §&nbsp;6.
+        </p>
+      </div>
+      <div class="kite-card">
+        <h3>Стандартные библиотеки</h3>
+        <p>
+          Модули <code>время</code>, <code>система</code>, <code>файлы</code> и
+          <code>сеть</code>, подключаемые через <code>использовать</code> и версионируемые
+          по SemVer (§&nbsp;2.6). Каталог библиотек — §&nbsp;7&nbsp;… §&nbsp;10.
+        </p>
+      </div>
     </div>
 
-    <h3>1.1 Правило коллизии с ключевыми словами (нормативное)</h3>
-    <p>
-      <strong>Имя, совпадающее с ключевым словом языка, не может быть вызвано как функция.</strong>
-      Лексер порождает для такого написания keyword-токен, поэтому запись <code>имя(x)</code> либо не
-      разбирается вовсе, либо разбирается как языковая конструкция — до диспетчера встроенных функций
-      вызов не доходит. Это свойство лексики, а не пробел в реализации: добавить арм в
-      <code>Builtins::try_call</code> недостаточно, имя всё равно останется недостижимым.
-    </p>
-    <p>
-      Отсюда <strong>нормативное правило состава реестра</strong>: <code>BUILTINS</code> = множество имён,
-      диспетчеризуемых <code>Builtins::try_call</code>, <em>минус</em> ключевые слова языка. Имя-ключевое
-      слово в таблице — ошибка (падает тест <code>keyword_colliding_names_are_not_registered</code>).
-    </p>
+    <h3>1.2. Состав каталога</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Запись</th><th>Что делает лексер</th><th>Итог</th></tr></thead>
+        <thead><tr><th>Раздел каталога</th><th>Имён</th><th>Метка</th></tr></thead>
         <tbody>
-          <tr><td><code>печать(1)</code> · <code>chr(1)</code> · <code>тип(1)</code></td><td>идентификатор</td><td>вызов встроенной функции <span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>print(1)</code> · <code>вывод(1)</code> · <code>ввод(1)</code></td><td><code>Token::Output</code> / <code>Token::Input</code></td><td>инструкция языка, вызовом не является</td></tr>
-          <tr><td><code>int(1)</code> · <code>цел(1)</code> · <code>вещ(1)</code> · <code>лог(1)</code> · <code>лит(1)</code> · <code>str(1)</code> · <code>float(1)</code> · <code>bool(1)</code></td><td>токен типа (<code>IntType</code>, <code>FloatType</code>, <code>BoolType</code>, <code>StringType</code>&nbsp;…)</td><td>имя типа, вызовом не является</td></tr>
-          <tr><td><code>mod(1)</code> · <code>модуль(1)</code></td><td><code>Token::Module</code></td><td>объявление модуля, вызовом не является</td></tr>
-          <tr><td><code>утв(1)</code> · <code>assert(1)</code></td><td><code>Token::Assert</code></td><td>инструкция утверждения</td></tr>
-          <tr><td><code>таб(…)</code> · <code>array(…)</code> · <code>пусто</code> · <code>ничего</code> · <code>пауза(…)</code> · <code>ждать x</code> · <code>char(…)</code> · <code>type(…)</code></td><td>keyword-токен</td><td>конструкция языка; в реестре отсутствуют, хотя армы в диспетчере есть</td></tr>
+          <tr><td>Встроенные: математика (§&nbsp;3)</td><td>66</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>Встроенные: строки (§&nbsp;4)</td><td>51</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>Встроенные: ввод-вывод (§&nbsp;5)</td><td>11</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>Встроенные: преобразования и коллекции (§&nbsp;6)</td><td>60</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td>Библиотека <code>время</code> (§&nbsp;7)</td><td>40</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>Библиотека <code>система</code> (§&nbsp;8)</td><td>35</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>Библиотека <code>файлы</code> (§&nbsp;9)</td><td>29</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>Библиотека <code>сеть</code> (§&nbsp;10)</td><td>21</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">17 имён убрано из реестра как недостижимые</span>
-      <code>модуль</code> · <code>int</code> · <code>mod</code> · <code>char</code> · <code>ввод</code> ·
-      <code>input</code> · <code>вывод</code> · <code>output</code> · <code>print</code> · <code>цел</code> ·
-      <code>вещ</code> · <code>float</code> · <code>str</code> · <code>лог</code> · <code>bool</code> ·
-      <code>утв</code> · <code>assert</code>. Для каждого из них в каталоге указан <strong>достижимый
-      псевдоним</strong>: <code>abs</code> вместо <code>модуль</code>, <code>целое</code>/<code>to_int</code>
-      вместо <code>цел</code>/<code>int</code>, <code>остаток</code>/<code>rem</code> вместо <code>mod</code>,
-      <code>печать</code> вместо <code>print</code>, <code>символ</code>/<code>chr</code> вместо
-      <code>char</code>, <code>строка</code>/<code>to_string</code> вместо <code>лит</code>/<code>str</code>
-      и т.&nbsp;д. Отдельно: <code>мод</code>/<code>%</code> и <code>див</code> остаются
-      <em>операторами</em>, а функциональные формы называются <code>остаток</code>/<code>rem</code> и
-      <code>div</code>/<code>цел_деление</code>.
-    </div>
+    <p>
+      Встроенные функции ядра дают <strong>188</strong> имён, четыре библиотеки —
+      <strong>125</strong> публичных функций.
+    </p>
   </section>
 
   <!-- ───────────────────────── 2 ───────────────────────── -->
-  <section class="kite-section" id="modeli">
-    <h2>2. Две модели: builtins ядра и библиотеки</h2>
-    <p>Стандартный функционал Kumir&nbsp;3 поставляется двумя механизмами:</p>
-    <div class="kite-grid">
-      <div class="kite-card">
-        <h3>Builtins ядра</h3>
-        <p>
-          Функции без <code>использовать</code>: математика, строки, ввод-вывод, преобразования.
-          Имена и категории — в phf-таблице <code>BUILTINS</code> (188 имён); диспетчеризация — в
-          <code>Builtins::try_call</code> (<code>math → string → array → type → io</code>).
-          Доступны всегда, глобально. Категория = модуль реализации:
-          <code>math.rs → Math</code>, <code>string.rs → String</code>, <code>io.rs → Io</code>,
-          <code>array.rs</code>/<code>types.rs → Other</code>.
-        </p>
-      </div>
-      <div class="kite-card">
-        <h3>Библиотеки</h3>
-        <p>
-          Модули <code>время</code>, <code>система</code>, <code>файлы</code>, <code>сеть</code>,
-          подключаемые через <code>использовать</code>. Каждая функция — <code>LibFunctionDef</code>
-          с именем, псевдонимами, параметрами, типом результата и описанием. Версионируются по SemVer.
-          Подробности механики импорта — в <a href="./KITE-0005-libraries.html">KITE&nbsp;5</a>.
-        </p>
-      </div>
-    </div>
+  <section class="kite-section" id="soglasheniya">
+    <h2>2. Соглашения записи</h2>
+
+    <h3>2.1. Строка каталога</h3>
+    <p>Статья каталога занимает одну строку таблицы. Столбцы:</p>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Слой</th><th>Имён в источнике</th><th>Доступно к вызову</th><th>Источник истины</th></tr></thead>
+        <thead><tr><th>Столбец</th><th>Содержание</th></tr></thead>
         <tbody>
-          <tr><td>Builtins · Math</td><td>66</td><td>66</td><td><code>build.rs</code> + <code>builtins/math.rs</code></td></tr>
-          <tr><td>Builtins · String</td><td>51</td><td>51</td><td><code>build.rs</code> + <code>builtins/string.rs</code></td></tr>
-          <tr><td>Builtins · Io</td><td>11</td><td>11</td><td><code>build.rs</code> + <code>builtins/io.rs</code></td></tr>
-          <tr><td>Builtins · Other (не <code>is_builtin_function</code>)</td><td>60</td><td>60 (как обычные вызовы)</td><td><code>build.rs</code> + <code>builtins/{types,array}.rs</code></td></tr>
-          <tr><td>Библиотека <code>время</code></td><td>40</td><td>40</td><td><code>libraries/time/</code></td></tr>
-          <tr><td>Библиотека <code>система</code></td><td>35</td><td>35</td><td><code>libraries/syscall/</code></td></tr>
-          <tr><td>Библиотека <code>файлы</code></td><td>29</td><td>29</td><td><code>libraries/files/</code></td></tr>
-          <tr><td>Библиотека <code>сеть</code></td><td>21</td><td>21</td><td><code>libraries/net/</code></td></tr>
+          <tr><td><strong>Имя (псевдонимы)</strong></td><td>Каноническое имя, затем полные синонимы через <code>·</code>. Все имена строки означают одну и ту же функцию.</td></tr>
+          <tr><td><strong>Сигнатура</strong></td><td>Список параметров и тип результата в форме §&nbsp;2.2.</td></tr>
+          <tr><td><strong>Описание</strong></td><td>Наблюдаемое поведение: что вычисляется и при каких аргументах возникает ошибка.</td></tr>
+          <tr><td><strong>Метка</strong></td><td>Метка стабильности статьи (KITE&nbsp;0&nbsp;§&nbsp;5). В разделах библиотек метка задана для раздела целиком и в строках не повторяется.</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Итог библиотек</span>
-      Четыре библиотеки дают <strong>125</strong> публичных функций (40 + 35 + 29 + 21). Все они
-      реализованы и исполняются; уровень стабильности каждой библиотеки — в её заголовке
-      (<code>время</code>, <code>система</code>, <code>файлы</code> — <code>stable</code>;
-      <code>сеть</code> — <span class="kite-badge is-experimental">🧪</span>).
+
+    <h3>2.2. Форма сигнатуры</h3>
+    <p>
+      Сигнатура записывается как <code>(параметры) → тип_результата</code>. Применяются
+      обозначения:
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Обозначение</th><th>Значение</th></tr></thead>
+        <tbody>
+          <tr><td><code>(x)</code></td><td>Один обязательный параметр.</td></tr>
+          <tr><td><code>(a, b)</code></td><td>Параметры в указанном порядке.</td></tr>
+          <tr><td><code>[, n]</code></td><td>Необязательный параметр.</td></tr>
+          <tr><td><code>…</code></td><td>Произвольное число параметров.</td></tr>
+          <tr><td><code>имя: тип</code></td><td>Имя параметра и его тип (разделы библиотек).</td></tr>
+          <tr><td><code>→ тип</code></td><td>Тип результата; запись <code>→ пусто</code> означает отсутствие результата.</td></tr>
+          <tr><td><code>(x&gt;0)</code></td><td>Ограничение на аргумент; его нарушение даёт ошибку времени выполнения.</td></tr>
+        </tbody>
+      </table>
     </div>
+    <p>
+      Имена типов — из <a href="./KITE-0002-type-system.html">KITE&nbsp;2</a>:
+      <code>цел</code>, <code>вещ</code>, <code>лог</code>, <code>сим</code>,
+      <code>лит</code>, <code>таб</code>, <code>байты</code>, <code>словарь</code>,
+      <code>кортеж</code>, <code>любой</code>. В разделах библиотек ширина числового типа
+      указывается явно (<code>цел_64</code>, <code>нат_8</code>); запись
+      <code>число</code> означает целое либо вещественное значение.
+    </p>
+
+    <h3>2.3. Метки стабильности</h3>
+    <p>
+      Метки берутся из закрытого словаря KITE&nbsp;0&nbsp;§&nbsp;5.1 и означают в этом
+      каталоге следующее:
+    </p>
+    <ul>
+      <li><span class="kite-badge is-available">стабильно</span> — имя вызывается, сигнатура
+        и поведение зафиксированы.</li>
+      <li><span class="kite-badge is-experimental">экспериментально</span> — имя вызывается,
+        состав и запись раздела ещё уточняются.</li>
+      <li><span class="kite-badge is-proposed">предложено</span> — имя описано, вызов
+        недоступен; программа, использующая его, корректной не является.</li>
+    </ul>
+
+    <h3>2.4. Псевдонимы</h3>
+    <p>
+      Функция МОЖЕТ иметь несколько имён: русское каноническое, краткое и английское.
+      Псевдонимы полностью равноправны — они означают один и тот же вызов с одной и той же
+      сигнатурой. В разделах библиотек английские псевдонимы даны в скобках после
+      канонического имени.
+    </p>
+
+    <h3>2.5. Имена, совпадающие с ключевыми словами</h3>
+    <p>
+      <strong>Имя, совпадающее с ключевым словом языка, вызвать нельзя.</strong> Такое
+      написание разбирается как языковая конструкция, а не как вызов функции
+      (<a href="./KITE-0012-grammar.html#identifikatory">KITE&nbsp;12&nbsp;§&nbsp;3.2</a>),
+      поэтому в каталог оно не входит. Для каждого такого написания каталог указывает
+      вызываемый псевдоним.
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Запись</th><th>Чем является</th><th>Вызываемая замена</th></tr></thead>
+        <tbody>
+          <tr><td><code>вывод</code> · <code>output</code> · <code>print</code></td><td>Инструкция вывода.</td><td><code>печать</code>, <code>печатьстр</code> (§&nbsp;5)</td></tr>
+          <tr><td><code>ввод</code> · <code>input</code></td><td>Инструкция ввода.</td><td>—</td></tr>
+          <tr><td><code>цел</code> · <code>int</code> · <code>вещ</code> · <code>float</code> · <code>лог</code> · <code>bool</code> · <code>лит</code> · <code>str</code></td><td>Имена типов.</td><td><code>целое</code>, <code>вещественное</code>, <code>логическое</code>, <code>строка</code> (§&nbsp;6)</td></tr>
+          <tr><td><code>модуль</code> · <code>mod</code></td><td>Объявление модуля и оператор остатка.</td><td><code>abs</code>, <code>остаток</code>/<code>rem</code> (§&nbsp;3)</td></tr>
+          <tr><td><code>утв</code> · <code>assert</code></td><td>Инструкция утверждения.</td><td>—</td></tr>
+          <tr><td><code>char</code></td><td>Имя типа <code>сим</code>.</td><td><code>символ</code>, <code>chr</code> (§&nbsp;4)</td></tr>
+          <tr><td><code>таб</code> · <code>array</code></td><td>Имя типа массива.</td><td><code>массив</code> (§&nbsp;6)</td></tr>
+          <tr><td><code>пусто</code> · <code>ничего</code> · <code>none</code></td><td>Литералы отсутствующего значения.</td><td><code>empty</code>/<code>is_empty</code>, <code>некоторое</code> (§&nbsp;6)</td></tr>
+          <tr><td><code>type</code></td><td>Ключевое слово объявления типа.</td><td><code>тип</code>, <code>typeof</code> (§&nbsp;6)</td></tr>
+          <tr><td><code>пауза</code> · <code>ждать</code></td><td>Инструкции приостановки.</td><td><code>sleep</code> (§&nbsp;5), <code>пауза</code> библиотеки <code>время</code> (§&nbsp;7)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Операторы <code>мод</code>, <code>%</code> и <code>див</code> остаются операторами;
+      функциональные формы тех же действий называются <code>остаток</code>/<code>rem</code>
+      и <code>div</code>/<code>цел_деление</code> (§&nbsp;3).
+    </p>
+
+    <h3>2.6. Именование и версионирование</h3>
+    <ul>
+      <li><strong>Встроенной функцией ядра</strong> является минимальный учебный набор,
+        доступный без импорта: арифметика, строки, преобразования, элементарные коллекции,
+        печать.</li>
+      <li><strong>Библиотекой</strong> оформляется то, что обращается к операционной
+        системе, сети или времени либо образует связную предметную область.</li>
+      <li>Каждая библиотека несёт версию по SemVer. Импорт МОЖЕТ указывать спецификацию
+        версии (<code>^1.0</code>, <code>~1.2.3</code>, <code>&gt;=1.0.0</code>);
+        разрешение выбирает наибольшую подходящую версию
+        (<a href="./KITE-0005-libraries.html#versii">KITE&nbsp;5&nbsp;§&nbsp;7</a>).</li>
+      <li>Изменение сигнатуры, нарушающее ранее корректные программы, требует мажорного
+        увеличения версии библиотеки (KITE&nbsp;0&nbsp;§&nbsp;9.2).</li>
+    </ul>
   </section>
+
 
   <!-- ───────────────────────── 3 ───────────────────────── -->
   <section class="kite-section" id="builtins-math">
     <h2>3. Встроенные: математика</h2>
     <p>
-      Категория <code>Math</code>: <strong>66 имён, все вызываются</strong> (реализация —
-      <code>builtins/math.rs</code>). Ниже строки сгруппированы по армам диспетчера: все имена в одной
-      строке — полные синонимы. Ключевое слово <code>модуль</code> из реестра убрано (§1.1) — модуль
-      числа берут функцией <code>abs</code>.
+      Математические встроенные функции: <strong>66 имён</strong>, все вызываются. Имена в
+      одной строке таблицы — полные синонимы (§&nbsp;2.4). Тригонометрические функции
+      принимают и возвращают радианы. Написание <code>модуль</code> в каталог не входит
+      (§&nbsp;2.5): модуль числа даёт <code>abs</code>. Метка раздела —
+      <span class="kite-badge is-available">стабильно</span>.
     </p>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя (псевдонимы)</th><th>Арность / сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя (псевдонимы)</th><th>Сигнатура</th><th>Описание</th><th>Метка</th></tr></thead>
         <tbody>
-          <tr><td><code>abs</code></td><td><code>(x) → число</code></td><td>Модуль числа (сохраняет тип). Имя <code>модуль</code> недоступно — ключевое слово (§1.1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>sqrt</code> · <code>корень</code> · <code>квадратный_корень</code></td><td><code>(x) → вещ</code></td><td>Квадратный корень.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>sin</code></td><td><code>(x) → вещ</code></td><td>Синус (радианы).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>cos</code></td><td><code>(x) → вещ</code></td><td>Косинус (радианы).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>tan</code> · <code>tg</code></td><td><code>(x) → вещ</code></td><td>Тангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>asin</code> · <code>arcsin</code></td><td><code>(x) → вещ</code></td><td>Арксинус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>acos</code> · <code>arccos</code></td><td><code>(x) → вещ</code></td><td>Арккосинус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>atan</code> · <code>arctg</code> · <code>arctan</code></td><td><code>(x) → вещ</code></td><td>Арктангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>ctg</code> · <code>cot</code></td><td><code>(x) → вещ</code></td><td>Котангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>arcctg</code> · <code>arccot</code></td><td><code>(x) → вещ</code></td><td>Арккотангенс, непрерывная ветвь на (0, π): <code>π/2 − arctg(x)</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>sh</code> · <code>sinh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический синус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>ch</code> · <code>cosh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический косинус.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>th</code> · <code>tanh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический тангенс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>atan2</code> · <code>arctg2</code></td><td><code>(y, x) → вещ</code></td><td>Арктангенс частного с учётом четверти.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>ln</code> · <code>log</code></td><td><code>(x&gt;0) → вещ</code></td><td>Натуральный логарифм; при <code>x ≤ 0</code> — ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>log10</code> · <code>lg</code></td><td><code>(x&gt;0) → вещ</code></td><td>Десятичный логарифм; при <code>x ≤ 0</code> — ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>exp</code></td><td><code>(x) → вещ</code></td><td>Экспонента e<sup>x</sup>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>pow</code> · <code>степень</code></td><td><code>(осн, показ) → число</code></td><td>Возведение в степень.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>floor</code> · <code>пол</code></td><td><code>(x) → цел</code></td><td>Округление вниз.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>ceil</code> · <code>потолок</code></td><td><code>(x) → цел</code></td><td>Округление вверх.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>цел_часть</code> · <code>trunc</code></td><td><code>(x) → цел</code></td><td>Целая часть (усечение к нулю): <code>цел_часть(−3.7) → −3</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>frac</code> · <code>дробь</code></td><td><code>(x) → вещ</code></td><td>Дробная часть: <code>дробь(3.5) → 0.5</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>div</code> · <code>цел_деление</code></td><td><code>(a, b) → цел</code></td><td>Целочисленное деление как функция (оператор-слово — <code>див</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>остаток</code> · <code>rem</code></td><td><code>(a, b) → цел</code></td><td>Остаток как функция. Имена <code>mod</code>/<code>модуль</code> недоступны (<code>Token::Module</code>, §1.1); оператор остаётся <code>мод</code>/<code>%</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>round</code> · <code>округлить</code> · <code>округл</code></td><td><code>(x [, знаков]) → цел / вещ</code></td><td>Округление до целого или до N знаков.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>min</code> · <code>минимум</code> · <code>мин</code></td><td><code>(a, b, …) → число</code></td><td>Минимум из аргументов (не менее одного).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>max</code> · <code>максимум</code> · <code>макс</code></td><td><code>(a, b, …) → число</code></td><td>Максимум из аргументов (не менее одного).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>sign</code> · <code>знак</code> · <code>sgn</code></td><td><code>(x) → цел (−1/0/1)</code></td><td>Знак числа.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>пи</code> · <code>pi</code></td><td><code>() → вещ</code></td><td>Константа π.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>е</code> · <code>e</code></td><td><code>() → вещ</code></td><td>Константа e.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>случайное</code> · <code>случ</code> · <code>random</code> · <code>rand</code></td><td><code>() / (n) / (a, b) → число</code></td><td>Псевдослучайное число: без аргументов — вещественное в [0, 1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>abs</code></td><td><code>(x) → число</code></td><td>Модуль числа (сохраняет тип). Имя <code>модуль</code> недоступно — ключевое слово (§&nbsp;2.5).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>sqrt</code> · <code>корень</code> · <code>квадратный_корень</code></td><td><code>(x) → вещ</code></td><td>Квадратный корень.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>sin</code></td><td><code>(x) → вещ</code></td><td>Синус (радианы).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>cos</code></td><td><code>(x) → вещ</code></td><td>Косинус (радианы).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>tan</code> · <code>tg</code></td><td><code>(x) → вещ</code></td><td>Тангенс.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>asin</code> · <code>arcsin</code></td><td><code>(x) → вещ</code></td><td>Арксинус.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>acos</code> · <code>arccos</code></td><td><code>(x) → вещ</code></td><td>Арккосинус.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>atan</code> · <code>arctg</code> · <code>arctan</code></td><td><code>(x) → вещ</code></td><td>Арктангенс.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>ctg</code> · <code>cot</code></td><td><code>(x) → вещ</code></td><td>Котангенс.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>arcctg</code> · <code>arccot</code></td><td><code>(x) → вещ</code></td><td>Арккотангенс, непрерывная ветвь на (0, π): <code>π/2 − arctg(x)</code>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>sh</code> · <code>sinh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический синус.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>ch</code> · <code>cosh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический косинус.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>th</code> · <code>tanh</code></td><td><code>(x) → вещ</code></td><td>Гиперболический тангенс.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>atan2</code> · <code>arctg2</code></td><td><code>(y, x) → вещ</code></td><td>Арктангенс частного с учётом четверти.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>ln</code> · <code>log</code></td><td><code>(x&gt;0) → вещ</code></td><td>Натуральный логарифм; при <code>x ≤ 0</code> — ошибка.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>log10</code> · <code>lg</code></td><td><code>(x&gt;0) → вещ</code></td><td>Десятичный логарифм; при <code>x ≤ 0</code> — ошибка.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>exp</code></td><td><code>(x) → вещ</code></td><td>Экспонента e<sup>x</sup>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>pow</code> · <code>степень</code></td><td><code>(осн, показ) → число</code></td><td>Возведение в степень.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>floor</code> · <code>пол</code></td><td><code>(x) → цел</code></td><td>Округление вниз.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>ceil</code> · <code>потолок</code></td><td><code>(x) → цел</code></td><td>Округление вверх.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>цел_часть</code> · <code>trunc</code></td><td><code>(x) → цел</code></td><td>Целая часть (усечение к нулю): <code>цел_часть(−3.7) → −3</code>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>frac</code> · <code>дробь</code></td><td><code>(x) → вещ</code></td><td>Дробная часть: <code>дробь(3.5) → 0.5</code>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>div</code> · <code>цел_деление</code></td><td><code>(a, b) → цел</code></td><td>Целочисленное деление как функция (оператор-слово — <code>див</code>).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>остаток</code> · <code>rem</code></td><td><code>(a, b) → цел</code></td><td>Остаток как функция. Имена <code>mod</code>/<code>модуль</code> недоступны (§&nbsp;2.5); оператор остаётся <code>мод</code>/<code>%</code>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>round</code> · <code>округлить</code> · <code>округл</code></td><td><code>(x [, знаков]) → цел / вещ</code></td><td>Округление до целого или до N знаков.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>min</code> · <code>минимум</code> · <code>мин</code></td><td><code>(a, b, …) → число</code></td><td>Минимум из аргументов (не менее одного).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>max</code> · <code>максимум</code> · <code>макс</code></td><td><code>(a, b, …) → число</code></td><td>Максимум из аргументов (не менее одного).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>sign</code> · <code>знак</code> · <code>sgn</code></td><td><code>(x) → цел (−1/0/1)</code></td><td>Знак числа.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>пи</code> · <code>pi</code></td><td><code>() → вещ</code></td><td>Константа π.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>е</code> · <code>e</code></td><td><code>() → вещ</code></td><td>Константа e.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>случайное</code> · <code>случ</code> · <code>random</code> · <code>rand</code></td><td><code>() / (n) / (a, b) → число</code></td><td>Псевдослучайное число: без аргументов — вещественное в [0, 1).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
         </tbody>
       </table>
-    </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Что изменилось</span>
-      Дореализованы и переведены в <span class="kite-badge is-available">✅</span>: гиперболические
-      <code>sh|sinh</code>/<code>ch|cosh</code>/<code>th|tanh</code>, котангенсы
-      <code>ctg|cot</code>/<code>arcctg|arccot</code>, <code>цел_часть|trunc</code>,
-      <code>frac|дробь</code>, <code>div|цел_деление</code>, <code>остаток|rem</code>,
-      <code>округл</code>, <code>мин</code>/<code>макс</code>, <code>случ</code>. Зарегистрированы
-      ранее работавшие, но отсутствовавшие в таблице имена: <code>минимум</code>, <code>максимум</code>,
-      <code>округлить</code>, <code>случайное</code>, <code>пол</code>, <code>потолок</code>,
-      <code>квадратный_корень</code>, <code>asin</code>/<code>acos</code>/<code>atan</code>,
-      <code>atan2</code>/<code>arctg2</code>, <code>log10</code>, <code>sgn</code>, а также константы
-      <code>пи</code>/<code>pi</code> и <code>е</code>/<code>e</code>. Убрано как недостижимое:
-      <code>модуль</code>, <code>int</code>, <code>mod</code> (§1.1).
     </div>
   </section>
 
   <!-- ───────────────────────── 4 ───────────────────────── -->
   <section class="kite-section" id="builtins-string">
     <h2>4. Встроенные: строки</h2>
-    <p>Категория <code>String</code>: <strong>51 имя, все вызываются</strong>. Реализация —
-       <code>builtins/string.rs</code>. Индексы строк в Кумире — с&nbsp;1. Строки в одной строке
-       таблицы — полные синонимы (один арм диспетчера).</p>
+    <p>
+      Строковые встроенные функции: <strong>51 имя</strong>, все вызываются. Символы строки
+      нумеруются с&nbsp;1. Имена в одной строке таблицы — полные синонимы (§&nbsp;2.4).
+      Метка раздела — <span class="kite-badge is-available">стабильно</span>.
+    </p>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя (псевдонимы)</th><th>Арность / сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя (псевдонимы)</th><th>Сигнатура</th><th>Описание</th><th>Метка</th></tr></thead>
         <tbody>
-          <tr><td><code>длина</code> · <code>длин</code> · <code>len</code> · <code>length</code> · <code>размер</code> · <code>size</code></td><td><code>(строка/массив/байты/диапазон) → цел</code></td><td>Длина (в символах для строки).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>байты</code> · <code>bytes</code></td><td><code>(строка/массив/байты) → байты</code></td><td>Преобразование в <code>байты</code> (KITE&nbsp;2).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>строка_из_байт</code> · <code>байты_в_строку</code> · <code>bytes_to_string</code></td><td><code>(байты) → лит</code></td><td>Обратное преобразование <code>байты → лит</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>символ</code> · <code>chr</code></td><td><code>(код) → сим</code></td><td>Символ Unicode по коду. Имя <code>char</code> недоступно — ключевое слово типа <code>сим</code> (§1.1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>код</code> · <code>ord</code> · <code>code</code></td><td><code>(сим/лит) → цел</code></td><td>Код символа Unicode.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>подстрока</code> · <code>substring</code> · <code>substr</code> · <code>копировать_строку</code> · <code>вырезка</code></td><td><code>(строка, старт [, длина]) → лит</code></td><td>Подстрока; индексация с&nbsp;1.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>позиция</code> · <code>position</code> · <code>pos</code> · <code>найти</code> · <code>find</code></td><td><code>(стог, игла) → цел</code></td><td>Позиция подстроки, нумерация с&nbsp;1; 0 — не найдено.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>верхний_регистр</code> · <code>to_upper</code> · <code>upper</code> · <code>верхний</code> · <code>uppercase</code></td><td><code>(строка) → лит</code></td><td>Верхний регистр.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>нижний_регистр</code> · <code>to_lower</code> · <code>lower</code> · <code>нижний</code> · <code>lowercase</code></td><td><code>(строка) → лит</code></td><td>Нижний регистр.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>слева</code> · <code>left</code></td><td><code>(строка, n) → лит</code></td><td>Первые n символов; n &lt; 0 — ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>справа</code> · <code>right</code></td><td><code>(строка, n) → лит</code></td><td>Последние n символов; n &lt; 0 — ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>повторить</code> · <code>repeat</code></td><td><code>(строка, n) → лит</code></td><td>Повтор строки n раз; n &lt; 0 — ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>обрезать</code> · <code>trim</code></td><td><code>(строка) → лит</code></td><td>Убрать пробелы по краям.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>заменить</code> · <code>replace</code></td><td><code>(строка, из, в) → лит</code></td><td>Замена всех вхождений.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>разделить</code> · <code>split</code> · <code>разбить</code></td><td><code>(строка, разделитель) → таб</code></td><td>Разбить строку по разделителю.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>соединить</code> · <code>join</code></td><td><code>(массив, разделитель) → лит</code></td><td>Соединить элементы через разделитель.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>длина</code> · <code>длин</code> · <code>len</code> · <code>length</code> · <code>размер</code> · <code>size</code></td><td><code>(строка/массив/байты/диапазон) → цел</code></td><td>Длина (в символах для строки).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>байты</code> · <code>bytes</code></td><td><code>(строка/массив/байты) → байты</code></td><td>Преобразование в <code>байты</code> (KITE&nbsp;2).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>строка_из_байт</code> · <code>байты_в_строку</code> · <code>bytes_to_string</code></td><td><code>(байты) → лит</code></td><td>Обратное преобразование <code>байты → лит</code>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>символ</code> · <code>chr</code></td><td><code>(код) → сим</code></td><td>Символ Unicode по коду. Имя <code>char</code> недоступно — ключевое слово типа <code>сим</code> (§&nbsp;2.5).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>код</code> · <code>ord</code> · <code>code</code></td><td><code>(сим/лит) → цел</code></td><td>Код символа Unicode.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>подстрока</code> · <code>substring</code> · <code>substr</code> · <code>копировать_строку</code> · <code>вырезка</code></td><td><code>(строка, старт [, длина]) → лит</code></td><td>Подстрока; индексация с&nbsp;1.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>позиция</code> · <code>position</code> · <code>pos</code> · <code>найти</code> · <code>find</code></td><td><code>(стог, игла) → цел</code></td><td>Позиция подстроки, нумерация с&nbsp;1; 0 — не найдено.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>верхний_регистр</code> · <code>to_upper</code> · <code>upper</code> · <code>верхний</code> · <code>uppercase</code></td><td><code>(строка) → лит</code></td><td>Верхний регистр.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>нижний_регистр</code> · <code>to_lower</code> · <code>lower</code> · <code>нижний</code> · <code>lowercase</code></td><td><code>(строка) → лит</code></td><td>Нижний регистр.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>слева</code> · <code>left</code></td><td><code>(строка, n) → лит</code></td><td>Первые n символов; n &lt; 0 — ошибка.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>справа</code> · <code>right</code></td><td><code>(строка, n) → лит</code></td><td>Последние n символов; n &lt; 0 — ошибка.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>повторить</code> · <code>repeat</code></td><td><code>(строка, n) → лит</code></td><td>Повтор строки n раз; n &lt; 0 — ошибка.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>обрезать</code> · <code>trim</code></td><td><code>(строка) → лит</code></td><td>Убрать пробелы по краям.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>заменить</code> · <code>replace</code></td><td><code>(строка, из, в) → лит</code></td><td>Замена всех вхождений.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>разделить</code> · <code>split</code> · <code>разбить</code></td><td><code>(строка, разделитель) → таб</code></td><td>Разбить строку по разделителю.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>соединить</code> · <code>join</code></td><td><code>(массив, разделитель) → лит</code></td><td>Соединить элементы через разделитель.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
         </tbody>
       </table>
-    </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Что изменилось</span>
-      Дореализованы и переведены в <span class="kite-badge is-available">✅</span>:
-      <code>слева|left</code>, <code>справа|right</code>, <code>повторить|repeat</code>,
-      <code>размер|size</code>, <code>code</code>, <code>вырезка</code>, <code>find</code>,
-      <code>верхний|uppercase</code>, <code>нижний|lowercase</code>, <code>разбить</code>.
-      Зарегистрированы ранее работавшие имена: <code>длина</code>, <code>подстрока</code>,
-      <code>копировать_строку</code>, <code>найти</code>, <code>разделить</code>,
-      <code>верхний_регистр</code>/<code>to_upper</code>, <code>нижний_регистр</code>/<code>to_lower</code>,
-      <code>строка_из_байт</code>/<code>байты_в_строку</code>/<code>bytes_to_string</code>.
-      Убрано как недостижимое: <code>char</code> (§1.1).
     </div>
   </section>
 
   <!-- ───────────────────────── 5 ───────────────────────── -->
   <section class="kite-section" id="builtins-io">
     <h2>5. Встроенные: ввод-вывод</h2>
-    <p>Категория <code>Io</code>: <strong>11 имён, все вызываются</strong>. Реализация функций —
-       <code>builtins/io.rs</code>. Ключевые слова <code>вывод</code>/<code>output</code>/<code>print</code>
-       и <code>ввод</code>/<code>input</code> из реестра убраны: это <em>инструкции</em> языка,
-       вызовом функции они быть не могут (§1.1).</p>
+    <p>
+      Встроенные функции ввода-вывода: <strong>11 имён</strong>, все вызываются. Печать
+      функцией выполняют <code>печать</code> и <code>печатьстр</code>; написания
+      <code>вывод</code>/<code>output</code>/<code>print</code> и
+      <code>ввод</code>/<code>input</code> — инструкции языка и в каталог не входят
+      (§&nbsp;2.5). Метка раздела —
+      <span class="kite-badge is-available">стабильно</span>.
+    </p>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя (псевдонимы)</th><th>Арность / сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя (псевдонимы)</th><th>Сигнатура</th><th>Описание</th><th>Метка</th></tr></thead>
         <tbody>
-          <tr><td><code>печать</code></td><td><code>(…) → пусто</code></td><td>Печать значений через пробел без перевода строки. Имя <code>print</code> недоступно — ключевое слово (§1.1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>печатьстр</code> · <code>println</code> · <code>вывод_строки</code></td><td><code>(…) → пусто</code></td><td>Печать с переводом строки.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>нс</code> · <code>newline</code> · <code>nl</code> · <code>новая_строка</code></td><td><code>() → пусто</code></td><td>Вывод пустой строки.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>время</code> · <code>time</code></td><td><code>() → вещ</code></td><td>Секунды с эпохи Unix (каноническое место — библиотека <code>время</code>, §7).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>sleep</code></td><td><code>(мс)</code></td><td>Блокирующая пауза в миллисекундах. Русское <code>пауза</code> и <code>ждать</code> — ключевые слова, вызовом функции не являются (§1.1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>печать</code></td><td><code>(…) → пусто</code></td><td>Печать значений через пробел без перевода строки. Имя <code>print</code> недоступно — ключевое слово (§&nbsp;2.5).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>печатьстр</code> · <code>println</code> · <code>вывод_строки</code></td><td><code>(…) → пусто</code></td><td>Печать с переводом строки.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>нс</code> · <code>newline</code> · <code>nl</code> · <code>новая_строка</code></td><td><code>() → пусто</code></td><td>Вывод пустой строки.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>время</code> · <code>time</code></td><td><code>() → вещ</code></td><td>Секунды с эпохи Unix (каноническое место — библиотека <code>время</code>, §&nbsp;7).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>sleep</code></td><td><code>(мс)</code></td><td>Блокирующая пауза в миллисекундах. Русское <code>пауза</code> и <code>ждать</code> — ключевые слова, вызовом функции не являются (§&nbsp;2.5).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title"><code>ввод</code> / <code>вывод</code> — ключевые слова, не функции</span>
-      <code>ввод</code>/<code>input</code> и <code>вывод</code>/<code>output</code>/<code>print</code> —
-      <strong>инструкции</strong> (<code>Stmt::Input</code>/<code>Stmt::Output</code>), а не армы
-      <code>builtins/io.rs</code>: запись <code>вывод(x)</code> до builtin-диспетчера не доходит.
-      Поэтому из реестра они <strong>удалены</strong> (§1.1); печать функцией — это
-      <code>печать</code>/<code>печатьстр</code>. Формат вывода значений и потоки ввода-вывода
-      специфицируются отдельно — <a href="./KITE-0007-stdio.html">KITE&nbsp;7</a>. Функции
-      <code>время</code>/<code>time</code> и <code>sleep</code> реализованы в <code>io.rs</code>, но
-      относятся к работе со временем — их каноническое место в библиотеке <code>время</code> (§7);
-      русские <code>пауза</code>/<code>ждать</code> — ключевые слова и в реестр не входят.
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Где искать смежное</span>
+      Формат вывода значений, потоки и кодировки определены в
+      <a href="./KITE-0007-stdio.html#vyvod">KITE&nbsp;7&nbsp;§&nbsp;5</a>. Работа со
+      временем и паузами полнее представлена в библиотеке <code>время</code> (§&nbsp;7):
+      встроенные <code>время</code>/<code>time</code> и <code>sleep</code> дают тот же
+      результат в минимальном объёме.
     </div>
   </section>
 
@@ -318,65 +335,46 @@
   <section class="kite-section" id="builtins-other">
     <h2>6. Встроенные: преобразования и коллекции</h2>
     <p>
-      Категория <code>Other</code>: <strong>60 имён, все вызываются</strong>. По определению
-      <code>constants/builtins.rs</code> для них <code>is_builtin_function == false</code> — они
-      <strong>не</strong> считаются встроенными функциями формально, но исполняются как обычные
-      вызовы (реализация — <code>builtins/array.rs</code> и <code>builtins/types.rs</code>). Бейдж
-      <span class="kite-badge is-experimental">🧪</span> здесь означает «вызывается, но не входит в
-      <code>is_builtin_function</code>», а не «может не работать».
+      Преобразования типов, коллекции, кортежи и опции: <strong>60 имён</strong>, все
+      вызываются. Состав раздела и запись отдельных функций ещё уточняются, поэтому метка
+      раздела — <span class="kite-badge is-experimental">экспериментально</span>: имена
+      доступны, но набор МОЖЕТ измениться. Индексы элементов, как и символы строк,
+      нумеруются с&nbsp;1.
     </p>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя (псевдонимы)</th><th>Сигнатура</th><th>Описание</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя (псевдонимы)</th><th>Сигнатура</th><th>Описание</th><th>Метка</th></tr></thead>
         <tbody>
-          <tr><td><code>массив</code></td><td><code>(…) → таб</code></td><td>Собрать массив из аргументов. Имена <code>таб</code>/<code>array</code> недоступны — ключевые слова (§1.1).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>добавить</code> · <code>push</code> · <code>append</code></td><td><code>(массив, элемент) → таб</code></td><td>Добавить элемент (возвращает новый массив).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>удалить_последний</code> · <code>pop</code></td><td><code>(массив) → элемент</code></td><td>Снять последний элемент.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>первый</code> · <code>first</code> · <code>head</code></td><td><code>(массив) → элемент</code></td><td>Первый элемент.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>последний</code> · <code>last</code></td><td><code>(массив) → элемент</code></td><td>Последний элемент.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>сумма</code> · <code>sum</code></td><td><code>(массив) → число</code></td><td>Сумма элементов.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>среднее</code> · <code>avg</code> · <code>average</code></td><td><code>(массив) → вещ</code></td><td>Среднее арифметическое.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>обратить</code> · <code>reverse</code> · <code>перевернуть</code></td><td><code>(массив/строка) → тот же тип</code></td><td>Развернуть.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>сортировать</code> · <code>sort</code></td><td><code>(массив) → таб</code></td><td>Сортировка по возрастанию.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>содержит</code> · <code>contains</code></td><td><code>(массив/строка, x) → лог</code></td><td>Проверка вхождения.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>индекс</code> · <code>index_of</code></td><td><code>(массив/строка, x) → цел</code></td><td>Индекс элемента или подстроки, нумерация с&nbsp;1; 0 — не найдено.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>empty</code> · <code>is_empty</code></td><td><code>(коллекция/строка) → лог</code></td><td>Пусто? Русское <code>пусто</code> недоступно — ключевое слово (§1.1).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>целое</code> · <code>to_int</code></td><td><code>(x) → цел</code></td><td>Приведение к целому. <code>цел</code>/<code>int</code> — ключевые слова (§1.1).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>вещественное</code> · <code>to_float</code></td><td><code>(x) → вещ</code></td><td>Приведение к вещественному. <code>вещ</code>/<code>float</code> — ключевые слова.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>строка</code> · <code>to_string</code></td><td><code>(x) → лит</code></td><td>Приведение к строке. <code>лит</code>/<code>str</code> — ключевые слова.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>логическое</code> · <code>to_bool</code></td><td><code>(x) → лог</code></td><td>Приведение к логическому (истинность). <code>лог</code>/<code>bool</code> — ключевые слова.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>это_число</code> · <code>is_number</code></td><td><code>(x) → лог</code></td><td>Предикат типа.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>это_строка</code> · <code>is_string</code></td><td><code>(x) → лог</code></td><td>Предикат типа.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>это_массив</code> · <code>is_array</code></td><td><code>(x) → лог</code></td><td>Предикат типа.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>это_пусто</code> · <code>is_null</code></td><td><code>(x) → лог</code></td><td>Предикат «значение пусто».</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>тип</code> · <code>typeof</code> · <code>type_of</code></td><td><code>(x) → лит</code></td><td>Строковое имя типа значения (<code>тип(1) → "цел"</code>). Имя <code>type</code> — ключевое слово.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>ошибка</code> · <code>error</code></td><td><code>(сообщение [, вид]) → ошибка</code></td><td>Конструктор значения-ошибки; вид по умолчанию — <code>"ошибка"</code>.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>пара</code> · <code>pair</code></td><td><code>(a, b) → кортеж</code></td><td>Пара значений.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>тройка</code> · <code>triple</code></td><td><code>(a, b, c) → кортеж</code></td><td>Тройка значений.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>кортеж</code> · <code>tuple</code></td><td><code>(…) → кортеж</code></td><td>Кортеж произвольной длины.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>некоторое</code> · <code>some</code></td><td><code>(v) → опция</code></td><td>Опция со значением. Пустая опция <code>ничего</code>/<code>none</code> — ключевое слово (§1.1).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>есть</code> · <code>is_some</code></td><td><code>(опция) → лог</code></td><td>Опция содержит значение?</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>извлечь</code> · <code>unwrap</code></td><td><code>(опция) → значение</code></td><td>Развернуть опцию.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>массив</code></td><td><code>(…) → таб</code></td><td>Собрать массив из аргументов. Имена <code>таб</code>/<code>array</code> недоступны — ключевые слова (§&nbsp;2.5).</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>добавить</code> · <code>push</code> · <code>append</code></td><td><code>(массив, элемент) → таб</code></td><td>Добавить элемент (возвращает новый массив).</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>удалить_последний</code> · <code>pop</code></td><td><code>(массив) → элемент</code></td><td>Снять последний элемент.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>первый</code> · <code>first</code> · <code>head</code></td><td><code>(массив) → элемент</code></td><td>Первый элемент.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>последний</code> · <code>last</code></td><td><code>(массив) → элемент</code></td><td>Последний элемент.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>сумма</code> · <code>sum</code></td><td><code>(массив) → число</code></td><td>Сумма элементов.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>среднее</code> · <code>avg</code> · <code>average</code></td><td><code>(массив) → вещ</code></td><td>Среднее арифметическое.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>обратить</code> · <code>reverse</code> · <code>перевернуть</code></td><td><code>(массив/строка) → тот же тип</code></td><td>Развернуть.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>сортировать</code> · <code>sort</code></td><td><code>(массив) → таб</code></td><td>Сортировка по возрастанию.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>содержит</code> · <code>contains</code></td><td><code>(массив/строка, x) → лог</code></td><td>Проверка вхождения.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>индекс</code> · <code>index_of</code></td><td><code>(массив/строка, x) → цел</code></td><td>Индекс элемента или подстроки, нумерация с&nbsp;1; 0 — не найдено.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>empty</code> · <code>is_empty</code></td><td><code>(коллекция/строка) → лог</code></td><td>Пусто? Русское <code>пусто</code> недоступно — ключевое слово (§&nbsp;2.5).</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>целое</code> · <code>to_int</code></td><td><code>(x) → цел</code></td><td>Приведение к целому. <code>цел</code>/<code>int</code> — ключевые слова (§&nbsp;2.5).</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>вещественное</code> · <code>to_float</code></td><td><code>(x) → вещ</code></td><td>Приведение к вещественному. <code>вещ</code>/<code>float</code> — ключевые слова.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>строка</code> · <code>to_string</code></td><td><code>(x) → лит</code></td><td>Приведение к строке. <code>лит</code>/<code>str</code> — ключевые слова.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>логическое</code> · <code>to_bool</code></td><td><code>(x) → лог</code></td><td>Приведение к логическому (истинность). <code>лог</code>/<code>bool</code> — ключевые слова.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>это_число</code> · <code>is_number</code></td><td><code>(x) → лог</code></td><td>Предикат типа.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>это_строка</code> · <code>is_string</code></td><td><code>(x) → лог</code></td><td>Предикат типа.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>это_массив</code> · <code>is_array</code></td><td><code>(x) → лог</code></td><td>Предикат типа.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>это_пусто</code> · <code>is_null</code></td><td><code>(x) → лог</code></td><td>Предикат «значение пусто».</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>тип</code> · <code>typeof</code> · <code>type_of</code></td><td><code>(x) → лит</code></td><td>Строковое имя типа значения (<code>тип(1) → "цел"</code>). Имя <code>type</code> — ключевое слово.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>ошибка</code> · <code>error</code></td><td><code>(сообщение [, вид]) → ошибка</code></td><td>Конструктор значения-ошибки; вид по умолчанию — <code>"ошибка"</code>.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>пара</code> · <code>pair</code></td><td><code>(a, b) → кортеж</code></td><td>Пара значений.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>тройка</code> · <code>triple</code></td><td><code>(a, b, c) → кортеж</code></td><td>Тройка значений.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>кортеж</code> · <code>tuple</code></td><td><code>(…) → кортеж</code></td><td>Кортеж произвольной длины.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>некоторое</code> · <code>some</code></td><td><code>(v) → опция</code></td><td>Опция со значением. Пустая опция <code>ничего</code>/<code>none</code> — ключевое слово (§&nbsp;2.5).</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>есть</code> · <code>is_some</code></td><td><code>(опция) → лог</code></td><td>Опция содержит значение?</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>извлечь</code> · <code>unwrap</code></td><td><code>(опция) → значение</code></td><td>Развернуть опцию.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
         </tbody>
       </table>
-    </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Что изменилось</span>
-      Дореализованы: <code>индекс|index_of</code>, <code>ошибка|error</code>,
-      <code>to_int</code>/<code>to_float</code>/<code>to_string</code>/<code>to_bool</code>,
-      <code>type_of</code>. Зарегистрированы ранее работавшие, но отсутствовавшие в таблице имена:
-      <code>массив</code>, <code>первый</code>/<code>first</code>/<code>head</code>,
-      <code>последний</code>/<code>last</code>, <code>сумма</code>/<code>sum</code>,
-      <code>среднее</code>/<code>avg</code>/<code>average</code>, <code>перевернуть</code>,
-      <code>empty</code>/<code>is_empty</code>, <code>целое</code>, <code>вещественное</code>,
-      <code>логическое</code>, предикаты <code>это_*</code>/<code>is_*</code>, конструкторы
-      <code>пара</code>/<code>тройка</code>/<code>кортеж</code> и опции
-      <code>некоторое</code>/<code>есть</code>/<code>извлечь</code>. Убрано из реестра как недостижимое:
-      <code>цел</code>, <code>int</code>, <code>вещ</code>, <code>float</code>, <code>str</code>,
-      <code>лог</code>, <code>bool</code>, <code>утв</code>, <code>assert</code> (§1.1). Диспетчер
-      обрабатывает также <code>таб</code>, <code>array</code>, <code>пусто</code>, <code>ничего</code>,
-      <code>none</code>, <code>type</code>, <code>лит</code> — но это ключевые слова, вызвать их нельзя,
-      поэтому в реестре их нет.
     </div>
   </section>
 
@@ -385,9 +383,9 @@
     <h2>7. Библиотека <code>время</code> (40 функций)</h2>
     <p>
       <code>использовать время</code> · псевдонимы <code>time</code>, <code>время</code> ·
-      версия 2.0.0 · <span class="kite-badge is-available">✅ stable</span>. Работа с эпохой, паузами,
-      таймерами, форматированием и компонентами дат. Ниже — канонические имена с параметрами (типы
-      указаны в номенклатуре движка <code>TypeKind</code>); английские псевдонимы даны в скобках.
+      версия 2.0.0. Работа с эпохой, паузами, таймерами, форматированием и компонентами дат.
+      Канонические имена даны с параметрами, английские псевдонимы — в скобках (§&nbsp;2.4).
+      Метка раздела — <span class="kite-badge is-available">стабильно</span>.
     </p>
     <div class="kite-table">
       <table>
@@ -438,9 +436,9 @@
     </div>
     <div class="kite-callout is-tip">
       <span class="kite-callout-title">Совет</span>
-      Пауза в этой библиотеке — как и builtin <code>пауза</code> — блокирующая
-      (<code>thread::sleep</code>), а не точка приостановки планировщика; это согласовано с
-      <a href="./KITE-0003-async-runtime.html">KITE&nbsp;3</a>.
+      Функции <code>пауза</code>, <code>пауза_мс</code>, <code>пауза_мин</code> и
+      <code>пауза_мкс</code> блокируют исполнение и точкой приостановки планировщика не
+      являются (<a href="./KITE-0003-async-runtime.html">KITE&nbsp;3</a>).
     </div>
   </section>
 
@@ -449,8 +447,9 @@
     <h2>8. Библиотека <code>система</code> (35 функций)</h2>
     <p>
       <code>использовать система</code> · псевдонимы <code>syscall</code>, <code>sys</code>,
-      <code>системные_вызовы</code>, <code>os</code> · <span class="kite-badge is-available">✅ stable</span>.
-      Окружение, пути, процессы, информация о системе.
+      <code>системные_вызовы</code>, <code>os</code>. Окружение, пути, процессы, сведения о
+      системе. Метка раздела —
+      <span class="kite-badge is-available">стабильно</span>.
     </p>
     <div class="kite-table">
       <table>
@@ -501,8 +500,8 @@
     <h2>9. Библиотека <code>файлы</code> (29 функций)</h2>
     <p>
       <code>использовать файлы</code> · псевдонимы <code>files</code>, <code>fs</code>,
-      <code>файловая_система</code> · <span class="kite-badge is-available">✅ stable</span>.
-      Директории, чтение/запись, метаданные, ссылки.
+      <code>файловая_система</code>. Директории, чтение и запись, метаданные, ссылки.
+      Метка раздела — <span class="kite-badge is-available">стабильно</span>.
     </p>
     <div class="kite-table">
       <table>
@@ -546,9 +545,10 @@
   <section class="kite-section" id="biblioteka-set">
     <h2>10. Библиотека <code>сеть</code> (21 функция)</h2>
     <p>
-      <code>использовать сеть</code> · псевдонимы <code>net</code>, <code>network</code> ·
-      <span class="kite-badge is-experimental">🧪 экспериментальная</span>. Вопреки старому тексту
-      KITE&nbsp;5 «TCP и UDP», библиотека покрывает также HTTP, DNS, URL-кодирование, Base64 и JSON.
+      <code>использовать сеть</code> · псевдонимы <code>net</code>, <code>network</code>.
+      TCP, UDP, HTTP, DNS, URL-кодирование, Base64 и JSON. Метка раздела —
+      <span class="kite-badge is-experimental">экспериментально</span>: функции вызываются,
+      состав и сигнатуры МОГУТ измениться.
     </p>
     <div class="kite-table">
       <table>
@@ -581,90 +581,62 @@
   </section>
 
   <!-- ───────────────────────── 11 ───────────────────────── -->
-  <section class="kite-section" id="politika">
-    <h2>11. Политика именования и версионирования</h2>
-    <h3>11.1 Когда builtin ядра, когда библиотека</h3>
-    <ul>
-      <li><strong>Builtin ядра</strong> — минимальный «школьный» набор, доступный без импорта:
-        арифметика, строки, преобразования, элементарные коллекции, печать. Регистрируется в
-        <code>BUILTINS</code> (<code>build.rs</code>).</li>
-      <li><strong>Библиотека</strong> — всё, что требует ОС/сети/времени или образует связную предметную
-        область. Подключается через <code>использовать</code>, версионируется по SemVer.</li>
-    </ul>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Фрагментация исходников (остаточный долг)</span>
-      Математика по-прежнему живёт в трёх местах: имена в <code>build.rs</code>, реализации в
-      <code>builtins/math.rs</code>, константы в <code>shared/src/constants/math.rs</code>.
-      <strong>Но расхождение таблицы и реализации устранено</strong>: реестр приведён к правилу
-      «диспетчеризуемые имена минус ключевые слова» (§1.1) и удерживается инвариантными тестами.
-      Остаётся физическая раскладка по файлам — это вопрос организации кода, а не правдивости каталога.
-    </div>
-    <h3>11.2 Правило доступности (нормативное)</h3>
+  <section class="kite-section" id="ukazatel">
+    <h2>11. Указатель</h2>
     <p>
-      Имя считается <span class="kite-badge is-available">✅ Доступно</span> в каталоге только если оно
-      реально вызывается: имя есть в <code>BUILTINS</code> <strong>и</strong> есть соответствующий арм в
-      <code>Builtins::try_call*</code>. Обе стороны этого равенства проверяются тестами
-      (§1), поэтому «зарегистрировано, но не реализовано» больше не является допустимым состоянием —
-      это провал сборки, а не бейдж <span class="kite-badge is-proposed">📋</span>. Регистрация имени,
-      совпадающего с ключевым словом языка, <strong>запрещена</strong> (§1.1). Изменение builtins или
-      библиотек без обновления этого каталога — блокер ревью (принцип KITE&nbsp;0 «документация не врёт»).
+      Перечень всех имён каталога — канонических и псевдонимов — в алфавитном порядке со
+      ссылкой на раздел, где описано поведение. Имена, совпадающие с ключевыми словами
+      языка, в указатель не входят: их вызываемые замены перечислены в §&nbsp;2.5.
     </p>
-    <h3>11.3 Версионирование библиотек</h3>
-    <p>
-      Каждая библиотека несёт <code>LibVersion</code> (SemVer) и флаг <code>stable</code>. Импорт может
-      указывать спецификацию версии (<code>^1.0</code>, <code>~1.2.3</code>, <code>&gt;=1.0.0</code>) —
-      разрешение выбирает наибольшую подходящую версию (<code>libraries/registry.rs</code>). Ломающие
-      изменения сигнатур требуют мажорного инкремента.
-    </p>
-  </section>
-
-  <!-- ───────────────────────── 12 ───────────────────────── -->
-  <section class="kite-section" id="plan">
-    <h2>12. План расширения</h2>
-    <div class="kite-table">
-      <table>
-        <thead><tr><th>Область</th><th>Что добавить</th><th>Статус</th></tr></thead>
-        <tbody>
-          <tr><td>Математика для школы</td><td><code>НОД</code>, <code>НОК</code>, проверка простоты, факторизация.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>Гиперболические и котангенсы</td><td><code>sh/ch/th</code>, <code>ctg/cot</code>, <code>arcctg/arccot</code> — реализованы (§3).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td>Целая/дробная часть</td><td><code>цел_часть</code>/<code>trunc</code>, <code>frac</code>/<code>дробь</code> — реализованы (§3).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td>Конвейер коллекций</td><td><code>отобразить</code>/map, <code>отфильтровать</code>/filter, <code>свернуть</code>/reduce для <code>|&gt;</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>Строки</td><td><code>слева</code>/<code>справа</code>/<code>повторить</code> реализованы, псевдонимы выровнены с реестром (§4).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td>Унификация номенклатуры</td><td>Реестр и реализация сведены к одному правилу и удерживаются инвариантными тестами (§1.1, §11.1).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td>Достижимые синонимы для ключевых слов</td><td>Для каждого удалённого keyword-имени существует вызываемый псевдоним; проверить полноту покрытия и зафиксировать в KITE&nbsp;12 список коллизий.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ───────────────────────── 13 ───────────────────────── -->
-  <section class="kite-section" id="istoki">
-    <h2>13. Источники истины</h2>
-    <ul>
-      <li><strong>Таблица builtins</strong> (имена + категории): <code>shared/build.rs</code>
-        (константа <code>BUILTINS</code>, генерация <code>builtins_gen.rs</code> через phf).</li>
-      <li><strong>Классификатор</strong>: <code>shared/src/constants/builtins.rs</code>
-        (<code>is_builtin_function</code>, <code>builtin_category</code>, <code>get_all_builtin_names</code>).</li>
-      <li><strong>Реализации builtins</strong>: <code>interpreter/src/interpreter/builtins/{math,string,array,io,types}.rs</code>
-        (диспетчер <code>Builtins::try_call</code> в <code>builtins/mod.rs</code>).</li>
-      <li><strong>Инварианты реестра</strong> (реестр ↔ диспетчер ↔ ключевые слова):
-        <code>interpreter/src/interpreter/builtins/tests.rs</code>; золотой снимок реестра —
-        <code>shared/tests/golden/builtins.snapshot</code> (188 строк, из них 128 с
-        <code>is_builtin=true</code> — категории Math/String/Io).</li>
-      <li><strong>Ключевые слова языка</strong> (источник коллизий, §1.1): таблица <code>KEYWORDS</code>
-        в <code>shared/build.rs</code>; грамматика — <a href="./KITE-0012-grammar.html">KITE&nbsp;12</a>.</li>
-      <li><strong>Библиотеки</strong>: <code>shared/src/libraries/{time,syscall,files,net}/</code>;
-        реестр — <code>libraries/registry.rs</code>.</li>
-    </ul>
     <div class="kite-callout is-note">
-      <span class="kite-callout-title">Связанные документы</span>
-      Механика импорта и версий — <a href="./KITE-0005-libraries.html">KITE&nbsp;5</a>;
-      типы в сигнатурах — <a href="./KITE-0002-type-system.html">KITE&nbsp;2</a>;
-      форматы ввода-вывода — <a href="./KITE-0007-stdio.html">KITE&nbsp;7</a>.
+      <span class="kite-callout-title">Как читать указатель</span>
+      Русские и латинские имена собраны в один список; буквенные группы следуют друг за
+      другом. Имя, встречающееся в нескольких разделах, несёт несколько ссылок.
     </div>
+      <p><strong>А</strong> — <code>абсолютный_путь</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>аргументы_командной_строки</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>архитектура</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>Б</strong> — <code>байты</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>байты_в_строку</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>без_расширения</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>В</strong> — <code>в_штамп_сек</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>верхний</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>верхний_регистр</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>вещественное</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>високосный_год</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>временная_директория</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>время</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a> · <code>все_окружение</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>вывод_команды</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>вывод_строки</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a> · <code>выполнить</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>вырезка</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a></p>
+      <p><strong>Д</strong> — <code>дата_время_iso</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>дата_время_iso_utc</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>директория_файла</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>длин</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>длина</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>дней_в_году</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>дней_в_месяце</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>дни_недели</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>дни_недели_кратко</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>добавить</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>добавить_дней</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>добавить_сек</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>дозапись_текста</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>домашняя_директория</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>дробь</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a></p>
+      <p><strong>Е</strong> — <code>е</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>есть</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>есть_окружение</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>З</strong> — <code>заменить</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>запись_байтов</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>запись_строк</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>запись_текста</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>знак</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a></p>
+      <p><strong>И</strong> — <code>идентификатор_процесса</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>из_штампа_сек</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>извлечь</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>имя_ос</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>имя_пользователя</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>имя_файла</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>имя_хоста</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>индекс</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>информация_о_системе</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>информация_о_файле</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a></p>
+      <p><strong>К</strong> — <code>канонический_путь</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>квадратный_корень</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>код</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>количество_ядер</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>копировать_строку</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>копировать_файл</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>корень</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>кортеж</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a></p>
+      <p><strong>Л</strong> — <code>логическое</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>локальный_ip</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a></p>
+      <p><strong>М</strong> — <code>макс</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>максимум</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>массив</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>месяцы</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>месяцы_кратко</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>мин</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>минимум</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a></p>
+      <p><strong>Н</strong> — <code>найти</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>найти_по_расширению</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>некоторое</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>нижний</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>нижний_регистр</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>новая_строка</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a> · <code>нс</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a></p>
+      <p><strong>О</strong> — <code>обратить</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>обрезать</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>обход</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>округл</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>округлить</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>окружение</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>остаток</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>ошибка</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a></p>
+      <p><strong>П</strong> — <code>пара</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>пауза</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>пауза_мин</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>пауза_мкс</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>пауза_мс</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>первый</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>перевернуть</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>переместить_файл</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>печать</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a> · <code>печатьстр</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a> · <code>пи</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>повторить</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>подстрока</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>позиция</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>пол</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>последний</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>потолок</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>путь_к_исполняемому</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>путь_существует</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>Р</strong> — <code>разбить</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>разделитель_путей</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>разделитель_пути</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>разделитель_строк</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>разделить</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>размер</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>размер_файла</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>разница_дней</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>разница_сек</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>разобрать_штамп_сек</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>разобрать_iso</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>расширение_файла</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>С</strong> — <code>семейство_ос</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>символ</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>символическая_ссылка</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>система</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>слева</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>случ</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>случайное</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>сменить_директорию</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>содержит</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>соединить</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>соединить_пути</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>создать_все_директории</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>создать_директорию</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>создать_файл</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>создать_штамп</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>создать_штамп_дата</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>сортировать</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>список_файлов</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>справа</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>среднее</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>степень</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>строка</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>строка_из_байт</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>сумма</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>существует</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a></p>
+      <p><strong>Т</strong> — <code>таймер_высокоточный</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>таймер_прошло_мс</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>таймер_прошло_сек</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>таймер_старт</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущая_дата_рус</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущая_директория</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>текущая_минута</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущая_секунда</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущее_время_мкс</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущее_время_мс</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущее_время_нс</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущее_время_сек</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущее_время_строка</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущий_год</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущий_день</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущий_день_недели</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущий_месяц</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>текущий_час</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>тип</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>только_директории</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>только_файлы</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>тройка</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a></p>
+      <p><strong>У</strong> — <code>удалить_директорию</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>удалить_директорию_рекурсивно</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>удалить_окружение</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>удалить_последний</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>удалить_файл</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>успех_команды</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>установить_окружение</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>установить_только_чтение</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a></p>
+      <p><strong>Ц</strong> — <code>цел_деление</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>цел_часть</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>целое</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a></p>
+      <p><strong>Ч</strong> — <code>чтение_байтов</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>чтение_строк</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>чтение_текста</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a></p>
+      <p><strong>Э</strong> — <code>это_директория</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a>, <a href="#biblioteka-fajly">§&nbsp;9</a> · <code>это_массив</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>это_пусто</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>это_ссылка</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>это_строка</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>это_файл</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a>, <a href="#biblioteka-fajly">§&nbsp;9</a> · <code>это_число</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a></p>
+      <p><strong>A</strong> — <code>abs</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>abs_path</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>acos</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>add_days</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>add_seconds</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>append</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>append_text</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>arccos</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>arccot</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>arcctg</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>arch</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>arcsin</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>arctan</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>arctg</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>arctg2</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>argv</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>asin</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>atan</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>atan2</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>average</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>avg</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a></p>
+      <p><strong>B</strong> — <code>base64_декодирование</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>base64_кодирование</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>base64_decode</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>base64_encode</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>basename</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>bytes</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>bytes_to_string</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a></p>
+      <p><strong>C</strong> — <code>canonical_path</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>ceil</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>ch</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>chdir</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>chr</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>code</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>contains</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>copy_file</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>cos</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>cosh</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>cot</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>cpu_count</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>ctg</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>cwd</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>D</strong> — <code>date_ru</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>day</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>days_in_month</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>days_in_year</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>diff_days</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>diff_seconds</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>dirname</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>div</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>dns_обратный</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>dns_поиск</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>dns_lookup</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>dns_reverse</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a></p>
+      <p><strong>E</strong> — <code>e</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>empty</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>env</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>env_all</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>env_exists</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>env_set</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>env_unset</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>error</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>exe_path</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>exec</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>exists</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>exp</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>extension</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>F</strong> — <code>file_size</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>find</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>first</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>floor</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>frac</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>from_timestamp</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a></p>
+      <p><strong>G</strong> — <code>glob_ext</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a></p>
+      <p><strong>H</strong> — <code>head</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>home_dir</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>hostname</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>hour</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>http_заголовки</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>http_запрос</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>http_отправить</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>http_расширенный_запрос</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>http_get</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>http_head</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>http_post</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>http_request</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a></p>
+      <p><strong>I</strong> — <code>index_of</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>is_array</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>is_dir</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a>, <a href="#biblioteka-fajly">§&nbsp;9</a> · <code>is_empty</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>is_file</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a>, <a href="#biblioteka-fajly">§&nbsp;9</a> · <code>is_leap_year</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>is_null</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>is_number</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>is_some</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>is_string</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>is_symlink</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>iso</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>iso_parts</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>iso_utc</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a></p>
+      <p><strong>J</strong> — <code>join</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>join_path</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>json_разбор</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>json_строка</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>json_parse</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>json_stringify</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a></p>
+      <p><strong>L</strong> — <code>last</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>left</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>len</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>length</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>lg</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>line_sep</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>list_dir</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>list_dirs</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>list_files</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>ln</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>local_ip</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>log</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>log10</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>lower</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>lowercase</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a></p>
+      <p><strong>M</strong> — <code>make_date</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>make_timestamp</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>max</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>min</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>minute</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>mkdir</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>mkdirs</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>month</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>months</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>months_short</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>move_file</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a></p>
+      <p><strong>N</strong> — <code>newline</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a> · <code>nl</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a> · <code>now</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>now_ms</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>now_ns</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>now_sec</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>now_us</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a></p>
+      <p><strong>O</strong> — <code>ord</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>os_family</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>os_name</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>P</strong> — <code>pair</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>path_exists</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>path_sep</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>pathlist_sep</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>pi</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>pid</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>pop</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>popen</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>pos</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>position</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>pow</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>println</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a> · <code>push</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a></p>
+      <p><strong>R</strong> — <code>rand</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>random</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>read_bytes</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>read_lines</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>read_text</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>rem</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>remove_dir</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>remove_dir_all</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>remove_file</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>rename</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>repeat</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>replace</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>reverse</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>right</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>round</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>run</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>run_success</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>S</strong> — <code>second</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>set_readonly</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>sgn</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>sh</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>sign</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>sin</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>sinh</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>size</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>sleep</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a>, <a href="#biblioteka-vremya">§&nbsp;7</a> · <code>sleep_min</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>sleep_ms</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>sleep_us</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>some</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>sort</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>split</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>sqrt</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>stat</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>stem</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>substr</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>substring</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>sum</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>symlink</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>system</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>system_info</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>T</strong> — <code>tan</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>tanh</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>tcp_отправить</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>tcp_подключение</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>tcp_получить</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>tcp_слушать</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>tcp_connect</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>tcp_listen</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>tcp_receive</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>tcp_send</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>temp_dir</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a> · <code>tg</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>th</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>time</code>&nbsp;<a href="#builtins-io">§&nbsp;5</a> · <code>time_str</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>timer_elapsed</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>timer_elapsed_ms</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>timer_precise</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>timer_start</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>to_bool</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>to_float</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>to_int</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>to_lower</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>to_string</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>to_timestamp</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>to_upper</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>touch</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>trim</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>triple</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>trunc</code>&nbsp;<a href="#builtins-math">§&nbsp;3</a> · <code>ts_parts</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>tuple</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>type_of</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>typeof</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a></p>
+      <p><strong>U</strong> — <code>udp_отправить</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>udp_получить</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>udp_широковещание</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>udp_broadcast</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>udp_receive</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>udp_send</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>unwrap</code>&nbsp;<a href="#builtins-other">§&nbsp;6</a> · <code>upper</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>uppercase</code>&nbsp;<a href="#builtins-string">§&nbsp;4</a> · <code>url_декодирование</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>url_кодирование</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>url_разбор</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>url_decode</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>url_encode</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>url_parse</code>&nbsp;<a href="#biblioteka-set">§&nbsp;10</a> · <code>username</code>&nbsp;<a href="#biblioteka-sistema">§&nbsp;8</a></p>
+      <p><strong>W</strong> — <code>walk</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>weekday</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>weekdays</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>weekdays_short</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a> · <code>write_bytes</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>write_lines</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a> · <code>write_text</code>&nbsp;<a href="#biblioteka-fajly">§&nbsp;9</a></p>
+      <p><strong>Y</strong> — <code>year</code>&nbsp;<a href="#biblioteka-vremya">§&nbsp;7</a></p>
   </section>
 
-  <!-- ───────────────────────── FOOTER ───────────────────────── -->
+  <!-- ───────────────────────── ПОДВАЛ ───────────────────────── -->
   <footer class="kite-footer">
     <span>KITE 16 · Каталог стандартной библиотеки</span>
     <span>Kumir3 House 🐾🦀 · 2026-07-22</span>

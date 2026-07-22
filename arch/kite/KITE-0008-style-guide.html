@@ -1,51 +1,69 @@
 <link rel="stylesheet" href="./assets/kite.css">
 <!-- =============================================================================
-     KITE 8 — Гайдлайны: как писать на Kumir 3
+     KITE 8 — Как лучше писать на Kumir 3 (Руководство)
 ============================================================================== -->
 <article class="kite" data-kite="0008" data-status="active" lang="ru">
 
   <header class="kite-header">
-    <span class="kite-eyebrow">KITE 8 · Гайдлайны</span>
+    <span class="kite-eyebrow">KITE 8 · Руководство</span>
     <h1>Как лучше писать на Kumir 3</h1>
     <dl class="kite-meta">
       <dt>Номер</dt>            <dd>KITE 8</dd>
-      <dt>Название</dt>         <dd>Руководство по стилю Kumir 3</dd>
+      <dt>Название</dt>         <dd>Как лучше писать на Kumir 3</dd>
+      <dt>Тип</dt>              <dd>Руководство</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
-      <dt>Тип</dt>              <dd>Информационный / Гайдлайны</dd>
-      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Версия документа</dt> <dd>2.0.0</dd>
       <dt>Создан</dt>           <dd>2026-05-30</dd>
-      <dt>Версия документа</dt> <dd>1.0.0</dd>
+      <dt>Обновлён</dt>         <dd>2026-07-22</dd>
     </dl>
   </header>
 
-  <nav class="kite-toc" aria-label="Содержание">
+  <nav class="kite-toc" data-auto aria-label="Содержание">
     <h2>Содержание</h2>
     <ol>
-      <li><a href="#principy">Принципы</a></li>
-      <li><a href="#imenovanie">Именование</a></li>
-      <li><a href="#struktura">Структура программы</a></li>
-      <li><a href="#kommentarii">Комментарии</a></li>
-      <li><a href="#tipy">Работа с типами</a></li>
-      <li><a href="#potok">Управление потоком</a></li>
-      <li><a href="#oshibki">Ошибки и инварианты</a></li>
-      <li><a href="#vidimost">Переменные и видимость</a></li>
-      <li><a href="#format">Форматирование</a></li>
-      <li><a href="#antipatterny">Антипаттерны</a></li>
+      <li><a href="#dlya-kogo">1. Для кого и о чём</a></li>
+      <li><a href="#imenovanie">2. Именование</a></li>
+      <li><a href="#struktura">3. Структура программы</a></li>
+      <li><a href="#kommentarii">4. Комментарии</a></li>
+      <li><a href="#tipy">5. Работа с типами</a></li>
+      <li><a href="#potok">6. Управление потоком</a></li>
+      <li><a href="#oshibki-kod">7. Ошибки и инварианты</a></li>
+      <li><a href="#vidimost">8. Переменные и видимость</a></li>
+      <li><a href="#format">9. Форматирование</a></li>
+      <li><a href="#tipichnye">10. Типичные ошибки</a></li>
+      <li><a href="#normy">11. Ссылки на нормы</a></li>
     </ol>
   </nav>
 
-  <!-- 1 -->
-  <section class="kite-section" id="principy">
-    <h2>1. Принципы</h2>
+  <!-- ───────────────────────── 1 ───────────────────────── -->
+  <section class="kite-section" id="dlya-kogo">
+    <h2>1. Для кого и о чём</h2>
+    <p>
+      Руководство адресовано тем, кто уже пишет программы на Kumir&nbsp;3 и хочет писать их
+      так, чтобы код читался и переживал правки: ученикам после первых задач,
+      преподавателям, авторам учебных материалов и библиотек. Предполагается знакомство с
+      алгоритмами, ветвлениями и циклами.
+    </p>
+    <p>
+      Здесь собраны приёмы записи, а не правила языка. Норму задают Спецификации; на них
+      опирается каждый совет, а сводка ссылок собрана в §&nbsp;11. Рекомендации касаются
+      только того, что записывается сегодня; замысел, ещё не доступный в языке, помечен
+      меткой <span class="kite-badge is-proposed">предложено</span> и в учебном коде не
+      применяется.
+    </p>
+
+    <h3>1.1. Четыре принципа</h3>
     <ul>
       <li><strong>Ясность важнее краткости.</strong> Код читают чаще, чем пишут.</li>
-      <li><strong>Code as Narrative.</strong> Программа должна читаться как связный рассказ.</li>
-      <li><strong>Образование прежде всего.</strong> Не выпендривайся синтаксисом — объясняй намерение.</li>
-      <li><strong>Меньше сюрпризов.</strong> Делай очевидное очевидным способом.</li>
+      <li><strong>Программа — связный рассказ.</strong> Порядок изложения важен так же, как
+        результат.</li>
+      <li><strong>Объясняй намерение.</strong> Синтаксическая изобретательность уступает
+        понятности.</li>
+      <li><strong>Меньше сюрпризов.</strong> Очевидное делается очевидным способом.</li>
     </ul>
   </section>
 
-  <!-- 2 -->
+  <!-- ───────────────────────── 2 ───────────────────────── -->
   <section class="kite-section" id="imenovanie">
     <h2>2. Именование</h2>
     <div class="kite-table">
@@ -53,25 +71,32 @@
         <thead><tr><th>Сущность</th><th>Стиль</th><th>Пример</th></tr></thead>
         <tbody>
           <tr><td>Переменные, алгоритмы</td><td>строчные, через подчёркивание</td><td><code>счётчик_шагов</code>, <code>найти_максимум</code></td></tr>
-          <tr><td>Типы, классы, структуры</td><td>С Заглавной (PascalCase)</td><td><code>СписокЗадач</code>, <code>Точка</code></td></tr>
+          <tr><td>Типы, классы, структуры</td><td>С Заглавной</td><td><code>СписокЗадач</code>, <code>Точка</code></td></tr>
           <tr><td>Константы</td><td>ВЕРХНИЙ_РЕГИСТР</td><td><code>МАКС_РАЗМЕР</code></td></tr>
           <tr><td>Перечисления и варианты</td><td>С Заглавной</td><td><code>Цвет.Красный</code></td></tr>
         </tbody>
       </table>
     </div>
     <ul>
-      <li>Имена — осмысленные слова на русском (или английском в смешанных проектах), а не <code>x1</code>, <code>tmp2</code>.</li>
-      <li>Логические величины называй утверждением: <code>есть_решение</code>, <code>пусто_ли</code>.</li>
+      <li>Выбирай осмысленные слова на русском (или английском в смешанных проектах)
+        вместо <code>x1</code> и <code>tmp2</code>.</li>
+      <li>Логическую величину называй утверждением: <code>есть_решение</code>,
+        <code>пусто_ли</code>.</li>
+      <li>Держись одного набора ключевых слов — русского или английского — во всей
+        программе. Оба набора равноправны
+        (<a href="./KITE-0012-grammar.html#identifikatory">KITE&nbsp;12&nbsp;§&nbsp;3.2</a>).</li>
     </ul>
   </section>
 
-  <!-- 3 -->
+  <!-- ───────────────────────── 3 ───────────────────────── -->
   <section class="kite-section" id="struktura">
     <h2>3. Структура программы</h2>
     <ul>
-      <li>Один алгоритм — одна задача. Если алгоритм не помещается на экран — раздели его.</li>
-      <li>Используй контракты <code>дано</code>/<code>надо</code> для предусловий и постусловий.</li>
-      <li>Явно помечай аргументы: <code>арг</code>, <code>рез</code>, <code>аргрез</code>.</li>
+      <li>Один алгоритм — одна задача. Алгоритм, не помещающийся на экран, разделяй.</li>
+      <li>Записывай предусловия и постусловия контрактами <code>дано</code>/<code>надо</code>.</li>
+      <li>Помечай назначение аргументов явно: <code>арг</code>, <code>рез</code>,
+        <code>аргрез</code>
+        (<a href="./KITE-0012-grammar.html#algoritmy">KITE&nbsp;12&nbsp;§&nbsp;3.8</a>).</li>
     </ul>
     <div class="kite-code" data-lang="kumir">
 <pre><code>алг цел наибольший_делитель(арг цел a, арг цел b)
@@ -88,100 +113,166 @@
     </div>
   </section>
 
-  <!-- 4 -->
+  <!-- ───────────────────────── 4 ───────────────────────── -->
   <section class="kite-section" id="kommentarii">
     <h2>4. Комментарии</h2>
     <ul>
-      <li>Комментарий <code>|</code> объясняет <em>почему</em>, а не пересказывает <em>что</em>.</li>
-      <li>Документируй назначение алгоритма строкой-комментарием перед <code>нач</code>.</li>
-      <li>Не оставляй закомментированный «мёртвый» код — для истории есть git.</li>
+      <li>Комментарий <code>|</code> объясняет <em>почему</em>, а не пересказывает
+        <em>что</em>.</li>
+      <li>Назначение алгоритма описывай строкой-комментарием перед <code>нач</code>.</li>
+      <li>Закомментированный код удаляй: он вводит читателя в заблуждение.</li>
     </ul>
   </section>
 
-  <!-- 5 -->
+  <!-- ───────────────────────── 5 ───────────────────────── -->
   <section class="kite-section" id="tipy">
     <h2>5. Работа с типами</h2>
     <ul>
-      <li>Указывай типы <strong>на границах</strong> (параметры, возврат); внутри допустимо <code>авто</code>.</li>
-      <li>Для «может не быть значения» используй необязательный тип вместо <code>пусто</code>/null. <strong>Рабочая запись сегодня — <code>может T</code> / <code>Необязательно&lt;T&gt;</code></strong>; краткая форма <code>T?</code> пока не разбирается парсером (см. <a href="./KITE-0002-type-system.html">KITE 2</a>, <a href="./KITE-0012-grammar.html">KITE 12</a>). <span class="kite-badge is-available">✅</span></li>
-      <li>Для операций, которые могут не удаться, целевая запись — <code>T!E</code>. <span class="kite-badge is-proposed">📋</span> <strong>Синтаксиса <code>T!E</code> в языке пока нет</strong>, поэтому в учебном и рабочем коде <em>сегодня</em> используй исключения (<code>попытка</code>/<code>перехват</code>/<code>бросить</code>) — см. §7 и <a href="./KITE-0014-error-handling.html">KITE 14</a>.</li>
-      <li>Не приводи типы молча — сужающие преобразования делай явно (правила приведения — <a href="./KITE-0013-expression-semantics.html">KITE 13</a>).</li>
+      <li>Указывай типы <strong>на границах</strong> — в параметрах и результате; внутри
+        алгоритма уместно <code>авто</code>
+        (<a href="./KITE-0002-type-system.html#oblast">KITE&nbsp;2&nbsp;§&nbsp;1</a>).</li>
+      <li>Для величины, которой может не быть, применяй необязательный тип, а не
+        <code>пусто</code>. Рабочая запись — <code>может T</code> либо
+        <code>Необязательно&lt;T&gt;</code>
+        (<a href="./KITE-0002-type-system.html#obertki">KITE&nbsp;2&nbsp;§&nbsp;3.4</a>).
+        <span class="kite-badge is-available">стабильно</span></li>
+      <li>Краткая запись <code>T?</code>
+        (<a href="./KITE-0002-type-system.html#sahar">KITE&nbsp;2&nbsp;§&nbsp;3.12</a>).
+        <span class="kite-badge is-proposed">предложено</span></li>
+      <li>Сужающие преобразования выполняй явно — молчаливого приведения язык не делает
+        (<a href="./KITE-0013-expression-semantics.html#cast">KITE&nbsp;13&nbsp;§&nbsp;3.16</a>).</li>
     </ul>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Гайд не советует ненаписуемое</span>
-      Рекомендации с бейджем <span class="kite-badge is-proposed">📋</span> — <strong>перспективные</strong>: они описывают
-      целевой стиль, но соответствующий синтаксис ещё не реализован. Нормативный документ по модели ошибок —
-      <a href="./KITE-0014-error-handling.html">KITE 14</a>; он же фиксирует порядок появления <code>T!E</code>.
-    </div>
   </section>
 
-  <!-- 6 -->
+  <!-- ───────────────────────── 6 ───────────────────────── -->
   <section class="kite-section" id="potok">
     <h2>6. Управление потоком</h2>
     <ul>
-      <li>Длинные <code>если-иначе-если</code> заменяй на <code>совпадение</code> (match) с охранами <code>когда</code>.</li>
-      <li>Выходи рано: проверяй ошибочные случаи в начале, а не вкладывай счастливый путь глубоко.</li>
-      <li>Цепочки преобразований оформляй конвейером <code>|&gt;</code> (семантика — <a href="./KITE-0013-expression-semantics.html">KITE 13</a>).</li>
+      <li>Длинную цепочку <code>если-иначе-если</code> заменяй на <code>совпадение</code>
+        с охранами <code>когда</code>
+        (<a href="./KITE-0012-grammar.html#patterny">KITE&nbsp;12&nbsp;§&nbsp;3.20</a>).</li>
+      <li>Выходи рано: проверяй ошибочные случаи в начале, а основной путь оставляй на
+        верхнем уровне вложенности.</li>
+      <li>Цепочку преобразований оформляй конвейером <code>|&gt;</code>
+        (<a href="./KITE-0013-expression-semantics.html#pipe">KITE&nbsp;13&nbsp;§&nbsp;3.15</a>).</li>
     </ul>
   </section>
 
-  <!-- 7 -->
-  <section class="kite-section" id="oshibki">
+  <!-- ───────────────────────── 7 ───────────────────────── -->
+  <section class="kite-section" id="oshibki-kod">
     <h2>7. Ошибки и инварианты</h2>
-    <p>Нормативная доктрина ошибок — <a href="./KITE-0014-error-handling.html">KITE 14</a>. Кратко, по состоянию на сегодня:</p>
+    <p>
+      Модель ошибок принадлежит <a href="./KITE-0014-error-handling.html">KITE&nbsp;14</a>;
+      ниже — приёмы её применения.
+    </p>
     <ul>
-      <li><strong>Основной рабочий механизм — исключения:</strong> <code>бросить</code> для сигнала об ошибке, <code>попытка</code>/<code>перехват</code>/<code>наконец</code> для обработки. Это единственная полностью исполняемая модель ошибок. <span class="kite-badge is-available">✅</span></li>
-      <li><strong>Оператор <code>?</code></strong> разворачивает «удачное» значение и делает ранний возврат из алгоритма при «неудачном» (<code>Ничего</code>/<code>пусто</code>/ошибка). Работает; уместен там, где вызов уже возвращает необязательное значение. <span class="kite-badge is-available">✅</span></li>
-      <li><strong>Возврат <code>T!E</code> вместо исключений</strong> — целевой стиль для <em>ожидаемых</em> ошибок, но записать такой тип пока нечем: синтаксиса <code>T!E</code> не существует. Не строй на нём учебный код, пока <a href="./KITE-0014-error-handling.html">KITE 14</a> не переведёт его в «Доступно». <span class="kite-badge is-proposed">📋</span></li>
-      <li>Инварианты, которые «не должны нарушаться», проверяй через <code>утв</code> (assert). <span class="kite-badge is-available">✅</span></li>
-      <li>Сообщения об ошибках пиши понятно — их прочитает ученик (см. также <a href="./KITE-0009-dev-cycle-debugging.html">KITE 9</a> о чтении ошибок).</li>
+      <li><strong>Исключения — основной механизм.</strong> <code>бросить</code> сообщает об
+        ошибке, <code>попытка</code>/<code>перехват</code>/<code>наконец</code> её
+        обрабатывают
+        (<a href="./KITE-0014-error-handling.html#isklyucheniya">KITE&nbsp;14&nbsp;§&nbsp;3.3</a>).
+        <span class="kite-badge is-available">стабильно</span></li>
+      <li><strong>Оператор <code>?</code></strong> разворачивает удачное значение и
+        выполняет ранний возврат при неудачном; применяй его там, где вызов уже возвращает
+        необязательное значение
+        (<a href="./KITE-0014-error-handling.html#propagate">KITE&nbsp;14&nbsp;§&nbsp;3.5</a>).
+        <span class="kite-badge is-available">стабильно</span></li>
+      <li><strong>Инварианты</strong> проверяй утверждением <code>утв</code>: нарушение
+        останавливает программу в понятном месте
+        (<a href="./KITE-0014-error-handling.html#utv">KITE&nbsp;14&nbsp;§&nbsp;3.4</a>).
+        <span class="kite-badge is-available">стабильно</span></li>
+      <li><strong>Возврат результата <code>T!E</code></strong>
+        (<a href="./KITE-0014-error-handling.html#result">KITE&nbsp;14&nbsp;§&nbsp;3.6</a>).
+        <span class="kite-badge is-proposed">предложено</span></li>
+      <li>Сообщение об ошибке пиши так, чтобы его понял ученик: что произошло и что с этим
+        делать (<a href="./KITE-0014-error-handling.html#soobshcheniya">KITE&nbsp;14&nbsp;§&nbsp;3.7</a>).</li>
     </ul>
+    <div class="kite-callout is-note">
+      <span class="kite-callout-title">Как читать метки в этом руководстве</span>
+      Совет с меткой <span class="kite-badge is-proposed">предложено</span> описывает
+      целевой стиль записи, недоступный в языке; учебный и рабочий код на него не
+      опирается. Состояние каждой возможности модели ошибок сведено в
+      <a href="./KITE-0014-error-handling.html#svodka">KITE&nbsp;14&nbsp;§&nbsp;3.10</a>.
+    </div>
   </section>
 
-  <!-- 8 -->
+  <!-- ───────────────────────── 8 ───────────────────────── -->
   <section class="kite-section" id="vidimost">
     <h2>8. Переменные и видимость</h2>
     <ul>
-      <li><strong>Объявляй переменные</strong> перед использованием — не полагайся на неявное создание (см. <a href="./KITE-0004-environments-scope.html">KITE 4</a>).</li>
-      <li>Не опирайся на стековую (динамическую) видимость — передавай данные через параметры.</li>
-      <li>Помечай неизменяемое как <code>конст</code>; <code>измен</code> — только когда мутация действительно нужна.</li>
-      <li>Область переменной — минимально необходимая.</li>
+      <li><strong>Объявляй переменную</strong> до первого использования: присваивание
+        необъявленному имени даёт предупреждение, а в строгом режиме — ошибку
+        (<a href="./KITE-0004-environments-scope.html#prisvaivanie">KITE&nbsp;4&nbsp;§&nbsp;4</a>).</li>
+      <li>Передавай данные параметрами, а не через поиск имени во внешних кадрах
+        (<a href="./KITE-0004-environments-scope.html#poisk">KITE&nbsp;4&nbsp;§&nbsp;3</a>).</li>
+      <li>Помечай неизменяемое как <code>конст</code>; <code>измен</code> оставляй для
+        величин, которые действительно меняются
+        (<a href="./KITE-0002-type-system.html#vladenie">KITE&nbsp;2&nbsp;§&nbsp;3.5</a>).</li>
+      <li>Область переменной делай минимально необходимой.</li>
     </ul>
   </section>
 
-  <!-- 9 -->
+  <!-- ───────────────────────── 9 ───────────────────────── -->
   <section class="kite-section" id="format">
     <h2>9. Форматирование</h2>
     <ul>
-      <li>Отступ — кратный (например, 2 пробела); не смешивай табы и пробелы.</li>
-      <li>Один оператор — одна строка; пробелы вокруг бинарных операторов.</li>
-      <li>Держи строки умеренной длины (ориентир ~100 символов).</li>
-      <li>В ядре (Rust) используй секции-баннеры и статус-теги BetterDoc (см. <a href="../ru/BetterDoc.md">BDoc</a>).</li>
-      <li>Доверяй форматтеру <code>кумфмт</code>, когда он появится — единый стиль без споров.</li>
+      <li>Отступ — постоянной ширины (например, два пробела); табуляции и пробелы не
+        смешивай.</li>
+      <li>Один оператор — одна строка; вокруг бинарных операторов ставь пробелы.</li>
+      <li>Держи строки умеренной длины, ориентир — сто символов.</li>
+      <li>Выравнивай <code>нц</code>/<code>кц</code> и <code>нач</code>/<code>кон</code> по
+        одному уровню отступа: парность видна глазом.</li>
     </ul>
   </section>
 
-  <!-- 10 -->
-  <section class="kite-section" id="antipatterny">
-    <h2>10. Антипаттерны</h2>
+  <!-- ───────────────────────── 10 ───────────────────────── -->
+  <section class="kite-section" id="tipichnye">
+    <h2>10. Типичные ошибки</h2>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Избегай</th><th>Вместо этого</th></tr></thead>
+        <thead><tr><th>Приём, приводящий к беде</th><th>Что делать вместо этого</th></tr></thead>
         <tbody>
-          <tr><td>Магические числа</td><td>Именованные константы.</td></tr>
-          <tr><td>Гигантские алгоритмы</td><td>Разбей на маленькие с одной задачей.</td></tr>
-          <tr><td>Опора на динамическую видимость</td><td>Явная передача через параметры.</td></tr>
-          <tr><td>Лишняя мутабельность</td><td><code>конст</code> по умолчанию.</td></tr>
-          <tr><td>null/<code>пусто</code> повсюду</td><td>Необязательный тип (<code>может T</code>) с <code>??</code>/<code>?.</code>/<code>?</code>; для ошибок — исключения, в перспективе <code>T!E</code> <span class="kite-badge is-proposed">📋</span>.</td></tr>
-          <tr><td>Глубокая вложенность</td><td>Ранний выход, <code>совпадение</code>.</td></tr>
+          <tr><td>Магические числа в выражениях.</td><td>Именованные константы с говорящим именем.</td></tr>
+          <tr><td>Алгоритм на несколько экранов.</td><td>Разделение на алгоритмы с одной задачей каждый.</td></tr>
+          <tr><td>Опора на поиск имени во внешнем кадре.</td><td>Явная передача через параметры (<a href="./KITE-0004-environments-scope.html#poisk">KITE&nbsp;4&nbsp;§&nbsp;3</a>).</td></tr>
+          <tr><td>Изменяемость по умолчанию.</td><td><code>конст</code> по умолчанию, <code>измен</code> — по необходимости.</td></tr>
+          <tr><td><code>пусто</code> как признак отсутствия величины.</td><td>Необязательный тип <code>может T</code> с операторами <code>??</code>, <code>?.</code>, <code>?</code> (<a href="./KITE-0013-expression-semantics.html#coalesce">KITE&nbsp;13&nbsp;§&nbsp;3.10</a>).</td></tr>
+          <tr><td>Глубокая вложенность ветвлений.</td><td>Ранний выход и <code>совпадение</code>.</td></tr>
+          <tr><td>Учебный код, построенный на записи <code>T!E</code>.</td><td>Исключения: запись <code>T!E</code> имеет метку <span class="kite-badge is-proposed">предложено</span> (<a href="./KITE-0014-error-handling.html#result">KITE&nbsp;14&nbsp;§&nbsp;3.6</a>).</td></tr>
+          <tr><td>Проверка типа сравнением строк из <code>тип(x)</code>.</td><td>Предикаты <code>это_число</code>, <code>это_строка</code>, <code>это_массив</code> (<a href="./KITE-0016-stdlib.html#builtins-other">KITE&nbsp;16&nbsp;§&nbsp;6</a>).</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
+  <!-- ───────────────────────── 11 ───────────────────────── -->
+  <section class="kite-section" id="normy">
+    <h2>11. Ссылки на нормы</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Раздел руководства</th><th>Норма</th></tr></thead>
+        <tbody>
+          <tr><td>§ 2 Именование</td><td><a href="./KITE-0012-grammar.html#identifikatory">KITE 12 § 3.2</a> — идентификаторы и ключевые слова.</td></tr>
+          <tr><td>§ 3 Структура программы</td><td><a href="./KITE-0012-grammar.html#algoritmy">KITE 12 § 3.8</a> — алгоритмы, аргументы, контракты.</td></tr>
+          <tr><td>§ 5 Работа с типами</td><td><a href="./KITE-0002-type-system.html">KITE 2</a> — типы и обёртки; <a href="./KITE-0013-expression-semantics.html#cast">KITE 13 § 3.16</a> — приведение.</td></tr>
+          <tr><td>§ 6 Управление потоком</td><td><a href="./KITE-0012-grammar.html#patterny">KITE 12 § 3.20</a> — сопоставление; <a href="./KITE-0013-expression-semantics.html#pipe">KITE 13 § 3.15</a> — конвейер.</td></tr>
+          <tr><td>§ 7 Ошибки и инварианты</td><td><a href="./KITE-0014-error-handling.html">KITE 14</a> — модель ошибок целиком.</td></tr>
+          <tr><td>§ 8 Переменные и видимость</td><td><a href="./KITE-0004-environments-scope.html">KITE 4</a> — окружения, поиск имён, присваивание.</td></tr>
+          <tr><td>§ 10 Типичные ошибки</td><td><a href="./KITE-0016-stdlib.html">KITE 16</a> — состав стандартной библиотеки.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Обзор языка — <a href="./KITE-0001-language-overview.html">KITE&nbsp;1</a>;
+      запуск, чтение ошибок и отладка —
+      <a href="./KITE-0009-dev-cycle-debugging.html">KITE&nbsp;9</a>;
+      правила меток стабильности —
+      <a href="./KITE-0000-standard.html">KITE&nbsp;0&nbsp;§&nbsp;5</a>.
+    </p>
+  </section>
+
   <footer class="kite-footer">
-    <span>KITE 8 · Гайдлайны Kumir 3</span>
-    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+    <span>KITE 8 · Как лучше писать на Kumir 3</span>
+    <span>Kumir3 House 🐾🦀 · 2026-07-22</span>
   </footer>
 
 </article>

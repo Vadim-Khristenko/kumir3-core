@@ -1,12 +1,7 @@
 <link rel="stylesheet" href="./assets/kite.css">
 <!-- =============================================================================
      KITE 13 — Семантика выражений и модель вычисления
-     Источник истины по реализованному:
-       interpreter/src/interpreter/evaluator/  (порядок, спецформы, ??/?./?/|>)
-       interpreter/src/interpreter/ops/        (binary/unary/cast/predicates/defaults)
-       shared/src/math/mod.rs                  (MathOperators — арифметика, /, див, мод, **)
-       interpreter/src/interpreter/typeops_characterization.rs (нормативные тесты поведения)
-       shared/src/typesys/, shared/src/types/number.rs (числовая модель, coercion)
+     Спецификация: порядок вычисления, смысл операторов, числовая модель.
 ============================================================================== -->
 <article class="kite" data-kite="0013" data-status="draft" lang="ru">
 
@@ -16,173 +11,166 @@
     <dl class="kite-meta">
       <dt>Номер</dt>            <dd>KITE 13</dd>
       <dt>Название</dt>         <dd>Семантика выражений и модель вычисления</dd>
-      <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
       <dt>Тип</dt>              <dd>Спецификация</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-draft">Draft</span></dd>
+      <dt>Версия документа</dt> <dd>0.2.0</dd>
       <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
-      <dt>Создан</dt>          <dd>2026-07-22</dd>
-      <dt>Версия документа</dt> <dd>0.1.0</dd>
+      <dt>Создан</dt>           <dd>2026-07-22</dd>
+      <dt>Обновлён</dt>         <dd>2026-07-22</dd>
     </dl>
   </header>
 
   <nav class="kite-toc" data-auto aria-label="Содержание">
     <h2>Содержание</h2>
     <ol>
-      <li><a href="#legenda">Легенда и источники истины</a></li>
-      <li><a href="#model">Модель вычисления и порядок</a></li>
-      <li><a href="#short-circuit">Короткое замыкание <code>и</code>/<code>или</code></a></li>
-      <li><a href="#arith">Арифметика: <code>+ − * /</code>, <code>див</code>, <code>мод</code>, <code>**</code></a></li>
-      <li><a href="#cmp">Сравнения и равенство</a></li>
-      <li><a href="#logic">Логика и унарные операции</a></li>
-      <li><a href="#optional-ops">Операторы над обёртками: <code>??</code>, <code>?.</code>, <code>?</code></a></li>
-      <li><a href="#collection-ops">Операции над строками и коллекциями</a></li>
-      <li><a href="#range-pipe">Диапазоны <code>..</code>/<code>..=</code>, конвейер <code>|&gt;</code>, композиция <code>&gt;&gt;</code></a></li>
-      <li><a href="#cast-check">Приведение <code>как</code> и проверка <code>это</code></a></li>
-      <li><a href="#numeric">Числовая модель и приведения</a></li>
-      <li><a href="#overflow">Переполнение</a></li>
-      <li><a href="#truthiness">Истинность и значения по умолчанию</a></li>
-      <li><a href="#forms">Специальные формы выражений</a></li>
-      <li><a href="#table">Сводная таблица операторов</a></li>
-      <li><a href="#open">Открытые вопросы</a></li>
+      <li><a href="#oblast">1. Область применения</a></li>
+      <li><a href="#terminy">2. Термины и обозначения</a></li>
+      <li><a href="#pravila">3. Нормативные правила</a></li>
+      <li><a href="#primery">4. Примеры</a></li>
+      <li><a href="#sovmestimost">5. Совместимость</a></li>
     </ol>
   </nav>
 
-  <!-- легенда -->
-  <section class="kite-section" id="legenda">
-    <h2>1. Легенда и источники истины</h2>
-    <div class="kite-callout is-important">
-      <span class="kite-callout-title">Легенда доступности</span>
-      <span class="kite-badge is-available">✅&nbsp;Доступно</span> — реализовано в движке и проверено тестами.
-      <span class="kite-badge is-experimental">🧪&nbsp;Экспериментально</span> — реализовано, но с ограничениями/швами.
-      <span class="kite-badge is-proposed">📋&nbsp;Предложено</span> — описано, но ещё не исполняется.
-    </div>
+  <!-- ───────────────────────── 1 ───────────────────────── -->
+  <section class="kite-section" id="oblast">
+    <h2>1. Область применения</h2>
     <p>
-      Этот документ фиксирует <strong>наблюдаемое поведение</strong> вычислителя выражений
-      Kumir&nbsp;3 — то, что сегодня живёт только в характеризационных тестах. Нормативным
-      источником поведения служит файл <code>interpreter/src/interpreter/typeops_characterization.rs</code>
-      (≈&nbsp;117 проверок, «каждое ожидаемое значение <em>наблюдалось</em>, а не угадано»).
-      Реализация операций — <code>shared/src/math/mod.rs</code> (<code>MathOperators</code>) и слой
-      <code>interpreter/src/interpreter/ops/</code>; порядок и спецформы — <code>evaluator/</code>.
+      Документ определяет <strong>смысл выражений</strong> Kumir&nbsp;3: порядок вычисления
+      операндов, действие каждого оператора, тип и значение результата, правила истинности,
+      значения по умолчанию и поведение при переполнении.
     </p>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Движок типов vs. рантайм</span>
-      В ядре есть статический движок типов (<code>shared/src/typesys</code>, см.
-      <a href="./KITE-0010-type-engine.html">KITE&nbsp;10</a>) с решётками расширения и
-      <code>result_of_binop</code>/<code>common_type</code>. Однако рантайм-операции пока
-      <em>не проходят</em> через него: в коде расставлены «швы» <code>[typesys-seam]</code>
-      (<code>ops/binary.rs</code>, <code>ops/cast.rs</code>, <code>ops/predicates.rs</code>).
-      Поэтому этот документ описывает <strong>фактическое</strong> поведение
-      <code>MathOperators</code>, а не то, что предсказывает движок типов. Сведение обоих —
-      предмет будущей адопции typesys.
-    </div>
-  </section>
-
-  <!-- 2 -->
-  <section class="kite-section" id="model">
-    <h2>2. Модель вычисления и порядок</h2>
-    <p>
-      Выражение — это дерево (<code>Expr</code>), вычисляемое рекурсивно функцией
-      <code>ExprEvaluator::evaluate</code> в текущем окружении. Вычисление <em>энергичное</em>
-      (eager): к моменту применения оператора его операнды уже вычислены в значения
-      (<code>Value</code>). Исключения из энергичности — «ленивые» операторы
-      <code>и</code>/<code>или</code> и обёрточные операторы <code>??</code>, <code>?.</code>
-      (см.&nbsp;§3, §7).
-    </p>
-    <h3>2.1. Порядок вычисления операндов</h3>
+    <p>Документ не решает следующих вопросов:</p>
     <ul>
-      <li><strong>Бинарные операции:</strong> сначала вычисляется левый операнд, затем правый,
-        затем применяется оператор (<code>evaluator/binary.rs</code>:&nbsp;<code>left_val</code>
-        до <code>right_val</code>). Порядок <em>детерминирован: слева направо</em>.</li>
-      <li><strong>Аргументы вызовов, элементы литералов массива/кортежа:</strong> вычисляются
-        по порядку следования, слева направо; первая же ошибка прекращает вычисление всего
-        выражения (характеризация: элементы массива/кортежа вычисляются, не отбрасываются).</li>
-      <li><strong>Побочные эффекты</strong> (ввод/вывод, изменение переменных внутри вызовов)
-        наблюдаются в этом же порядке.</li>
+      <li>форма записи выражений, приоритет и ассоциативность операторов — в
+        <a href="./KITE-0012-grammar.html">KITE 12</a>;</li>
+      <li>набор типов и их запись — в <a href="./KITE-0002-type-system.html">KITE 2</a>;</li>
+      <li>отношения между типами — в <a href="./KITE-0010-type-engine.html">KITE 10</a>;</li>
+      <li>модель ошибок, конструкции <code>попытка</code>/<code>перехват</code> и типы-результаты
+        <code>T!E</code> — в <a href="./KITE-0014-error-handling.html">KITE 14</a>;</li>
+      <li>разрешение имён модулей в выражениях — в
+        <a href="./KITE-0015-modules.html">KITE 15</a>;</li>
+      <li>встроенные функции — в <a href="./KITE-0016-stdlib.html">KITE 16</a>;</li>
+      <li>асинхронные выражения — в <a href="./KITE-0003-async-runtime.html">KITE 3</a>.</li>
     </ul>
-    <div class="kite-callout is-tip">
-      <span class="kite-callout-title">Нормативно</span>
-      Слева-направо и «первая ошибка останавливает вычисление» — гарантия языка, а не деталь
-      реализации. Программы вправе на неё полагаться.
-    </div>
   </section>
 
-  <!-- 3 -->
-  <section class="kite-section" id="short-circuit">
-    <h2>3. Короткое замыкание <code>и</code> / <code>или</code></h2>
+  <!-- ───────────────────────── 2 ───────────────────────── -->
+  <section class="kite-section" id="terminy">
+    <h2>2. Термины и обозначения</h2>
     <p>
-      Логические <code>и</code> (AND) и <code>или</code> (OR) вычисляются лениво
-      (<code>evaluator/binary.rs</code>):
+      <strong>Значение</strong> — результат вычисления выражения. <strong>Энергичное
+      вычисление</strong> — вычисление операнда до применения оператора.
+      <strong>Ленивый операнд</strong> — операнд, который вычисляется не всегда.
+      <strong>Истинность</strong> — логическое значение, сопоставленное произвольному значению
+      по §&nbsp;3.20. <strong>Общий тип</strong> двух чисел — числовой тип, в котором
+      выполняется операция над ними (§&nbsp;3.18). <strong>Обёртка</strong> — значение
+      <code>Option</code> (<em>Некоторое</em>/<em>Ничего</em>) либо результат
+      (<em>Успех</em>/<em>Ошибка</em>).
+    </p>
+    <p>
+      Ключевые слова требований — <strong>ДОЛЖЕН</strong>, <strong>НЕ ДОЛЖЕН</strong>,
+      <strong>СЛЕДУЕТ</strong>, <strong>МОЖЕТ</strong> — применяются в значении
+      KITE&nbsp;0&nbsp;§&nbsp;2.2. Метки стабильности — по KITE&nbsp;0&nbsp;§&nbsp;5; метка
+      стоит в строке таблицы или в конце пункта и в тексте не повторяется.
+    </p>
+    <p>
+      Расширенное вещественное представление обозначается <code>F128</code>; знаковые и
+      беззнаковые целочисленные представления — <code>I8…I128</code> и <code>U8…U128</code>.
+      Записи <code>цел</code>, <code>вещ</code>, <code>лит</code>, <code>лог</code>,
+      <code>сим</code> — имена типов языка (<a href="./KITE-0002-type-system.html">KITE 2</a>).
+    </p>
+  </section>
+
+  <!-- ───────────────────────── 3 ───────────────────────── -->
+  <section class="kite-section" id="pravila">
+    <h2>3. Нормативные правила</h2>
+
+    <h3 id="model">3.1. Модель вычисления и порядок</h3>
+    <p>
+      Выражение — дерево, вычисляемое рекурсивно в текущем окружении. Вычисление
+      <strong>энергичное</strong>: к моменту применения оператора его операнды уже вычислены в
+      значения. Исключение составляют ленивые операторы <code>и</code> и <code>или</code>
+      (§&nbsp;3.2) и обёрточные операторы <code>??</code> и <code>?.</code>
+      (§&nbsp;3.10, §&nbsp;3.11).
     </p>
     <ul>
-      <li><code>a и b</code>: вычисляется <code>a</code>; если <code>a</code> ложно —
-        результат <code>нет</code>, а <code>b</code> <strong>не вычисляется</strong>. Иначе
-        результат — истинность <code>b</code>.</li>
-      <li><code>a или b</code>: вычисляется <code>a</code>; если <code>a</code> истинно —
-        результат <code>да</code>, а <code>b</code> <strong>не вычисляется</strong>. Иначе
-        результат — истинность <code>b</code>.</li>
+      <li><strong>Бинарные операции.</strong> Сначала вычисляется левый операнд, затем правый,
+        затем применяется оператор. Порядок детерминирован — слева направо.</li>
+      <li><strong>Аргументы вызовов, элементы литералов массива и кортежа.</strong> Вычисляются
+        в порядке следования, слева направо. Первая ошибка прекращает вычисление всего
+        выражения.</li>
+      <li><strong>Побочные эффекты</strong> — ввод, вывод, изменение переменных внутри вызовов —
+        наблюдаются в том же порядке.</li>
     </ul>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Результат всегда <code>лог</code></span>
-      Оба оператора возвращают <code>Boolean</code> — <em>истинность</em> операнда, а не сам
-      операнд. То есть <code>x или y</code> — это не «первое истинное значение», а именно
-      <code>да</code>/<code>нет</code>. Операнды приводятся к истинности по правилам §12.
-      <span class="kite-badge is-available">✅</span>
-    </div>
-  </section>
-
-  <!-- 4 -->
-  <section class="kite-section" id="arith">
-    <h2>4. Арифметика</h2>
     <p>
-      Арифметические операторы делегируют в <code>MathOperators</code>
-      (<code>shared/src/math/mod.rs</code>) через <code>ops/binary.rs</code>. Числовая часть
-      унифицируется: для двух целых применяется целочисленная операция в общем типе, для
-      смешанных/вещественных — вычисление в <code>F128</code> (см.&nbsp;§11).
+      Порядок «слева направо» и правило «первая ошибка останавливает вычисление» — гарантии
+      языка, а не свойство отдельной реализации: программа МОЖЕТ на них полагаться.
+      <span class="kite-badge is-available">стабильно</span>
     </p>
 
-    <h3>4.1. Сложение, вычитание, умножение</h3>
+    <h3 id="short-circuit">3.2. Короткое замыкание <code>и</code> / <code>или</code></h3>
+    <p>Логические <code>и</code> и <code>или</code> вычисляются лениво:</p>
+    <ul>
+      <li><code>a и b</code>: вычисляется <code>a</code>; если <code>a</code> ложно, результат —
+        <code>нет</code>, а <code>b</code> <strong>не вычисляется</strong>. Иначе результат —
+        истинность <code>b</code>.</li>
+      <li><code>a или b</code>: вычисляется <code>a</code>; если <code>a</code> истинно,
+        результат — <code>да</code>, а <code>b</code> <strong>не вычисляется</strong>. Иначе
+        результат — истинность <code>b</code>.</li>
+    </ul>
+    <p>
+      Оба оператора ДОЛЖНЫ давать значение типа <code>лог</code> — истинность операнда, а не сам
+      операнд: <code>x или y</code> не является «первым истинным значением». Операнды приводятся
+      к истинности по §&nbsp;3.20. <span class="kite-badge is-available">стабильно</span>
+    </p>
+
+    <h3 id="arith">3.3. Сложение, вычитание, умножение</h3>
+    <p>
+      Для двух целых операндов применяется целочисленная операция в общем типе; если хотя бы
+      один операнд вещественный, оба приводятся к <code>F128</code> (§&nbsp;3.18).
+    </p>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Оператор</th><th>Операнды</th><th>Результат</th><th>Дост.</th></tr></thead>
+        <thead><tr><th>Оператор</th><th>Операнды</th><th>Результат</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>+</code></td><td>число + число</td><td>Число в общем типе (см.&nbsp;§11). <code>2+3 → 5</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>+</code></td><td>строка + строка</td><td>Конкатенация. <code>"ab"+"cd" → "abcd"</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>+</code></td><td>массив + массив</td><td>Конкатенация массивов.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>−</code></td><td>число − число</td><td>Число в общем типе. <code>10−4 → 6</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>−</code></td><td>строка − строка</td><td>Удаление <em>всех</em> вхождений подстроки (алгоритм KMP).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>−</code></td><td>массив − массив</td><td>Удаление элементов правого из левого (мультимножественно).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td><code>*</code></td><td>число * число</td><td>Число в общем типе. <code>3*4 → 12</code>.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>*</code></td><td>строка * цел / цел * строка</td><td>Повтор строки N раз (N&nbsp;≥&nbsp;0).</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>+</code></td><td>число + число</td><td>Число в общем типе (§&nbsp;3.18). <code>2+3 → 5</code>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>+</code></td><td>строка + строка</td><td>Конкатенация. <code>"ab"+"cd" → "abcd"</code>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>+</code></td><td>массив + массив</td><td>Конкатенация массивов.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>−</code></td><td>число − число</td><td>Число в общем типе. <code>10−4 → 6</code>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>−</code></td><td>строка − строка</td><td>Удаление <em>всех</em> вхождений подстроки.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>−</code></td><td>массив − массив</td><td>Удаление элементов правого из левого (мультимножественно).</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td><code>*</code></td><td>число * число</td><td>Число в общем типе. <code>3*4 → 12</code>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>*</code></td><td>строка * цел / цел * строка</td><td>Повтор строки N раз (N&nbsp;≥&nbsp;0).</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
         </tbody>
       </table>
     </div>
 
-    <h3>4.2. Деление <code>/</code> — всегда вещественное</h3>
-    <div class="kite-callout is-important">
-      <span class="kite-callout-title">Осознанное решение</span>
-      Оператор <code>/</code> <strong>всегда</strong> даёт вещественный результат
-      (<code>F128</code>), даже для двух целых: <code>7 / 2 → 3.5</code>
-      (характеризация <code>char_binary_div_integers_is_float</code>). Это сознательный выбор
-      в духе Python&nbsp;3, устраняющий классическую ловушку «целочисленного деления по
-      умолчанию» для учеников. Деление на ноль — ясная ошибка выполнения, не паника.
-      <span class="kite-badge is-available">✅</span>
-    </div>
+    <h3 id="delenie">3.4. Деление <code>/</code></h3>
+    <p>
+      Оператор <code>/</code> над числами ДОЛЖЕН давать вещественный результат
+      (<code>F128</code>) — в том числе для двух целых операндов: <code>7 / 2 → 3.5</code>.
+      Деление на ноль ДОЛЖНО приводить к ошибке выполнения (
+      <a href="./KITE-0014-error-handling.html">KITE 14</a>&nbsp;§&nbsp;3.2), а не к аварийному
+      останову. <span class="kite-badge is-available">стабильно</span>
+    </p>
     <div class="kite-code" data-lang="kumir">
 <pre><code>вывод 7 / 2      | 3.5   (вещ, не 3)
 вывод 20 / 5     | 4     (значение целое, но тип — вещ)
 вывод 5 / 0      | ошибка выполнения: деление на ноль</code></pre>
     </div>
     <p>
-      Дополнительно для строк <code>/</code> перегружен: <code>строка / цел</code> режет строку
-      на N примерно равных частей, <code>строка / строка</code> — разбивает по разделителю и
-      возвращает пару <code>(части, число_разбиений)</code>.
-      <span class="kite-badge is-experimental">🧪</span>
+      Для строк <code>/</code> перегружен: <code>строка / цел</code> делит строку на N примерно
+      равных частей, <code>строка / строка</code> разбивает строку по разделителю и даёт пару
+      <code>(части, число_разбиений)</code>.
+      <span class="kite-badge is-experimental">экспериментально</span>
     </p>
 
-    <h3>4.3. Целочисленное деление <code>див</code></h3>
+    <h3 id="intdiv">3.5. Целочисленное деление <code>див</code></h3>
     <p>
-      <code>див</code> — новый оператор-слово (лексема <code>Token::IntDiv</code>), возвращающий
-      <strong>целое частное с усечением к нулю</strong> (как <code>/</code> для целых в Rust),
-      только для целых операндов:
+      Оператор-слово <code>див</code> применим только к целым операндам и даёт
+      <strong>целое частное с усечением к нулю</strong>. На нецелом операнде он ДОЛЖЕН давать
+      ошибку выполнения; деление на ноль ДОЛЖНО давать ошибку выполнения.
+      <span class="kite-badge is-available">стабильно</span>
     </p>
     <div class="kite-code" data-lang="kumir">
 <pre><code>вывод 7 див 2      | 3
@@ -191,19 +179,13 @@
 вывод 7 див -2     | -3
 вывод 5 див 0      | ошибка выполнения: деление на ноль</code></pre>
     </div>
-    <p>
-      На нецелых операндах — ясная ошибка «целочисленное деление только для целых».
-      Характеризация: <code>char_binary_intdiv_keyword</code>,
-      <code>char_binary_intdiv_negative_truncates_toward_zero</code>,
-      <code>char_binary_intdiv_by_zero_is_error</code>.
-      <span class="kite-badge is-available">✅</span>
-    </p>
 
-    <h3>4.4. Остаток <code>мод</code> / <code>%</code></h3>
+    <h3 id="mod">3.6. Остаток <code>мод</code> / <code>%</code></h3>
     <p>
-      <code>мод</code> (лексема <code>Token::Percent</code>, синоним <code>%</code>) — остаток от
-      деления, только для целых. Реализация использует Rust-остаток <code>%</code>, который
-      усекает частное к нулю; поэтому <strong>знак результата совпадает со знаком делимого</strong>:
+      Оператор <code>мод</code> (и его написание <code>%</code>) применим только к целым
+      операндам и даёт остаток от деления. Частное усекается к нулю, поэтому
+      <strong>знак результата совпадает со знаком делимого</strong>.
+      <span class="kite-badge is-available">стабильно</span>
     </p>
     <div class="kite-code" data-lang="kumir">
 <pre><code>вывод 7 мод 3      | 1
@@ -211,142 +193,115 @@
 вывод 7 % 3        | 1
 вывод -7 мод 2     | -1   (знак — от делимого)</code></pre>
     </div>
-
-    <h3>4.5. Тождество <code>див</code>/<code>мод</code></h3>
     <div class="kite-callout is-tip">
       <span class="kite-callout-title">Инвариант</span>
       Для всех целых <code>a</code> и <code>b ≠ 0</code> выполняется
-      <code>(a див b) * b + (a мод b) == a</code> (тест
-      <code>char_binary_intdiv_mod_identity</code> на парах (7,2),(10,3),(20,5),(17,4),(100,7)).
-      Оба оператора усекают к нулю согласованно.
+      <code>(a див b) * b + (a мод b) == a</code>: оба оператора усекают к нулю согласованно.
     </div>
 
-    <h3>4.6. Возведение в степень <code>**</code></h3>
+    <h3 id="power">3.7. Возведение в степень <code>**</code></h3>
     <p>
-      <code>a ** b</code> вычисляется в <code>F128</code> через <code>powf</code>; результат —
-      <strong>вещественное число</strong> (даже для целых основания и степени:
-      <code>2 ** 3 → 8.0</code>). Правоассоциативен на уровне грамматики (см.
-      <a href="./KITE-0012-grammar.html">KITE&nbsp;12</a>). Отрицательное основание с дробной
-      степенью и переполнение диагностируются только в режиме «ошибка при переполнении»
-      (<code>fo_e</code>), который в интерпретаторе сейчас <em>выключен</em> (см.&nbsp;§10) —
-      поэтому такие случаи дают <code>inf</code>/<code>nan</code>, а не ошибку.
-      <span class="kite-badge is-available">✅</span> (тип результата — вещ)
+      Выражение <code>a ** b</code> вычисляется в <code>F128</code> и ДОЛЖНО давать
+      <strong>вещественное</strong> значение, в том числе для целых основания и степени:
+      <code>2 ** 3 → 8.0</code>. Отрицательное основание с дробной степенью и переполнение дают
+      <code>inf</code> или <code>nan</code> без ошибки (§&nbsp;3.19).
+      <span class="kite-badge is-available">стабильно</span>
     </p>
-  </section>
 
-  <!-- 5 -->
-  <section class="kite-section" id="cmp">
-    <h2>5. Сравнения и равенство</h2>
+    <h3 id="cmp">3.8. Сравнения и равенство</h3>
     <div class="kite-table">
       <table>
         <thead><tr><th>Оператор</th><th>Семантика</th><th>Результат</th></tr></thead>
         <tbody>
-          <tr><td><code>=</code></td><td>Структурное равенство значений (<code>Value == Value</code>).</td><td><code>лог</code></td></tr>
+          <tr><td><code>=</code></td><td>Структурное равенство значений.</td><td><code>лог</code></td></tr>
           <tr><td><code>&lt;&gt;</code> / <code>!=</code></td><td>Отрицание равенства.</td><td><code>лог</code></td></tr>
           <tr><td><code>&lt;</code> <code>&gt;</code> <code>&lt;=</code> <code>&gt;=</code></td><td>Упорядочение чисел, строк, символов.</td><td><code>лог</code></td></tr>
         </tbody>
       </table>
     </div>
     <p>
-      Сравнимые пары (<code>ops/predicates.rs</code>): число↔число, строка↔строка (лексикографически),
-      символ↔символ. Прочие сочетания — ошибка «несравнимые типы».
+      Сравнимы пары «число — число», «строка — строка» (лексикографически) и «символ — символ».
+      Прочие сочетания ДОЛЖНЫ давать ошибку выполнения «несравнимые типы».
     </p>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Шов точности сравнений</span>
-      Числа при <code>&lt;/&gt;/&lt;=/&gt;=</code> сейчас приводятся к <code>f64</code> и
-      сравниваются через <code>partial_cmp</code> (<code>ops/predicates.rs</code>, шов
-      <code>[typesys-seam]</code>). Для очень больших <code>цел_128</code>/<code>нат_128</code> и
-      <code>вещ_128</code> это <em>может терять точность</em>. Равенство (<code>=</code>) — иное:
-      оно структурное (<code>Value == Value</code>) и на числах сравнивает по представлению,
-      то есть <code>цел</code> и <code>вещ</code> с равной величиной <em>не</em> считаются
-      равными. Lossless-сравнение смешанных чисел — предмет адопции typesys.
-    </div>
-  </section>
+    <p>
+      Равенство <code>=</code> структурно и сравнивает числа по представлению: <code>цел</code>
+      и <code>вещ</code> равной величины равными <em>не</em> считаются.
+      <span class="kite-badge is-available">стабильно</span>
+    </p>
+    <p>
+      Упорядочивающие сравнения приводят числа к <code>f64</code>. Для очень больших значений
+      <code>цел_128</code>, <code>нат_128</code> и <code>вещ_128</code> такое сравнение МОЖЕТ
+      терять точность; программа НЕ ДОЛЖНА полагаться на результат сравнения величин,
+      неразличимых в <code>f64</code>. <span class="kite-badge is-unstable">нестабильно</span>
+    </p>
 
-  <!-- 6 -->
-  <section class="kite-section" id="logic">
-    <h2>6. Логика и унарные операции</h2>
+    <h3 id="logic">3.9. Логика и унарные операции</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Оператор</th><th>Семантика</th><th>Результат</th><th>Дост.</th></tr></thead>
+        <thead><tr><th>Оператор</th><th>Семантика</th><th>Результат</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>и</code> / <code>или</code></td><td>Ленивое короткое замыкание (§3).</td><td><code>лог</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>не x</code></td><td>Логическое отрицание истинности <code>x</code> (§12).</td><td><code>лог</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>−x</code></td><td>Арифметическое отрицание числа. Ошибка на <em>беззнаковом</em> (<code>нат</code>).</td><td>число того же типа</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>и</code> / <code>или</code></td><td>Ленивое короткое замыкание (§&nbsp;3.2).</td><td><code>лог</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>не x</code></td><td>Логическое отрицание истинности <code>x</code> (§&nbsp;3.20).</td><td><code>лог</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>−x</code></td><td>Арифметическое отрицание числа; на беззнаковом (<code>нат</code>) — ошибка выполнения.</td><td>число того же типа</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
         </tbody>
       </table>
     </div>
     <p>
-      Унарный <code>не</code> сначала приводит операнд к истинности, поэтому применим не только
-      к <code>лог</code>: <code>не 0 → да</code>, <code>не "" → да</code>. Унарный минус на
-      <code>нат_*</code> — ясная ошибка (беззнаковое число нельзя отрицать),
-      <code>ops/unary.rs</code>.
+      Унарный <code>не</code> сначала приводит операнд к истинности и потому применим не только
+      к <code>лог</code>: <code>не 0 → да</code>, <code>не "" → да</code>.
     </p>
-  </section>
 
-  <!-- 7 -->
-  <section class="kite-section" id="optional-ops">
-    <h2>7. Операторы над обёртками: <code>??</code>, <code>?.</code>, <code>?</code></h2>
-
-    <h3>7.1. Значение по умолчанию <code>??</code> (null-coalescing)</h3>
+    <h3 id="coalesce">3.10. Значение по умолчанию <code>??</code></h3>
     <p>
-      <code>a ?? b</code> вычисляет <code>a</code>; правая часть вычисляется <em>лениво</em>,
-      только если <code>a</code> «пусто»:
+      Выражение <code>a ?? b</code> вычисляет <code>a</code>; правая часть — ленивый операнд и
+      вычисляется, только если <code>a</code> «пусто»:
     </p>
     <ul>
-      <li><code>a</code> — <code>Option</code>: <em>Некоторое(v)</em> → <code>v</code>;
-        <em>Ничего</em> → значение <code>b</code>.</li>
-      <li><code>a</code> — <code>пусто</code> (Null) → значение <code>b</code>.</li>
-      <li>любое другое <code>a</code> → само <code>a</code> (правая часть игнорируется).</li>
+      <li><code>a</code> — <code>Option</code>: <em>Некоторое(v)</em> даёт <code>v</code>;
+        <em>Ничего</em> даёт значение <code>b</code>;</li>
+      <li><code>a</code> — <code>пусто</code> даёт значение <code>b</code>;</li>
+      <li>любое другое <code>a</code> даёт само <code>a</code>, а <code>b</code> не
+        вычисляется.</li>
     </ul>
-    <p><code>evaluator/mod.rs</code>, ветвь <code>Expr::Coalesce</code>.
-      Правоассоциативен (см.&nbsp;KITE&nbsp;12). <span class="kite-badge is-available">✅</span></p>
-
-    <h3>7.2. Безопасная навигация <code>?.</code></h3>
     <p>
-      <code>объект?.поле</code> и <code>объект?.метод(...)</code>: если объект — <code>пусто</code>
-      или <code>Ничего</code>, результат — <code>пусто</code>, без вычисления доступа/вызова.
-      Иначе — обычный доступ к полю / вызов метода. <code>evaluator/mod.rs</code>
-      (<code>SafeField</code>/<code>SafeMethod</code>). <span class="kite-badge is-available">✅</span>
+      Оператор правоассоциативен (<a href="./KITE-0012-grammar.html">KITE 12</a>&nbsp;§&nbsp;3.17).
+      <span class="kite-badge is-available">стабильно</span>
     </p>
 
-    <h3>7.3. Проброс ошибки <code>?</code> (ранний возврат)</h3>
+    <h3 id="safe">3.11. Безопасная навигация <code>?.</code></h3>
     <p>
-      Постфиксный <code>выражение?</code> десугарится парсером в вызов
-      <code>выражение.__propagate__()</code> и реализует раннее завершение объемлющего алгоритма/
-      метода/лямбды (<code>evaluator/method.rs</code> → <code>eval_propagate</code>):
+      В выражениях <code>объект?.поле</code> и <code>объект?.метод(…)</code>: если объект —
+      <code>пусто</code> или <em>Ничего</em>, результат — <code>пусто</code>, а доступ и вызов
+      не выполняются. Иначе выполняется обычный доступ к полю или вызов метода.
+      <span class="kite-badge is-available">стабильно</span>
+    </p>
+
+    <h3 id="propagate">3.12. Проброс <code>?</code></h3>
+    <p>
+      Постфиксный <code>выражение?</code> выполняет ранний возврат из ближайшего объемлющего
+      алгоритма, метода или лямбды:
     </p>
     <div class="kite-table">
       <table>
         <thead><tr><th>Значение слева</th><th>Действие</th></tr></thead>
         <tbody>
-          <tr><td><em>Успех(v)</em> (<code>Result::Ok</code>)</td><td>развернуть до <code>v</code></td></tr>
-          <tr><td><em>Некоторое(v)</em> (<code>Option::Some</code>)</td><td>развернуть до <code>v</code></td></tr>
-          <tr><td><em>Ошибка(e)</em> (<code>Result::Err</code>)</td><td>ранний возврат с <code>Err(e)</code></td></tr>
-          <tr><td><em>Ничего</em> / <code>пусто</code></td><td>ранний возврат с <code>Пусто</code></td></tr>
-          <tr><td>значение-ошибка (<code>Value::Error</code>)</td><td>ранний возврат самого значения</td></tr>
-          <tr><td>иное (например <code>5?</code>)</td><td>ясная ошибка <code>TypeMismatch</code>: «Оператор '?' применим только к…»</td></tr>
+          <tr><td><em>Успех(v)</em></td><td>развернуть до <code>v</code></td></tr>
+          <tr><td><em>Некоторое(v)</em></td><td>развернуть до <code>v</code></td></tr>
+          <tr><td><em>Ошибка(e)</em></td><td>ранний возврат со значением <code>e</code></td></tr>
+          <tr><td><em>Ничего</em> / <code>пусто</code></td><td>ранний возврат со значением <code>пусто</code></td></tr>
+          <tr><td>значение-ошибка</td><td>ранний возврат самого значения</td></tr>
+          <tr><td>иное (например <code>5?</code>)</td><td>ошибка выполнения «несоответствие типов»</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Механизм раннего возврата</span>
-      Проброс реализован особым сигналом-ошибкой с полем <code>propagate</code>
-      (<code>error.rs</code>), который перехватывается на границе вызова алгоритма/метода/лямбды
-      и превращается в возврат несомого значения. Характеризация:
-      <code>char_propagate_unwraps_some</code>,
-      <code>char_propagate_null_short_circuits_algorithm</code>,
-      <code>char_propagate_on_plain_value_is_clear_error</code>.
-      <span class="kite-badge is-available">✅</span>
-      Синтаксиса типа <code>T!E</code> для <em>создания</em> результатов на поверхности пока нет
-      (см.&nbsp;открытые вопросы и будущий KITE&nbsp;о модели ошибок).
-    </div>
-  </section>
+    <p>
+      Ранний возврат оператора <code>?</code> НЕ ДОЛЖЕН наблюдаться как исключение: блоки
+      <code>перехват</code> его не видят. Полные правила — в
+      <a href="./KITE-0014-error-handling.html">KITE 14</a>&nbsp;§&nbsp;3.5.
+      <span class="kite-badge is-available">стабильно</span>
+    </p>
 
-  <!-- 8 -->
-  <section class="kite-section" id="collection-ops">
-    <h2>8. Операции над строками и коллекциями</h2>
-    <p>Помимо чисел, арифметические операторы имеют перегрузки (все реализованы в <code>MathOperators</code>):</p>
+    <h3 id="collection-ops">3.13. Операции над строками и коллекциями</h3>
     <div class="kite-table">
       <table>
         <thead><tr><th>Выражение</th><th>Результат</th></tr></thead>
@@ -354,32 +309,25 @@
           <tr><td><code>"ab" + "cd"</code></td><td><code>"abcd"</code> — конкатенация</td></tr>
           <tr><td><code>"ababa" − "ba"</code></td><td>удаление всех вхождений подстроки</td></tr>
           <tr><td><code>"ab" * 3</code></td><td><code>"ababab"</code> — повтор</td></tr>
-          <tr><td><code>"abcdef" / 3</code></td><td>массив из ~равных частей</td></tr>
+          <tr><td><code>"abcdef" / 3</code></td><td>массив из примерно равных частей</td></tr>
           <tr><td><code>"a,b,c" / ","</code></td><td>пара <code>(["a","b","c"], 2)</code></td></tr>
           <tr><td><code>[1,2] + [3]</code></td><td><code>[1,2,3]</code></td></tr>
           <tr><td><code>[1,2,3,2] − [2]</code></td><td><code>[1,3,2]</code> (удаляет одно вхождение)</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Строки и числа не складываются</span>
-      <code>строка + число</code> — ошибка несовместимости типов. Это, в частности, влияет на
-      интерполяцию (§13.5): встраиваемые значения должны быть строками, иначе конкатенация не
-      пройдёт.
-    </div>
-  </section>
-
-  <!-- 9 -->
-  <section class="kite-section" id="range-pipe">
-    <h2>9. Диапазоны, конвейер, композиция</h2>
-
-    <h3>9.1. Диапазоны <code>..</code> / <code>..=</code> с шагом</h3>
     <p>
-      <code>начало..конец</code> (исключая конец) и <code>начало..=конец</code> (включая) дают
-      значение <code>Value::Range { start, end, inclusive, step }</code>. Границы вычисляются как
-      целые; необязательный <code>шаг&nbsp;n</code> задаёт шаг (по умолчанию 1). Шаг&nbsp;0 —
-      ошибка. Диапазоны без начала/конца пока не поддерживаются.
-      <code>evaluator/range.rs</code>. <span class="kite-badge is-available">✅</span>
+      Выражение «строка + число» ДОЛЖНО давать ошибку несовместимости типов: строки и числа не
+      складываются. Это правило распространяется и на интерполяцию (§&nbsp;3.22).
+    </p>
+
+    <h3 id="range">3.14. Диапазоны <code>..</code> / <code>..=</code></h3>
+    <p>
+      Выражения <code>начало..конец</code> (конец исключён) и <code>начало..=конец</code>
+      (конец включён) дают значение-диапазон. Границы вычисляются как целые; необязательное
+      <code>шаг&nbsp;n</code> задаёт шаг, по умолчанию 1. Шаг 0 ДОЛЖЕН давать ошибку
+      выполнения. Диапазоны без начала или без конца язык не определяет.
+      <span class="kite-badge is-available">стабильно</span>
     </p>
     <div class="kite-code" data-lang="kumir">
 <pre><code>нц для x в 1..10        | 1..9
@@ -387,283 +335,249 @@
 нц для x в 0..=100 шаг 2 | 0,2,4,…,100</code></pre>
     </div>
 
-    <h3>9.2. Конвейер <code>|&gt;</code></h3>
+    <h3 id="pipe">3.15. Конвейер <code>|&gt;</code> и композиция <code>&gt;&gt;</code></h3>
     <p>
-      <code>x |&gt; f</code> и <code>x |&gt; f(a, b)</code> подставляют вычисленное <code>x</code>
-      <strong>первым</strong> аргументом вызова: <code>f(x)</code> и <code>f(x, a, b)</code>
-      соответственно. Цепочки левоассоциативны и разворачиваются последовательно.
-      Правая часть обязана быть вызовом функции/именем функции, иначе ошибка.
-      <code>evaluator/pipe.rs</code>. <span class="kite-badge is-available">✅</span>
+      Выражения <code>x |&gt; f</code> и <code>x |&gt; f(a, b)</code> подставляют вычисленное
+      <code>x</code> <strong>первым</strong> аргументом вызова: <code>f(x)</code> и
+      <code>f(x, a, b)</code> соответственно. Цепочки левоассоциативны и разворачиваются
+      последовательно. Правая часть ДОЛЖНА быть вызовом функции или именем функции, иначе
+      вычисление даёт ошибку. <span class="kite-badge is-available">стабильно</span>
     </p>
-
-    <h3>9.3. Композиция <code>&gt;&gt;</code></h3>
     <p>
-      <code>f &gt;&gt; g</code> вычисляется в <strong>значение-лямбду одного параметра</strong>,
-      эквивалентную <code>лямбда(x) -&gt; g(f(x))</code>: сначала применяется левый операнд, затем
-      правый. Композиция <em>вкладывается</em> (<code>f &gt;&gt; g &gt;&gt; h</code> — левоассоциативно,
-      промежуточный результат сам является лямбдой и захватывается). Операндом может быть имя
-      алгоритма/встроенной функции (разрешается при вызове) либо значение-лямбда (захватывается
-      в замыкание). Если операнд — значение не-функция, выдаётся ясная ошибка: «Операнды
-      композиции '&gt;&gt;' должны быть функциями, получено значение типа …».
-      <code>evaluator/pipe.rs</code> → <code>eval_compose</code>. <span class="kite-badge is-available">✅</span>
+      Выражение <code>f &gt;&gt; g</code> даёт <strong>лямбду одного параметра</strong>,
+      эквивалентную <code>лямбда(x) -&gt; g(f(x))</code>: сначала применяется левый операнд,
+      затем правый. Композиция вкладывается: в <code>f &gt;&gt; g &gt;&gt; h</code>
+      промежуточный результат сам является лямбдой и захватывается. Операндом МОЖЕТ быть имя
+      алгоритма или встроенной функции либо значение-лямбда. Операнд, не являющийся функцией,
+      ДОЛЖЕН давать ошибку выполнения, называющую тип полученного значения.
+      <span class="kite-badge is-available">стабильно</span>
     </p>
     <div class="kite-code" data-lang="kumir">
 <pre><code>удв_затем_инк := удвоить &gt;&gt; увеличить   | лямбда(x) -&gt; увеличить(удвоить(x))
 вывод удв_затем_инк(5)</code></pre>
     </div>
-  </section>
 
-  <!-- 10 -->
-  <section class="kite-section" id="cast-check">
-    <h2>10. Приведение <code>как</code> и проверка <code>это</code></h2>
-
-    <h3>10.1. Приведение <code>выражение как Тип</code></h3>
-    <p>Реализованная каст-матрица (<code>ops/cast.rs</code>):</p>
+    <h3 id="cast">3.16. Приведение <code>как</code></h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Цель</th><th>Из чего</th><th>Результат</th><th>Дост.</th></tr></thead>
+        <thead><tr><th>Цель</th><th>Из чего</th><th>Результат</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>любой</code></td><td>из любого</td><td>тождество (никогда не ошибается)</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>цел</code></td><td>число</td><td><code>I64</code> (усечение через <code>as_int</code>). <code>3 как цел → 3</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>вещ</code></td><td>число / строка</td><td><code>F64</code>. <code>"2.5" как вещ → 2.5</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>лит</code></td><td>любое</td><td>строковое представление. <code>42 как лит → "42"</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>лог</code></td><td>любое</td><td>истинность (§12). <code>1 как лог → да</code>, <code>0 как лог → нет</code></td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>сим</code></td><td>символ / целое / строка длины&nbsp;1</td><td>символ: тождество; целое → символ Unicode с этим кодом (<code>65 как сим → 'A'</code>); строка ровно из одного символа → этот символ. Прочее (вещ, лог, пустая или многосимвольная строка, код вне диапазона / суррогат) — ясная ошибка</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td>прочие типы</td><td>—</td><td>ошибка «приведение к типу … не реализовано»</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>любой</code></td><td>из любого</td><td>тождество; ошибка невозможна</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>цел</code></td><td>число</td><td>целое с усечением. <code>3 как цел → 3</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>вещ</code></td><td>число / строка</td><td>вещественное. <code>"2.5" как вещ → 2.5</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>лит</code></td><td>любое</td><td>строковое представление. <code>42 как лит → "42"</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>лог</code></td><td>любое</td><td>истинность (§&nbsp;3.20). <code>1 как лог → да</code>, <code>0 как лог → нет</code></td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>сим</code></td><td>символ / целое / строка длины&nbsp;1</td><td>символ: тождество; целое — символ Unicode с этим кодом (<code>65 как сим → 'A'</code>); строка ровно из одного символа — этот символ. Прочее — ошибка</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>прочие типы</td><td>—</td><td>ошибка «приведение к типу … не определено»</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>
       </table>
     </div>
     <div class="kite-callout is-note">
-      <span class="kite-callout-title">Нормативно: <code>как сим</code></span>
-      Источник символа — <strong>кодовая точка</strong> либо <strong>строка ровно из одного
-      символа</strong>. Целое приводится к <code>char</code> через скалярное значение Unicode:
-      отрицательные, суррогатные и выходящие за диапазон коды дают ошибку
-      «… не является кодом символа Unicode». Строка иной длины (включая пустую) — ошибка
-      «строка "…" должна состоять ровно из одного символа». Вещественное, логическое, массив,
-      объект к <code>сим</code> не приводятся. Все формулировки — <code>ops/cast.rs</code> →
-      <code>cast_to_char</code>; поведение закреплено характеризационными тестами.
+      <span class="kite-callout-title">Приведение к <code>сим</code></span>
+      Источником символа служит <strong>кодовая точка</strong> либо <strong>строка ровно из
+      одного символа</strong>. Целое приводится к символу через скалярное значение Unicode:
+      отрицательный, суррогатный и выходящий за диапазон код ДОЛЖНЫ давать ошибку «… не
+      является кодом символа Unicode». Строка иной длины, включая пустую, ДОЛЖНА давать ошибку
+      «строка "…" должна состоять ровно из одного символа». Вещественное, логическое, массив и
+      объект к <code>сим</code> не приводятся.
     </div>
 
-    <h3>10.2. Проверка типа <code>выражение это Тип</code></h3>
+    <h3 id="typecheck">3.17. Проверка типа <code>это</code></h3>
     <p>
-      Постфиксный <code>это</code> (после выражения) выполняет проверку типа и возвращает
-      <code>лог</code> (<code>ops/cast.rs</code> → <code>type_check</code>). Распознаются
-      <code>цел</code>(I64), <code>вещ</code>(F64), <code>лит</code>, <code>лог</code>,
-      <code>сим</code>, <code>таб</code> и <code>любой</code> (последний — всегда истина).
-      Несовпадение даёт <code>нет</code>, не левый операнд.
-      <span class="kite-badge is-available">✅</span>
+      Постфиксное <code>выражение это Тип</code> даёт значение типа <code>лог</code>.
+      Распознаются <code>цел</code>, <code>вещ</code>, <code>лит</code>, <code>лог</code>,
+      <code>сим</code>, <code>таб</code> и <code>любой</code>; проверка на <code>любой</code>
+      всегда истинна. Несовпадение даёт <code>нет</code>, а не левый операнд.
+      <span class="kite-badge is-available">стабильно</span>
     </p>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Двойная роль <code>это</code></span>
-      Лексема <code>это</code> служит и ссылкой на себя внутри метода, и постфиксной проверкой
-      типа. Дизамбигуация — по позиции: постфиксная позиция после выражения = проверка типа.
-    </div>
-  </section>
+    <p>
+      Лексема <code>это</code> служит также ссылкой на текущий объект внутри метода;
+      дизамбигуация выполняется по позиции (<a href="./KITE-0012-grammar.html">KITE 12</a>
+      §&nbsp;3.16).
+    </p>
 
-  <!-- 11 -->
-  <section class="kite-section" id="numeric">
-    <h2>11. Числовая модель и приведения</h2>
+    <h3 id="numeric">3.18. Числовая модель и общий тип</h3>
     <p>
-      Числа представлены перечислением <code>Number</code>
-      (<code>shared/src/types/number.rs</code>): знаковые <code>I8…I128</code>, беззнаковые
-      <code>U8…U128</code> и вещественные <code>F32/F64/F128</code>. <code>F128</code> —
-      расширенная точность, служит «универсальным вещественным» для всех делений, степеней,
-      корней и тригонометрии.
+      Числа представлены знаковыми <code>I8…I128</code>, беззнаковыми <code>U8…U128</code> и
+      вещественными <code>F32</code>, <code>F64</code>, <code>F128</code> представлениями.
+      <code>F128</code> — расширенная точность; она служит универсальным вещественным
+      представлением для делений, степеней, корней и тригонометрии.
     </p>
-    <h3>11.1. Как комбинируются смешанные числовые типы</h3>
-    <p>Правила из <code>MathOperators::int_or_float</code> (для <code>+ − *</code>):</p>
     <ul>
-      <li><strong>Оба операнда целые</strong> → операция целочисленная. Общий тип:
-        знаковость = «знаковый, если хоть один знаковый»; ширина = максимум рангов операндов
+      <li><strong>Оба операнда целые.</strong> Операция целочисленная. Общий тип: знаковый, если
+        знаковый хотя бы один операнд; ширина — максимум ширин операндов
         (<code>цел_16 + цел_64 → цел_64</code>).</li>
-      <li><strong>Хотя бы один вещественный</strong> (или смешанный так, что целочисленная
-        ветвь неприменима) → оба приводятся к <code>F128</code>, результат — <code>F128</code>.</li>
-      <li><code>/</code> и <code>**</code> — <em>всегда</em> через <code>F128</code>
-        (см.&nbsp;§4).</li>
-      <li><code>див</code> и <code>мод</code> — только целые, результат в целочисленном типе
-        операндов (сейчас реализованы пути I32/I64/U32/U64).</li>
+      <li><strong>Хотя бы один операнд вещественный.</strong> Оба приводятся к
+        <code>F128</code>, результат — <code>F128</code>.</li>
+      <li><code>/</code> и <code>**</code> вычисляются через <code>F128</code> всегда
+        (§&nbsp;3.4, §&nbsp;3.7).</li>
+      <li><code>див</code> и <code>мод</code> применимы только к целым; результат имеет
+        целочисленный тип операндов.</li>
     </ul>
-    <div class="kite-callout is-important">
-      <span class="kite-callout-title">Рантайм ≠ движок типов</span>
-      Правило «общий тип по большему размеру/точности» из движка типов (<code>result_of_binop</code>,
-      <code>common_type</code>, решётка расширения в <code>shared/src/typesys/rules.rs</code>)
-      <em>ещё не подключено</em> к рантайм-операциям. Практический эффект: рантайм часто отдаёт
-      <code>F128</code> там, где движок типов вычислил бы более узкий тип. При адопции typesys
-      расхождения будут устраняться <em>осознанно</em>, со ссылкой на характеризационные тесты.
-    </div>
-    <h3>11.2. Приведения при кастах</h3>
     <p>
-      Явные приведения — см.&nbsp;§10. Скрытых <em>сужений</em> нет: их можно получить только
-      явным <code>как</code>. Строку в число превращает только каст (<code>"2.5" как вещ</code>),
-      арифметика строку и число не смешивает.
+      Ширина результата смешанной операции МОЖЕТ оказаться шире, чем требует величина
+      результата: программа НЕ ДОЛЖНА полагаться на конкретную ширину результата, а СЛЕДУЕТ
+      задавать её явным приведением (§&nbsp;3.16).
+      <span class="kite-badge is-unstable">нестабильно</span>
     </p>
-  </section>
+    <p>
+      Скрытых <strong>сужений</strong> язык не выполняет: сужение записывается явным
+      <code>как</code>. Строка превращается в число только приведением
+      (<code>"2.5" как вещ</code>); арифметика строку и число не смешивает (§&nbsp;3.13).
+    </p>
 
-  <!-- 12 -->
-  <section class="kite-section" id="overflow">
-    <h2>12. Переполнение</h2>
-    <p>
-      Все операции <code>MathOperators</code> принимают флаг <code>fo_e</code>
-      («fail-on-overflow»). Интерпретатор вызывает их с <code>fo_e = false</code>
-      (<code>ops/binary.rs</code>), поэтому текущее поведение таково:
-    </p>
+    <h3 id="overflow">3.19. Переполнение</h3>
     <ul>
-      <li><strong>Целые:</strong> при переполнении узкого типа результат
-        <em>автоматически расширяется</em> до более широкого (вплоть до
-        <code>цел_128</code>/<code>нат_128</code>). Если и он переполнен — ясная ошибка
-        «Переполнение числа». Внутри узкого типа арифметика идёт через <code>wrapping_*</code>,
-        но результат сразу проверяется на попадание в тип и при выходе — расширяется.</li>
-      <li><strong>Вещественные:</strong> переполнение даёт <code>inf</code>/<code>nan</code>
-        <em>без ошибки</em> (проверка на inf/nan активна только при <code>fo_e = true</code>).</li>
+      <li><strong>Целые.</strong> При переполнении узкого типа результат автоматически
+        расширяется до более широкого, вплоть до <code>цел_128</code> и <code>нат_128</code>.
+        Переполнение самого широкого типа ДОЛЖНО давать ошибку выполнения «переполнение
+        числа».</li>
+      <li><strong>Вещественные.</strong> Переполнение даёт <code>inf</code> или
+        <code>nan</code> без ошибки.</li>
     </ul>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Не финализировано</span>
-      Единая политика переполнения (ошибка / насыщение / wrap) языком пока
-      <strong>не зафиксирована</strong> нормативно — это открытый вопрос (§15). Текущее поведение
-      — «авторасширение целых + тихий inf для вещественных» — следует считать реализационной
-      данностью, а не гарантией. <span class="kite-badge is-experimental">🧪</span>
-    </div>
-  </section>
+    <p>
+      Программа НЕ ДОЛЖНА полагаться на автоматическое расширение целых и на молчаливое
+      появление <code>inf</code>: единая политика переполнения МОЖЕТ измениться.
+      <span class="kite-badge is-unstable">нестабильно</span>
+    </p>
 
-  <!-- 13 truthiness -->
-  <section class="kite-section" id="truthiness">
-    <h2>13. Истинность и значения по умолчанию</h2>
-    <h3>13.1. Правила истинности</h3>
-    <p><code>ops/predicates.rs</code> → <code>is_truthy</code>:</p>
+    <h3 id="truthiness">3.20. Истинность</h3>
     <div class="kite-table">
       <table>
         <thead><tr><th>Значение</th><th>Истинно, если…</th></tr></thead>
         <tbody>
           <tr><td><code>лог</code></td><td>равно <code>да</code></td></tr>
-          <tr><td>число</td><td>не равно 0 (по <code>to_f64</code>); нечисловое-в-f64 → ложь</td></tr>
+          <tr><td>число</td><td>не равно 0; значение, не представимое числом, ложно</td></tr>
           <tr><td>строка</td><td>непустая</td></tr>
           <tr><td>массив</td><td>непустой</td></tr>
-          <tr><td><code>пусто</code> / <code>неопределено</code></td><td>всегда ложь</td></tr>
-          <tr><td><code>Option</code></td><td><em>Некоторое</em> → истина, <em>Ничего</em> → ложь</td></tr>
+          <tr><td><code>пусто</code> / неопределённое значение</td><td>всегда ложно</td></tr>
+          <tr><td><code>Option</code></td><td><em>Некоторое</em> — истина, <em>Ничего</em> — ложь</td></tr>
           <tr><td>прочее (объекты, лямбды, …)</td><td>истина</td></tr>
         </tbody>
       </table>
     </div>
-    <p>Характеризация: <code>char_truthiness_*</code> (число, ноль, строка, пустая строка).</p>
+    <p><span class="kite-badge is-available">стабильно</span></p>
 
-    <h3>13.2. Значения по умолчанию</h3>
+    <h3 id="defaults">3.21. Значения по умолчанию</h3>
     <p>
-      Переменная без инициализатора получает значение по умолчанию своего типа через
-      <code>shared::typesys::default_engine()</code> (<code>ops/defaults.rs</code>):
+      Переменная без инициализатора получает значение по умолчанию своего типа:
       <code>цел → 0</code>, <code>вещ → 0</code>, <code>лог → нет</code>,
-      <code>лит → ""</code> (пустая), <code>сим → '\0'</code> (NUL). Типы без естественного
-      умолчания дают <code>Undefined</code>. Характеризация: <code>char_default_*</code>.
-      <span class="kite-badge is-available">✅</span>
+      <code>лит → ""</code>, <code>сим → '\0'</code>. Тип без естественного умолчания даёт
+      неопределённое значение. <span class="kite-badge is-available">стабильно</span>
     </p>
-  </section>
 
-  <!-- 14 special forms -->
-  <section class="kite-section" id="forms">
-    <h2>14. Специальные формы выражений</h2>
-
-    <h3>14.1. Кортеж <code>(a, b, …)</code></h3>
+    <h3 id="forms">3.22. Специальные формы выражений</h3>
     <p>
-      Скобочный список даёт <code>Value::Tuple</code>; <strong>каждый</strong> элемент
-      вычисляется штатным вычислителем (<code>(1+1, 2*3) → (2, 6)</code>). Характеризация:
-      <code>char_tuple_literal_evaluates</code>, <code>…evaluates_elements</code>.
-      <span class="kite-badge is-available">✅</span>
+      <strong>Кортеж <code>(a, b, …)</code>.</strong> Скобочный список даёт кортеж; каждый
+      элемент вычисляется штатным образом (<code>(1+1, 2*3) → (2, 6)</code>).
+      <span class="kite-badge is-available">стабильно</span>
     </p>
-
-    <h3>14.2. Литерал массива <code>[…]</code></h3>
     <p>
-      Даёт <code>Value::Array</code>; каждый элемент вычисляется
-      (<code>evaluator/mod.rs</code> → <code>ArrayLiteral</code>). Ранее не-литеральные элементы
-      молча превращались в <code>Undefined</code> — дефект исправлен: <code>[x, x+1, x*2]</code>
-      корректно вычисляет все элементы. Характеризация:
-      <code>char_array_literal_evaluates_nonliteral_elements</code>,
-      <code>…of_literals_still_works</code>.
-      <span class="kite-badge is-available">✅</span>
-      Литералы множества <code>{…}</code> и словаря <code>{k: v}</code> пока не разбираются —
-      <span class="kite-badge is-proposed">📋</span>.
+      <strong>Литерал массива <code>[…]</code>.</strong> Даёт массив; каждый элемент
+      вычисляется, включая не-литеральные: <code>[x, x+1, x*2]</code> даёт три вычисленных
+      значения. <span class="kite-badge is-available">стабильно</span>
     </p>
-
-    <h3>14.3. If-выражение <code>если … то … иначе …</code></h3>
     <p>
-      Условное <em>выражение</em>: вычисляет условие, затем ровно одну ветвь; результат — её
-      значение (<code>evaluator/mod.rs</code> → <code>IfExpr</code>). Условие приводится к
-      истинности по §13. <span class="kite-badge is-available">✅</span>
+      <strong>Литералы множества <code>{…}</code> и словаря <code>{k: v}</code>.</strong>
+      <span class="kite-badge is-proposed">предложено</span>
     </p>
-
-    <h3>14.4. Match-выражение</h3>
     <p>
-      Сопоставление с образцом в позиции выражения (<code>evaluator/match.rs</code>): значение
-      сравнивается с ветвями, результат — значение первой подходящей.
-      <span class="kite-badge is-experimental">🧪</span>
+      <strong>Если-выражение <code>если … то … иначе … все</code>.</strong> Вычисляет условие,
+      затем ровно одну ветвь; результат — значение этой ветви. Условие приводится к истинности
+      по §&nbsp;3.20. <span class="kite-badge is-available">стабильно</span>
     </p>
-
-    <h3>14.5. Лямбды</h3>
     <p>
-      Лямбда-выражение создаёт <code>Value::Lambda</code>, <strong>захватывая</strong> свободные
-      переменные из окружения (по значению). Поддержана и краткая запись <code>x =&gt; x + 1</code>.
-      Оператор <code>?</code> в теле лямбды выполняет ранний возврат из самой лямбды.
-      <span class="kite-badge is-available">✅</span>
+      <strong>Совпадение-выражение.</strong> Значение сравнивается с ветвями по порядку;
+      результат — значение первой подходящей ветви.
+      <span class="kite-badge is-experimental">экспериментально</span>
     </p>
-
-    <h3>14.6. Интерполированные f-строки</h3>
     <p>
-      <code>f"…{выражение}…"</code> лексируется на части и <strong>десугарится парсером в
-      цепочку конкатенаций</strong> <code>+</code>: <code>f"Привет, {имя}!"</code> становится
-      <code>"Привет, " + имя + "!"</code> (<code>shared/src/parser/expr.rs</code>).
+      <strong>Лямбды.</strong> Лямбда-выражение создаёт значение-лямбду, <strong>захватывая</strong>
+      свободные переменные окружения по значению. Краткая запись <code>x =&gt; x + 1</code>
+      равносильна полной. Оператор <code>?</code> в теле лямбды выполняет ранний возврат из
+      самой лямбды (§&nbsp;3.12). <span class="kite-badge is-available">стабильно</span>
     </p>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Ограничение</span>
-      Поскольку десугаринг — это конкатенация <code>+</code>, а <code>строка + число</code> —
-      ошибка (§8), встраиваемые выражения должны давать <strong>строку</strong>: для чисел
-      требуется явное <code>{n как лит}</code>. Автоматической стрингификации встраиваемых
-      значений пока нет. <span class="kite-badge is-experimental">🧪</span>
-    </div>
-  </section>
+    <p>
+      <strong>Интерполированные f-строки.</strong> Запись <code>f"…{выражение}…"</code>
+      равносильна цепочке конкатенаций: <code>f"Привет, {имя}!"</code> означает
+      <code>"Привет, " + имя + "!"</code>. Поскольку «строка + число» — ошибка (§&nbsp;3.13),
+      встраиваемое выражение ДОЛЖНО давать строку; для числа записывается явное
+      <code>{n как лит}</code>. Автоматического превращения встраиваемого значения в строку язык
+      не выполняет. <span class="kite-badge is-experimental">экспериментально</span>
+    </p>
 
-  <!-- 15 сводная -->
-  <section class="kite-section" id="table">
-    <h2>15. Сводная таблица операторов</h2>
+    <h3 id="svodka">3.23. Сводная таблица операторов</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Оператор</th><th>Тип результата</th><th>Кратко</th><th>Дост.</th></tr></thead>
+        <thead><tr><th>Оператор</th><th>Тип результата</th><th>Кратко</th><th>Пункт</th></tr></thead>
         <tbody>
-          <tr><td><code>+ − *</code></td><td>число (общий тип) / строка / массив</td><td>арифметика или конкатенация/повтор</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>/</code></td><td><strong>вещ (F128)</strong></td><td>всегда вещественное деление; на ноль — ошибка</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>див</code></td><td>цел</td><td>целочисленное деление, усечение к нулю</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>мод</code> / <code>%</code></td><td>цел</td><td>остаток, знак делимого</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>**</code></td><td>вещ (F128)</td><td>степень; правоассоциативен</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>= &lt;&gt; != &lt; &gt; &lt;= &gt;=</code></td><td>лог</td><td>равенство/упорядочение</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>и</code> / <code>или</code></td><td>лог</td><td>ленивое короткое замыкание</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>не</code></td><td>лог</td><td>отрицание истинности</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>−</code> (унарный)</td><td>число</td><td>ошибка на беззнаковом</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>??</code></td><td>тип значения</td><td>значение по умолчанию для Option/пусто; правоассоц., ленивый rhs</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>?.</code></td><td>тип поля/метода или пусто</td><td>безопасная навигация</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>?</code></td><td>развёрнутое значение</td><td>ранний возврат ошибки/пусто</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>..</code> / <code>..=</code> [<code>шаг</code>]</td><td>диапазон</td><td>целочисленный диапазон</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>|&gt;</code></td><td>результат вызова</td><td>подстановка первым аргументом</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>&gt;&gt;</code></td><td>лямбда одного параметра</td><td>композиция: <code>f &gt;&gt; g</code> ≡ <code>лямбда(x) -&gt; g(f(x))</code>; вкладывается; не-функция — ясная ошибка</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>как</code></td><td>целевой тип</td><td>каст (цел/вещ/лит/лог/сим/любой); прочие типы — ошибка</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>это</code> (постфикс)</td><td>лог</td><td>проверка типа</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>+ − *</code></td><td>число (общий тип) / строка / массив</td><td>арифметика либо конкатенация и повтор</td><td>§&nbsp;3.3</td></tr>
+          <tr><td><code>/</code></td><td><strong>вещ</strong></td><td>всегда вещественное деление; на ноль — ошибка</td><td>§&nbsp;3.4</td></tr>
+          <tr><td><code>див</code></td><td>цел</td><td>целочисленное деление, усечение к нулю</td><td>§&nbsp;3.5</td></tr>
+          <tr><td><code>мод</code> / <code>%</code></td><td>цел</td><td>остаток, знак делимого</td><td>§&nbsp;3.6</td></tr>
+          <tr><td><code>**</code></td><td>вещ</td><td>степень; правоассоциативен</td><td>§&nbsp;3.7</td></tr>
+          <tr><td><code>= &lt;&gt; != &lt; &gt; &lt;= &gt;=</code></td><td>лог</td><td>равенство и упорядочение</td><td>§&nbsp;3.8</td></tr>
+          <tr><td><code>и</code> / <code>или</code></td><td>лог</td><td>ленивое короткое замыкание</td><td>§&nbsp;3.2</td></tr>
+          <tr><td><code>не</code></td><td>лог</td><td>отрицание истинности</td><td>§&nbsp;3.9</td></tr>
+          <tr><td><code>−</code> (унарный)</td><td>число</td><td>ошибка на беззнаковом</td><td>§&nbsp;3.9</td></tr>
+          <tr><td><code>??</code></td><td>тип значения</td><td>значение по умолчанию; правоассоциативен, ленивая правая часть</td><td>§&nbsp;3.10</td></tr>
+          <tr><td><code>?.</code></td><td>тип поля/метода или пусто</td><td>безопасная навигация</td><td>§&nbsp;3.11</td></tr>
+          <tr><td><code>?</code></td><td>развёрнутое значение</td><td>ранний возврат</td><td>§&nbsp;3.12</td></tr>
+          <tr><td><code>..</code> / <code>..=</code> [<code>шаг</code>]</td><td>диапазон</td><td>целочисленный диапазон</td><td>§&nbsp;3.14</td></tr>
+          <tr><td><code>|&gt;</code></td><td>результат вызова</td><td>подстановка первым аргументом</td><td>§&nbsp;3.15</td></tr>
+          <tr><td><code>&gt;&gt;</code></td><td>лямбда одного параметра</td><td><code>f &gt;&gt; g</code> ≡ <code>лямбда(x) -&gt; g(f(x))</code></td><td>§&nbsp;3.15</td></tr>
+          <tr><td><code>как</code></td><td>целевой тип</td><td>приведение</td><td>§&nbsp;3.16</td></tr>
+          <tr><td><code>это</code> (постфикс)</td><td>лог</td><td>проверка типа</td><td>§&nbsp;3.17</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- 16 open -->
-  <section class="kite-section" id="open">
-    <h2>16. Открытые вопросы</h2>
-    <ul>
-      <li><strong>Политика переполнения</strong> (§12): язык должен нормативно выбрать
-        ошибка / насыщение / wrap / авторасширение. Сейчас — авторасширение целых и тихий
-        <code>inf</code> для вещественных.</li>
-      <li><strong>Адопция typesys</strong> (§5, §11): подключить <code>result_of_binop</code> и
-        lossless-сравнение смешанных чисел; каждое изменение поведения — со ссылкой на
-        характеризационный тест.</li>
-      <li><strong>Стрингификация в f-строках</strong> (§14.6): автоматически превращать
-        встраиваемые значения в строку.</li>
-      <li><strong>Модель ошибок и <code>T!E</code></strong>: поверхностный синтаксис для
-        <em>создания</em> результатов/ошибок — предмет отдельного KITE; сейчас <code>?</code>
-        работает, но конструкторов <code>Успех/Ошибка</code> на поверхности нет.</li>
-    </ul>
+  <!-- ───────────────────────── 4 ───────────────────────── -->
+  <section class="kite-section" id="primery">
+    <h2>4. Примеры</h2>
+    <p>Примеры информативны и иллюстрируют указанные пункты.</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>| § 3.4, § 3.5 — деление и целочисленное деление
+вывод 7 / 2        | 3.5  (вещ)
+вывод 7 див 2      | 3    (цел)
+
+| § 3.6 — знак остатка
+вывод -7 мод 2     | -1
+
+| § 3.2 — короткое замыкание: правый операнд не вычисляется
+если n &lt;&gt; 0 и 10 / n &gt; 1 то … все
+
+| § 3.16 — приведения
+вывод 65 как сим   | 'A'
+вывод 42 как лит   | "42"
+
+| § 3.22 — интерполяция требует строк
+вывод f"итог: {n как лит}"</code></pre>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 5 ───────────────────────── -->
+  <section class="kite-section" id="sovmestimost">
+    <h2>5. Совместимость</h2>
+    <p>
+      Оператор <code>/</code> в Kumir&nbsp;3 даёт вещественный результат и для целых операндов
+      (§&nbsp;3.4), тогда как в КуМир&nbsp;2 деление двух целых давало целое. Программа
+      КуМир&nbsp;2, полагавшаяся на целочисленное <code>/</code>, ДОЛЖНА записывать
+      <code>див</code> (§&nbsp;3.5). Оператор <code>мод</code> сохраняет прежнюю запись и даёт
+      остаток со знаком делимого (§&nbsp;3.6).
+    </p>
+    <p>
+      Правила режима совместимости с КуМир&nbsp;2 нормированы в
+      <a href="./KITE-0006-kumir2-compatibility.html">KITE 6</a>.
+    </p>
+    <p>
+      Возможность с меткой <span class="kite-badge is-available">стабильно</span> подчиняется
+      гарантиям KITE&nbsp;0&nbsp;§&nbsp;5.5. Для возможностей с метками
+      <span class="kite-badge is-unstable">нестабильно</span> и
+      <span class="kite-badge is-experimental">экспериментально</span> гарантии не действуют, и
+      программа НЕ ДОЛЖНА на них полагаться.
+    </p>
   </section>
 
   <footer class="kite-footer">

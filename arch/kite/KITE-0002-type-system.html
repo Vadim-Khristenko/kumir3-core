@@ -1,7 +1,7 @@
 <link rel="stylesheet" href="./assets/kite.css">
 <!-- =============================================================================
      KITE 2 — Система типов Kumir 3
-     Источник истины по реализованному: shared/src/types/value.rs (TypeKind, Value).
+     Спецификация: набор типов языка, их запись и стабильность.
 ============================================================================== -->
 <article class="kite" data-kite="0002" data-status="active" lang="ru">
 
@@ -10,388 +10,403 @@
     <h1>Система типов Kumir 3</h1>
     <dl class="kite-meta">
       <dt>Номер</dt>            <dd>KITE 2</dd>
-      <dt>Название</dt>         <dd>Система типов и типизация</dd>
-      <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
+      <dt>Название</dt>         <dd>Система типов Kumir 3</dd>
       <dt>Тип</dt>              <dd>Спецификация</dd>
+      <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
+      <dt>Версия документа</dt> <dd>1.1.0</dd>
       <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
       <dt>Создан</dt>           <dd>2026-05-30</dd>
-      <dt>Версия документа</dt> <dd>1.0.0</dd>
+      <dt>Обновлён</dt>         <dd>2026-07-22</dd>
     </dl>
   </header>
 
-  <nav class="kite-toc" aria-label="Содержание">
+  <nav class="kite-toc" data-auto aria-label="Содержание">
     <h2>Содержание</h2>
     <ol>
-      <li><a href="#filosofiya">Философия типов</a></li>
-      <li><a href="#chisla">Числовые типы</a></li>
-      <li><a href="#skalyary">Скалярные типы</a></li>
-      <li><a href="#kollekcii">Коллекции</a></li>
-      <li><a href="#obertki">Обёртки</a></li>
-      <li><a href="#vladenie">Владение и изменяемость</a></li>
-      <li><a href="#polzovatelskie">Пользовательские типы</a></li>
-      <li><a href="#funkcionalnye">Функциональные типы</a></li>
-      <li><a href="#async">Асинхронные типы</a></li>
-      <li><a href="#specialnye">Специальные типы</a></li>
-      <li><a href="#sovmestimost">Правила совместимости</a></li>
-      <li><a href="#predlozhennye">Предложенные типы</a></li>
-      <li><a href="#sahar">Синтаксический сахар</a></li>
+      <li><a href="#oblast">1. Область применения</a></li>
+      <li><a href="#terminy">2. Термины и обозначения</a></li>
+      <li><a href="#pravila">3. Нормативные правила</a></li>
+      <li><a href="#primery">4. Примеры</a></li>
+      <li><a href="#sovmestimost">5. Совместимость</a></li>
     </ol>
   </nav>
 
-  <!-- легенда -->
-  <section class="kite-section">
-    <div class="kite-callout is-important">
-      <span class="kite-callout-title">Легенда доступности</span>
-      <span class="kite-badge is-available">✅&nbsp;Доступно</span> — присутствует в системе типов ядра и используется.
-      <span class="kite-badge is-experimental">🧪&nbsp;Экспериментально</span> — реализовано, интерфейс может меняться.
-      <span class="kite-badge is-proposed">📋&nbsp;Предложено</span> — описано в стандарте, ещё не в движке.
-    </div>
-  </section>
-
-  <!-- 1 -->
-  <section class="kite-section" id="filosofiya">
-    <h2>1. Философия типов</h2>
+  <!-- ───────────────────────── 1 ───────────────────────── -->
+  <section class="kite-section" id="oblast">
+    <h2>1. Область применения</h2>
     <p>
-      Kumir 3 использует <strong>градуальную типизацию</strong>: можно писать с <code>авто</code>
-      и <code>любой</code>, а можно — со строгими типами и проверкой совместимости. В ядре статический
-      дескриптор <code>TypeKind</code> зеркалит рантайм-значение <code>Value</code>, поэтому любое
-      значение умеет сообщить свой тип. Рефлексия сегодня строковая: <code>тип(x)</code> возвращает
-      <em>имя</em> типа; полноценных типов-значений первого класса пока нет (§10).
+      Документ определяет <strong>набор типов</strong> языка Kumir&nbsp;3: имена типов, смысл
+      каждого типа, правила совместимости типов при присваивании и в бинарных операциях, а также
+      стабильность каждой возможности (KITE&nbsp;0&nbsp;§&nbsp;5).
     </p>
-    <div class="kite-callout is-tip">
-      <span class="kite-callout-title">Движок реализован</span>
-      «Умный детектор» вместо большого <code>match</code> уже есть: расширяемый движок правил
-      (<code>shared/src/typesys</code>) — совместимость, унификация, приведение, типизация операций.
-      Подробности — в <a href="./KITE-0010-type-engine.html">KITE 10</a>. Этот документ описывает
-      сами типы; движок описывает отношения между ними.
-    </div>
+    <p>
+      Kumir&nbsp;3 применяет <strong>градуальную типизацию</strong>: тип переменной МОЖЕТ быть
+      выведен (<code>авто</code>) или оставлен динамическим (<code>любой</code>), а МОЖЕТ быть
+      указан явно, и тогда совместимость проверяется. Каждое значение несёт свой тип и
+      СПОСОБНО его сообщить (§&nbsp;3.9).
+    </p>
+    <p>Документ не решает следующих вопросов:</p>
+    <ul>
+      <li>отношения между типами — совместимость, унификация, приведение, типизация операций —
+        определены в <a href="./KITE-0010-type-engine.html">KITE 10</a>;</li>
+      <li>форма записи типов и выражений — в <a href="./KITE-0012-grammar.html">KITE 12</a>;</li>
+      <li>порядок вычисления, приоритеты операций, тип результата и каст-матрица — в
+        <a href="./KITE-0013-expression-semantics.html">KITE 13</a>;</li>
+      <li>модель ошибок — в <a href="./KITE-0014-error-handling.html">KITE 14</a>;</li>
+      <li>объектная модель — в <a href="./KITE-0011-oop.html">KITE 11</a>;</li>
+      <li>асинхронные конструкции — в <a href="./KITE-0003-async-runtime.html">KITE 3</a>;</li>
+      <li>встроенные функции и библиотечные типы — в
+        <a href="./KITE-0016-stdlib.html">KITE 16</a>.</li>
+    </ul>
   </section>
 
-  <!-- 2 -->
-  <section class="kite-section" id="chisla">
-    <h2>2. Числовые типы</h2>
+  <!-- ───────────────────────── 2 ───────────────────────── -->
+  <section class="kite-section" id="terminy">
+    <h2>2. Термины и обозначения</h2>
     <p>
-      На поверхности языка сегодня есть два числовых ключевых слова: <code>цел</code> (знаковое
-      целое, 64 бита) и <code>вещ</code> (вещественное, 64 бита). Внутренний движок
-      (<code>Number</code>/<code>TypeKind</code>) уже умеет ширины от 8 до 128 бит, но
-      <strong>размерных имён типов в лексике и парсере пока нет</strong>: запись
-      <code>цел_8 x</code> будет разобрана как пользовательский тип с именем
-      <code>цел_8</code>, а не как 8-битное целое.
+      <strong>Тип</strong> — множество значений и допустимых над ними операций.
+      <strong>Дескриптор типа</strong> — статическое описание типа, сопоставленное значению.
+      <strong>Поверхность языка</strong> — то, что записывается в тексте программы: лексика,
+      грамматика и вычисляемые выражения. Возможность считается доступной на поверхности языка,
+      если она записывается в программе и исполняется.
+    </p>
+    <p>
+      В таблицах столбец «Имя (ru)» задаёт запись типа в программе, столбец «En» — устойчивое
+      англоязычное имя дескриптора, применяемое в других документах серии, столбец
+      «Стабильность» — метку по KITE&nbsp;0&nbsp;§&nbsp;5. Метка относится к строке таблицы и
+      не повторяется в тексте.
+    </p>
+    <p>
+      Ключевые слова требований — <strong>ДОЛЖЕН</strong>, <strong>НЕ ДОЛЖЕН</strong>,
+      <strong>СЛЕДУЕТ</strong>, <strong>МОЖЕТ</strong> — применяются в значении
+      <a href="./KITE-0000-standard.html#yazyk">KITE 0 §&nbsp;2.2</a>.
+    </p>
+  </section>
+
+  <!-- ───────────────────────── 3 ───────────────────────── -->
+  <section class="kite-section" id="pravila">
+    <h2>3. Нормативные правила</h2>
+
+    <!-- 3.1 -->
+    <h3 id="chisla">3.1. Числовые типы</h3>
+    <p>
+      Числовые типы поверхности языка — <code>цел</code> (знаковое целое, 64&nbsp;бита) и
+      <code>вещ</code> (вещественное, 64&nbsp;бита). Имя типа, отсутствующее в таблице ниже с
+      меткой <span class="kite-badge is-available">стабильно</span>, разбирается как имя
+      пользовательского типа: запись <code>цел_8 x</code> объявляет переменную типа с именем
+      <code>цел_8</code>.
     </p>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя (ru)</th><th>En</th><th>Размер</th><th>Диапазон / точность</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя (ru)</th><th>En</th><th>Размер</th><th>Диапазон / точность</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>цел</code></td><td>Int64</td><td>8&nbsp;Б</td><td>≈ ±9,2·10¹⁸</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>вещ</code></td><td>Float64</td><td>8&nbsp;Б</td><td>≈ 15–16 цифр</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>цел_8</code></td><td>Int8</td><td>1&nbsp;Б</td><td>−128 … 127</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>цел_16</code></td><td>Int16</td><td>2&nbsp;Б</td><td>−32&nbsp;768 … 32&nbsp;767</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>цел_32</code></td><td>Int32</td><td>4&nbsp;Б</td><td>≈ ±2,1·10⁹</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>цел_64</code></td><td>Int64</td><td>8&nbsp;Б</td><td>синоним <code>цел</code></td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>цел_128</code></td><td>Int128</td><td>16&nbsp;Б</td><td>≈ ±1,7·10³⁸</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>нат</code> / <code>нат_64</code></td><td>UInt64</td><td>8&nbsp;Б</td><td>0 … ≈1,8·10¹⁹</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>нат_8</code></td><td>UInt8</td><td>1&nbsp;Б</td><td>0 … 255</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>нат_16</code></td><td>UInt16</td><td>2&nbsp;Б</td><td>0 … 65&nbsp;535</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>нат_32</code></td><td>UInt32</td><td>4&nbsp;Б</td><td>0 … ≈4,3·10⁹</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>нат_128</code></td><td>UInt128</td><td>16&nbsp;Б</td><td>0 … ≈3,4·10³⁸</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>вещ_32</code></td><td>Float32</td><td>4&nbsp;Б</td><td>≈ 7 значащих цифр</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>вещ_64</code></td><td>Float64</td><td>8&nbsp;Б</td><td>синоним <code>вещ</code></td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>вещ_128</code></td><td>Float128</td><td>16&nbsp;Б</td><td>повышенная точность</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>цел</code></td><td>Int64</td><td>8&nbsp;Б</td><td>≈ ±9,2·10¹⁸</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>вещ</code></td><td>Float64</td><td>8&nbsp;Б</td><td>≈ 15–16 цифр</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>цел_8</code></td><td>Int8</td><td>1&nbsp;Б</td><td>−128 … 127</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>цел_16</code></td><td>Int16</td><td>2&nbsp;Б</td><td>−32&nbsp;768 … 32&nbsp;767</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>цел_32</code></td><td>Int32</td><td>4&nbsp;Б</td><td>≈ ±2,1·10⁹</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>цел_64</code></td><td>Int64</td><td>8&nbsp;Б</td><td>синоним <code>цел</code></td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>цел_128</code></td><td>Int128</td><td>16&nbsp;Б</td><td>≈ ±1,7·10³⁸</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>нат</code> / <code>нат_64</code></td><td>UInt64</td><td>8&nbsp;Б</td><td>0 … ≈1,8·10¹⁹</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>нат_8</code></td><td>UInt8</td><td>1&nbsp;Б</td><td>0 … 255</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>нат_16</code></td><td>UInt16</td><td>2&nbsp;Б</td><td>0 … 65&nbsp;535</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>нат_32</code></td><td>UInt32</td><td>4&nbsp;Б</td><td>0 … ≈4,3·10⁹</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>нат_128</code></td><td>UInt128</td><td>16&nbsp;Б</td><td>0 … ≈3,4·10³⁸</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>вещ_32</code></td><td>Float32</td><td>4&nbsp;Б</td><td>≈ 7 значащих цифр</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>вещ_64</code></td><td>Float64</td><td>8&nbsp;Б</td><td>синоним <code>вещ</code></td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>вещ_128</code></td><td>Float128</td><td>16&nbsp;Б</td><td>повышенная точность</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Честно о размерных типах</span>
-      Все строки <span class="kite-badge is-proposed">📋</span> выше — <em>план</em>, а не текущая
-      возможность. Реализация свелась бы к добавлению лексем и ветвей разбора типов
-      (движок чисел готов). Пока таких имён в программе писать нельзя.
-    </div>
-    <p><strong>Применение (после реализации):</strong> малые целые (<code>цел_8/16</code>) экономят память в таблицах; <code>цел_128</code> и <code>вещ_128</code> — для криптографии, точных вычислений и олимпиадных задач.</p>
-  </section>
+    <p>
+      Назначение размерных типов: малые целые (<code>цел_8</code>, <code>цел_16</code>) экономят
+      память в таблицах; <code>цел_128</code> и <code>вещ_128</code> обслуживают криптографию,
+      точные вычисления и олимпиадные задачи.
+    </p>
 
-  <!-- 3 -->
-  <section class="kite-section" id="skalyary">
-    <h2>3. Скалярные типы</h2>
+    <!-- 3.2 -->
+    <h3 id="skalyary">3.2. Скалярные типы</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя (ru)</th><th>En</th><th>Что это</th><th>Применение</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя (ru)</th><th>En</th><th>Что это</th><th>Применение</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>лит</code></td><td>String</td><td>Строка (текст).</td><td>Текст, ввод/вывод, имена.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>лог</code></td><td>Bool</td><td>Логическое <code>да</code>/<code>нет</code>.</td><td>Условия, флаги.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>сим</code></td><td>Char</td><td>Один символ Unicode.</td><td>Разбор строк, таблицы символов.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>лит</code></td><td>String</td><td>Строка (текст).</td><td>Текст, ввод/вывод, имена.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>лог</code></td><td>Bool</td><td>Логическое <code>да</code>/<code>нет</code>.</td><td>Условия, флаги.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>сим</code></td><td>Char</td><td>Один символ Unicode.</td><td>Разбор строк, таблицы символов.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Приведение к <code>сим</code></span>
-      <code>x как сим</code> <strong>поддержано</strong> <span class="kite-badge is-available">✅</span>:
-      источником символа может быть сам символ (тождество), <strong>целое</strong> — кодовая точка
-      Unicode (<code>65 как сим → 'A'</code>) или <strong>строка ровно из одного символа</strong>.
-      Вещественное, логическое, пустая или многосимвольная строка, а также код вне диапазона
-      скалярных значений Unicode дают ясную ошибку. Символ можно получить и из строки
-      (индексацией/функциями). Полная каст-матрица — нормативно в
+    <p>
+      Приведение <code>x как сим</code> <span class="kite-badge is-available">стабильно</span>.
+      Источником символа ДОЛЖЕН быть символ (тождественное приведение), <strong>целое</strong> —
+      кодовая точка Unicode (<code>65 как сим</code> даёт <code>'A'</code>) либо
+      <strong>строка ровно из одного символа</strong>. Вещественное, логическое, пустая или
+      многосимвольная строка, а также код вне диапазона скалярных значений Unicode ДОЛЖНЫ давать
+      ошибку выполнения. Символ МОЖЕТ быть получен из строки индексацией или встроенными
+      функциями. Полная каст-матрица нормирована в
       <a href="./KITE-0013-expression-semantics.html">KITE 13</a>.
-    </div>
-  </section>
+    </p>
 
-  <!-- 4 -->
-  <section class="kite-section" id="kollekcii">
-    <h2>4. Коллекции</h2>
+    <!-- 3.3 -->
+    <h3 id="kollekcii">3.3. Коллекции</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя (ru)</th><th>En</th><th>Что это</th><th>Применение</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя (ru)</th><th>En</th><th>Что это</th><th>Применение</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>таб T</code></td><td>Array</td><td>Динамический массив элементов <code>T</code>.</td><td>Списки, последовательности.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>пара(A, B)</code></td><td>Pair</td><td>Пара значений.</td><td>Ключ-значение, координаты.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>тройка(A, B, C)</code></td><td>Triple</td><td>Тройка значений.</td><td>RGB, 3D-точки.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>кортеж(…)</code> · <code>(a, b, c)</code></td><td>Tuple</td><td>Кортеж произвольной длины: конструктор <code>кортеж(…)</code> и литерал <code>(a, b, c)</code>.</td><td>Множественный возврат.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>множество T</code></td><td>Set</td><td>Множество уникальных значений: значение существует в рантайме и перебирается в <code>нц для</code>, но <strong>создать его из кода Кумира нечем</strong> — нет ни литерала, ни конструктора, ни имени типа.</td><td>Уникальность, членство.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>словарь[K: V]</code></td><td>Map</td><td>Отображение ключ→значение. Чтение и запись по индексу работают; собственного литерала/конструктора нет — словарь сегодня приходит только из библиотек.</td><td>Индексы, словари, кэши.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>таб T</code></td><td>Array</td><td>Динамический массив элементов <code>T</code>.</td><td>Списки, последовательности.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>пара(A, B)</code></td><td>Pair</td><td>Пара значений.</td><td>Ключ-значение, координаты.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>тройка(A, B, C)</code></td><td>Triple</td><td>Тройка значений.</td><td>RGB, 3D-точки.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>кортеж(…)</code> · <code>(a, b, c)</code></td><td>Tuple</td><td>Кортеж произвольной длины: конструктор <code>кортеж(…)</code> и литерал <code>(a, b, c)</code>.</td><td>Множественный возврат.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>множество T</code></td><td>Set</td><td>Множество уникальных значений. Значение множества перебирается в <code>нц для</code>; имени типа, литерала и конструктора у множества нет.</td><td>Уникальность, членство.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>словарь[K: V]</code></td><td>Map</td><td>Отображение ключ&nbsp;→&nbsp;значение. Чтение и запись по индексу исполняются; значение словаря создаётся библиотечными функциями.</td><td>Индексы, словари, кэши.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Многомерные массивы</span>
-      Синтаксис <code>таб[i, j]</code> разбирается, но многомерное индексирование
-      <strong>не реализовано в рантайме</strong> — обращение завершается ошибкой
-      «не реализовано». Работают только одномерные массивы (в т.ч. массив массивов).
-    </div>
-  </section>
+    <p>
+      Индексирование МОЖЕТ применяться к одномерному массиву; массив массивов индексируется
+      последовательно. Многомерное индексирование <code>таб[i, j]</code>
+      <span class="kite-badge is-proposed">предложено</span>: такое обращение ДОЛЖНО завершаться
+      ошибкой выполнения.
+    </p>
 
-  <!-- 5 -->
-  <section class="kite-section" id="obertki">
-    <h2>5. Обёртки</h2>
+    <!-- 3.4 -->
+    <h3 id="obertki">3.4. Обёртки</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Запись</th><th>En</th><th>Что это</th><th>Применение</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Запись</th><th>En</th><th>Что это</th><th>Применение</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>Необязательно&lt;T&gt;</code> · <code>может T</code></td><td>Option</td><td>Значение есть (<em>Некоторое</em>) или нет (<em>Ничего</em>). Значения строятся функциями <code>некоторое(x)</code>/<code>ничего()</code>.</td><td>Безопасное отсутствие вместо null.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>T?</code> (постфикс)</td><td>Option (краткая запись)</td><td>Краткая запись Option в позиции типа. <strong>Не разбирается</strong>: сегодня пишут <code>Необязательно&lt;T&gt;</code> или <code>может T</code>.</td><td>Краткость записи.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>T!E</code></td><td>Result</td><td><em>Успех(T)</em> или <em>Ошибка(E)</em>. Синтаксиса типа <code>T!E</code> в языке <strong>нет</strong>, значение <em>Результат</em> из кода Кумира не создать — внутреннее представление движка.</td><td>Обработка ошибок без исключений.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>указатель T</code></td><td>Pointer</td><td>Адрес значения (<code>ссылка</code>, <code>новый</code>, <code>разыменовать</code>).</td><td>Низкоуровневая работа с памятью.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>&amp;T</code> / <code>&amp;измен T</code></td><td>Reference</td><td>Ссылка (не)изменяемая. <code>&amp;</code> не разбирается в позиции типа, выражение заимствования не вычисляется.</td><td>Доступ без передачи владения.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>Необязательно&lt;T&gt;</code> · <code>может T</code></td><td>Option</td><td>Значение есть (<em>Некоторое</em>) или отсутствует (<em>Ничего</em>). Значения строятся функциями <code>некоторое(x)</code> и <code>ничего()</code>.</td><td>Безопасное отсутствие вместо null.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>T?</code> (постфикс)</td><td>Option (краткая запись)</td><td>Краткая запись <em>Option</em> в позиции типа.</td><td>Краткость записи.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>T!E</code></td><td>Result</td><td><em>Успех(T)</em> или <em>Ошибка(E)</em> как тип, записываемый в программе.</td><td>Обработка ошибок без исключений.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>указатель T</code></td><td>Pointer</td><td>Адрес значения (<code>ссылка</code>, <code>новый</code>, <code>разыменовать</code>).</td><td>Низкоуровневая работа с памятью.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>&amp;T</code> / <code>&amp;измен T</code></td><td>Reference</td><td>Ссылка, неизменяемая либо изменяемая.</td><td>Доступ без передачи владения.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-important">
-      <span class="kite-callout-title">Чем обрабатывают ошибки сегодня</span>
-      Основной работающий механизм — <code>попытка</code>/<code>перехват</code>/<code>наконец</code>
-      и <code>бросить</code>. Оператор раннего возврата <code>?</code> тоже исполняется
-      (<span class="kite-badge is-available">✅</span>, см. §13), но применяется к
-      <em>Option</em>/<em>null</em> и внутреннему <em>Результату</em> — записать тип
-      <code>T!E</code> в программе пока нельзя. Нормативное описание модели ошибок и
-      целевой доктрины — <a href="./KITE-0014-error-handling.html">KITE 14</a>.
-    </div>
-  </section>
+    <p>
+      Ошибки обрабатываются конструкцией <code>попытка</code>&nbsp;/&nbsp;<code>перехват</code>&nbsp;/
+      <code>наконец</code> и оператором <code>бросить</code>. Оператор раннего возврата
+      <code>?</code> <span class="kite-badge is-available">стабильно</span> (§&nbsp;3.12)
+      применяется к <em>Option</em>, к значению <code>пусто</code> и к значению <em>Результат</em>.
+      Нормативная модель ошибок — <a href="./KITE-0014-error-handling.html">KITE 14</a>.
+    </p>
 
-  <!-- 6 -->
-  <section class="kite-section" id="vladenie">
-    <h2>6. Владение и изменяемость</h2>
-    <p>Каждое значение имеет состояние владения и признак изменяемости (<code>ValueMeta</code>).</p>
+    <!-- 3.5 -->
+    <h3 id="vladenie">3.5. Владение и изменяемость</h3>
+    <p>Каждое значение имеет состояние владения и признак изменяемости.</p>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Понятие</th><th>Ключевые слова</th><th>Смысл</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Понятие</th><th>Ключевые слова</th><th>Смысл</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td>Владение</td><td><code>Owned</code></td><td>Значение владеет ресурсом (по умолчанию). Существует только как <em>метаданные</em> <code>ValueMeta</code>; поведения, зависящего от владения, нет.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-          <tr><td>Заимствование</td><td><code>заимствовать</code> · Borrowed / BorrowedMut</td><td>Временный доступ без передачи владения. Выражение разбирается, но <strong>не вычисляется</strong>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>Перемещение</td><td><code>перемещение</code> · Moved</td><td>Передача владения, источник инвалидируется. Выражение разбирается, но <strong>не вычисляется</strong>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>Изменяемость</td><td><code>измен</code> / <code>конст</code></td><td>Можно ли менять значение. Константы защищены окружением (см. <a href="./KITE-0004-environments-scope.html">KITE 4 §5</a>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td>Копирование</td><td><code>клонировать</code> / <code>копировать</code></td><td>Глубокая копия / поверхностная для простых типов. Выражения разбираются, но <strong>не вычисляются</strong>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td>Владение</td><td><code>Owned</code></td><td>Значение владеет ресурсом; состояние по умолчанию. Существует как метаданные значения и наблюдаемого поведения не задаёт.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+          <tr><td>Заимствование</td><td><code>заимствовать</code> · Borrowed / BorrowedMut</td><td>Временный доступ к значению без передачи владения.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td>Перемещение</td><td><code>перемещение</code> · Moved</td><td>Передача владения; источник становится недоступен.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td>Изменяемость</td><td><code>измен</code> / <code>конст</code></td><td>Разрешение изменять значение. Константы защищены окружением (<a href="./KITE-0004-environments-scope.html">KITE 4 §&nbsp;5</a>).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>Копирование</td><td><code>клонировать</code> / <code>копировать</code></td><td>Глубокая копия значения и поверхностная копия для простых типов.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Открытый вопрос: судьба «мёртвых» лексем</span>
-      <code>перемещение</code>, <code>заимствовать</code>, <code>клонировать</code>,
-      <code>копировать</code>, <code>&amp;T</code> присутствуют в лексике и AST, но никогда не
-      исполнялись. Стандарт обязан выбрать: реализовать модель владения — либо перевести раздел
-      в статус <span class="kite-status is-withdrawn">Withdrawn</span>
-      (см. <a href="./KITE-0000-standard.html#statusy">KITE 0 §4</a>). До принятия решения
-      <strong>эти конструкции не следует использовать и рекламировать</strong>.
-    </div>
-  </section>
+    <p>
+      Программа НЕ ДОЛЖНА использовать конструкции, помеченные
+      <span class="kite-badge is-proposed">предложено</span>: корректной такая программа не
+      является (KITE&nbsp;0&nbsp;§&nbsp;5.1).
+    </p>
 
-  <!-- 7 -->
-  <section class="kite-section" id="polzovatelskie">
-    <h2>7. Пользовательские типы</h2>
+    <!-- 3.6 -->
+    <h3 id="polzovatelskie">3.6. Пользовательские типы</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя</th><th>En</th><th>Что это</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя</th><th>En</th><th>Что это</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>перечисление</code></td><td>Enum</td><td>Перечисление с вариантами и данными. Литералы вариантов <code>Перечисление::Вариант</code> и <code>Перечисление::Вариант(x)</code> <strong>вычисляются</strong> (разрешаются тем же путём, что и члены модуля — <a href="./KITE-0015-modules.html">KITE 15</a>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>объект</code></td><td>Object</td><td>Экземпляр класса/структуры с полями (см. <a href="./KITE-0011-oop.html">KITE 11</a>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>@нативный</code></td><td>Native</td><td>Объект, реализованный в Rust. Нативные <em>функции</em> существуют и вызываются; нативных <em>объектов</em> нет — такое значение нигде не создаётся.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>Имя&lt;…&gt;</code></td><td>Generic</td><td>Параметризованный (обобщённый) тип: <strong>разбирается, но не проверяется</strong> — параметры типа рантайм игнорирует.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>перечисление</code></td><td>Enum</td><td>Перечисление с вариантами и данными. Литералы вариантов <code>Перечисление::Вариант</code> и <code>Перечисление::Вариант(x)</code> вычисляются и разрешаются тем же путём, что и члены модуля (<a href="./KITE-0015-modules.html">KITE 15</a>).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>объект</code></td><td>Object</td><td>Экземпляр класса или структуры с полями (<a href="./KITE-0011-oop.html">KITE 11</a>).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>@нативный</code></td><td>Native</td><td>Объект, реализованный средствами среды исполнения. Нативные <em>функции</em> вызываются как обычные (<a href="./KITE-0016-stdlib.html">KITE 16</a>).</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>Имя&lt;…&gt;</code></td><td>Generic</td><td>Параметризованный (обобщённый) тип. Запись разбирается; параметры типа при исполнении не проверяются.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
         </tbody>
       </table>
     </div>
-  </section>
 
-  <!-- 8 -->
-  <section class="kite-section" id="funkcionalnye">
-    <h2>8. Функциональные типы</h2>
+    <!-- 3.7 -->
+    <h3 id="funkcionalnye">3.7. Функциональные типы</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя</th><th>En</th><th>Что это</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя</th><th>En</th><th>Что это</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>функция(…) -&gt; T</code></td><td>Function</td><td>Тип функции/алгоритма.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>лямбда(…) -&gt; T</code></td><td>Lambda</td><td>Анонимная функция с захватом окружения.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td>частичное применение</td><td>PartialApp</td><td>Функция с частью применённых аргументов. Такое значение нигде не создаётся, выражение не вычисляется.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>функция(…) -&gt; T</code></td><td>Function</td><td>Тип функции или алгоритма.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>лямбда(…) -&gt; T</code></td><td>Lambda</td><td>Анонимная функция с захватом окружения.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td>частичное применение</td><td>PartialApp</td><td>Функция с частью применённых аргументов.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>
       </table>
     </div>
-  </section>
 
-  <!-- 9 -->
-  <section class="kite-section" id="async">
-    <h2>9. Асинхронные типы</h2>
+    <!-- 3.8 -->
+    <h3 id="async">3.8. Асинхронные типы</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя</th><th>En</th><th>Что это</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя</th><th>En</th><th>Что это</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>обещание T</code></td><td>Promise</td><td>Результат асинхронной задачи (ожидает/выполнен/отклонён).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>генератор&lt;Y, R&gt;</code></td><td>Generator</td><td>Корутина, отдающая значения через <code>уступить</code>.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>канал T</code></td><td>Channel</td><td>Канал для обмена между задачами.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
+          <tr><td><code>обещание T</code></td><td>Promise</td><td>Результат асинхронной задачи: ожидает, выполнен либо отклонён.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>генератор&lt;Y, R&gt;</code></td><td>Generator</td><td>Корутина, отдающая значения оператором <code>уступить</code>.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>канал T</code></td><td>Channel</td><td>Канал обмена значениями между задачами.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Есть в типах — нет поведения</span>
-      Все три варианта присутствуют в перечислении значений движка, но <strong>ни один из них
-      не создаётся</strong>: <code>уступить</code> и операции с каналами не вычисляются, а
-      <code>ждать</code>/<code>запустить</code> сегодня работают как синхронный passthrough.
-      Модель асинхронности — <a href="./KITE-0003-async-runtime.html">KITE 3</a>.
-    </div>
-  </section>
+    <p>Модель асинхронного исполнения нормирована в
+      <a href="./KITE-0003-async-runtime.html">KITE 3</a>.</p>
 
-  <!-- 10 -->
-  <section class="kite-section" id="specialnye">
-    <h2>10. Специальные типы</h2>
+    <!-- 3.9 -->
+    <h3 id="specialnye">3.9. Специальные типы</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Имя</th><th>En</th><th>Что это</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Имя</th><th>En</th><th>Что это</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>авто</code></td><td>Auto</td><td>Вывод типа компилятором.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>любой</code></td><td>Any</td><td>Любой тип (динамика) — ключевое слово есть, разбирается в верхний тип.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>пустота</code></td><td>Void</td><td>Отсутствие возвращаемого значения.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>пусто</code> · <code>ничего</code></td><td>Null</td><td>Явное «ничего нет» (значение, не тип). <code>ничего</code> — лексема-синоним значения <code>Пусто</code>, а <em>не</em> имя типа Void.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>неопределено</code></td><td>Undefined</td><td>Значение не задано. Внутреннее значение движка — лексемы и синтаксиса нет.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>никогда</code></td><td>Never</td><td>Выражение не возвращает управление. Существует только как дескриптор типа в движке.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>тип</code></td><td>Type</td><td>Рефлексия: <code>тип(x)</code> возвращает <strong>имя типа строкой</strong>. Полноценного типа-значения первого класса нет.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
+          <tr><td><code>авто</code></td><td>Auto</td><td>Вывод типа по инициализатору.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>любой</code></td><td>Any</td><td>Верхний тип: принимает значение любого типа.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>пустота</code></td><td>Void</td><td>Отсутствие возвращаемого значения.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>пусто</code> · <code>ничего</code></td><td>Null</td><td>Явное отсутствие значения. Это значение, а не тип: <code>ничего</code> — синоним значения <code>пусто</code>, а не имя типа <code>пустота</code>.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>неопределено</code></td><td>Undefined</td><td>Незаданное значение.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>никогда</code></td><td>Never</td><td>Выражение, не возвращающее управление.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>тип</code></td><td>Type</td><td>Рефлексия: <code>тип(x)</code> возвращает имя типа строкой. Тип-значение первого класса языку не принадлежит.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Двойная роль <code>это</code></span>
-      Лексема <code>это</code> используется в двух ролях: как ссылка на текущий объект внутри
-      метода и как <strong>постфиксная проверка типа</strong> — <code>5 это цел</code> даёт
-      <code>да</code>. Правило дизамбигуации: в позиции после выражения <code>это</code> —
-      проверка типа; в позиции первичного выражения внутри метода — self-ссылка.
-      Формальное правило — <a href="./KITE-0012-grammar.html">KITE 12</a>.
-    </div>
-  </section>
+    <p>
+      Лексема <code>это</code> имеет две роли. После выражения она означает
+      <strong>проверку типа</strong>: <code>5 это цел</code> даёт <code>да</code>. В позиции
+      первичного выражения внутри метода она означает ссылку на текущий объект. Реализация
+      ДОЛЖНА различать роли по позиции лексемы; формальное правило —
+      <a href="./KITE-0012-grammar.html">KITE 12</a>.
+    </p>
 
-  <!-- 11 -->
-  <section class="kite-section" id="sovmestimost">
-    <h2>11. Правила совместимости</h2>
+    <!-- 3.10 -->
+    <h3 id="dopolnitelnye">3.10. Дополнительные типы</h3>
+    <p>
+      Типы, дополняющие ядро системы типов. Для <code>дробь</code> и <code>комплекс</code>
+      предпосылкой является перегрузка операторов
+      (<a href="./KITE-0011-oop.html">KITE 11 §&nbsp;3.6</a>).
+    </p>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Имя (ru)</th><th>En</th><th>Что это</th><th>Применение</th><th>Стабильность</th></tr></thead>
+        <tbody>
+          <tr><td><code>диапазон</code></td><td>Range</td><td>Диапазон целых: литералы <code>1..10</code> (без верхней границы) и <code>1..=10</code> (с верхней границей); печатается и перебирается в <code>нц для x в …</code>.</td><td>Циклы, срезы, генерация последовательностей.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>дробь</code></td><td>Rational</td><td>Точная рациональная дробь (числитель и знаменатель).</td><td>Математика без потери точности.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>комплекс</code></td><td>Complex</td><td>Комплексное число.</td><td>Инженерные и научные расчёты.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>байты</code></td><td>Bytes</td><td>Буфер байтов: <code>байты(…)</code>, <code>строка_из_байт</code>, <code>байты_в_строку</code>, <code>длин</code>.</td><td>Файлы, сеть, бинарные форматы.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>большое_цел</code></td><td>BigInt</td><td>Целое произвольной точности.</td><td>Факториалы, криптография, олимпиады.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3.11 -->
+    <h3 id="sovmestimost-tipov">3.11. Совместимость типов</h3>
     <ul>
       <li><strong>Тождество:</strong> одинаковые типы совместимы.</li>
-      <li><strong><code>любой</code>/<code>авто</code>:</strong> принимают любое значение.</li>
-      <li><strong><code>пусто</code> → <code>T?</code>:</strong> null допустим там, где ждут <code>Option</code>.</li>
-      <li><strong>Числовое расширение:</strong> меньший числовой тип присваивается большему совместимой категории (напр. <code>цел_16</code> → <code>цел_64</code>; целое → вещественное большего размера).</li>
-      <li><strong>Общий тип:</strong> для бинарных операций выбирается тип большего размера/точности.</li>
+      <li><strong><code>любой</code> и <code>авто</code>:</strong> принимают значение любого типа.</li>
+      <li><strong><code>пусто</code> → <code>T?</code>:</strong> <code>пусто</code> допустимо там,
+        где ожидается <em>Option</em>.</li>
+      <li><strong>Числовое расширение:</strong> значение меньшего числового типа присваивается
+        большему типу совместимой категории (например <code>цел_16</code> → <code>цел_64</code>;
+        целое → вещественное большего размера).</li>
+      <li><strong>Общий тип:</strong> для бинарной операции выбирается тип большего размера или
+        большей точности.</li>
+      <li><strong>Без скрытых сужений:</strong> сужающее преобразование (например
+        <code>цел_64</code> → <code>цел_8</code>) НЕ ДОЛЖНО выполняться неявно; требуется явное
+        приведение.</li>
     </ul>
-    <div class="kite-callout is-warning">
-      <span class="kite-callout-title">Это правила движка типов, а не текущего вычислителя</span>
-      Правила выше описывают <a href="./KITE-0010-type-engine.html">движок типов (KITE 10)</a>;
-      арифметика интерпретатора его пока <strong>не использует</strong>. Практические следствия:
-      <code>7 / 2</code> всегда даёт вещественное <code>3.5</code> (целочисленное деление — это
-      отдельный оператор <code>див</code>), а тип результата <code>**</code> зависит от операндов.
-      Нормативный источник по семантике операций и типу результата —
-      <a href="./KITE-0013-expression-semantics.html">KITE 13</a>; при расхождении текстов
-      <strong>прав KITE 13</strong>.
-    </div>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Без скрытых сужений</span>
-      Сужающие преобразования (например <code>цел_64</code> → <code>цел_8</code>) не происходят автоматически — нужно явное приведение.
-    </div>
-  </section>
-
-  <!-- 12 -->
-  <section class="kite-section" id="predlozhennye">
-    <h2>12. Предложенные типы</h2>
     <p>
-      Типы, которые стандарт наметил дополнительно к ядру. Часть из них уже реализована —
-      смотри бейдж в каждой строке, а не общий заголовок раздела. Для <code>дробь</code> и
-      <code>комплекс</code> предпосылка — перегрузка операторов
-      (<a href="./KITE-0011-oop.html">KITE 11 §7</a>).
+      Правила этого пункта нормируют <a href="./KITE-0010-type-engine.html">движок типов
+      (KITE 10)</a>. Тип результата операции и порядок вычисления нормированы в
+      <a href="./KITE-0013-expression-semantics.html">KITE 13</a>; при расхождении текстов
+      приоритет имеет KITE&nbsp;13. В частности, <code>7 / 2</code> даёт вещественное
+      <code>3.5</code>: целочисленное деление записывается отдельным оператором
+      <code>див</code>, а тип результата <code>**</code> определяется операндами.
     </p>
-    <div class="kite-table">
-      <table>
-        <thead><tr><th>Имя (ru)</th><th>En</th><th>Что это</th><th>Применение</th><th>Доступность</th></tr></thead>
-        <tbody>
-          <tr><td><code>диапазон</code></td><td>Range</td><td>Диапазон целых: литералы <code>1..10</code> (исключая) и <code>1..=10</code> (включая); печатается и перебирается в <code>нц для x в …</code>.</td><td>Циклы, срезы, генерация последовательностей.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>дробь</code></td><td>Rational</td><td>Точная рациональная дробь (числитель/знаменатель).</td><td>Математика без потери точности.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>комплекс</code></td><td>Complex</td><td>Комплексное число.</td><td>Инженерные и научные расчёты.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>байты</code></td><td>Bytes</td><td>Буфер байтов: <code>байты(…)</code>, <code>строка_из_байт</code>/<code>байты_в_строку</code>, <code>длин</code> для байт.</td><td>Файлы, сеть, бинарные форматы.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>большое_цел</code></td><td>BigInt</td><td>Целое произвольной точности.</td><td>Факториалы, криптография, олимпиады.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
 
-  <!-- 13 -->
-  <section class="kite-section" id="sahar">
-    <h2>13. Синтаксический сахар</h2>
-    <p>Уже доступно:</p>
+    <!-- 3.12 -->
+    <h3 id="sahar">3.12. Синтаксический сахар</h3>
     <div class="kite-table">
       <table>
-        <thead><tr><th>Сахар</th><th>Что делает</th><th>Доступность</th></tr></thead>
+        <thead><tr><th>Запись</th><th>Что делает</th><th>Стабильность</th></tr></thead>
         <tbody>
-          <tr><td><code>**</code></td><td>Возведение в степень (тип результата зависит от операндов — см. <a href="./KITE-0013-expression-semantics.html">KITE 13</a>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>:=</code> <code>+=</code> <code>-=</code> …</td><td>Присваивание и составные операторы.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>|&gt;</code></td><td>Конвейер вызовов (pipe).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>див</code> · <code>мод</code></td><td>Целочисленное деление и остаток (<code>/</code> всегда вещественное).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>?</code></td><td>Ранний возврат: <em>Некоторое(v)</em>/<em>Успех(v)</em> разворачивается до <code>v</code>; <em>Ничего</em>/<code>пусто</code>/<em>Ошибка</em> — ранний возврат объемлющего алгоритма.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>&gt;&gt;</code></td><td>Композиция функций: <code>f &gt;&gt; g</code> даёт лямбду одного параметра, эквивалентную <code>g(f(x))</code>; вкладывается. Не-функция в операнде — ясная ошибка.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>Остальной сахар — реализованный и предложенный (нам нужно чуть больше сахара 🍬):</p>
-    <div class="kite-table">
-      <table>
-        <thead><tr><th>Сахар</th><th>Что делает</th><th>Доступность</th></tr></thead>
-        <tbody>
-          <tr><td><code>1..10</code> · <code>1..=10</code></td><td>Литералы диапазонов (исключающий/включающий).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>… шаг 2</code> в диапазоне</td><td>Шаг для диапазона.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>[a, b, c]</code></td><td>Литерал массива; каждый элемент вычисляется штатным вычислителем выражений.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>(a, b, c)</code></td><td>Литерал кортежа.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>{…}</code> · <code>{k: v}</code></td><td>Литералы множества и словаря. <strong>Не разбираются</strong>: <code>{</code> не начинает выражение.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>f"привет, {имя}"</code></td><td>Интерполяция строк. <strong>Обязателен префикс <code>f</code></strong>: обычная строка не интерполируется, <code>{</code> в ней — просто символ.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>??</code></td><td>Значение по умолчанию для отсутствующего значения (<em>Ничего</em> / <code>пусто</code>).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>?.</code></td><td>Безопасный доступ к полю/методу.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>1_000_000</code></td><td>Разделители в числовых литералах (десятичных, 16-, 8- и 2-ричных).</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>пусть (a, b) := пара</code></td><td>Деструктуризация при объявлении. Узел есть в AST, но парсер его не производит, а вычислитель не исполняет.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>x => x + 1</code></td><td>Краткая запись лямбды.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>если … то … иначе …</code> как выражение</td><td>Тернарное выражение.</td><td><span class="kite-badge is-available">✅</span></td></tr>
+          <tr><td><code>**</code></td><td>Возведение в степень; тип результата определяется операндами (<a href="./KITE-0013-expression-semantics.html">KITE 13</a>).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>:=</code> <code>+=</code> <code>-=</code> …</td><td>Присваивание и составные операторы присваивания.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>|&gt;</code></td><td>Конвейер вызовов.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>див</code> · <code>мод</code></td><td>Целочисленное деление и остаток; <code>/</code> даёт вещественное.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>?</code></td><td>Ранний возврат: <em>Некоторое(v)</em> и <em>Успех(v)</em> разворачиваются до <code>v</code>; <em>Ничего</em>, <code>пусто</code> и <em>Ошибка</em> дают ранний возврат объемлющего алгоритма.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>&gt;&gt;</code></td><td>Композиция функций: <code>f &gt;&gt; g</code> даёт лямбду одного параметра, эквивалентную <code>g(f(x))</code>, и вкладывается. Не-функция в операнде ДОЛЖНА давать ошибку.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>1..10</code> · <code>1..=10</code></td><td>Литералы диапазонов без верхней границы и с ней.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>… шаг 2</code></td><td>Шаг диапазона.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>[a, b, c]</code></td><td>Литерал массива; каждый элемент вычисляется штатным вычислителем выражений.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>(a, b, c)</code></td><td>Литерал кортежа.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>{…}</code> · <code>{k: v}</code></td><td>Литералы множества и словаря.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>f"привет, {имя}"</code></td><td>Интерполяция строки. Префикс <code>f</code> обязателен: в строке без него <code>{</code> — обычный символ.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>??</code></td><td>Значение по умолчанию для отсутствующего значения (<em>Ничего</em>, <code>пусто</code>).</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>?.</code></td><td>Безопасный доступ к полю или методу.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>1_000_000</code></td><td>Разделители в числовых литералах: десятичных, шестнадцатеричных, восьмеричных и двоичных.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>пусть (a, b) := пара</code></td><td>Деструктуризация при объявлении.</td><td><span class="kite-badge is-proposed">предложено</span></td></tr>
+          <tr><td><code>x =&gt; x + 1</code></td><td>Краткая запись лямбды.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>если … то … иначе …</code></td><td>Условное выражение.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
         </tbody>
       </table>
     </div>
     <div class="kite-callout is-note">
       <span class="kite-callout-title">Где нормируется форма и смысл</span>
-      Точная форма записи всех конструкций этого раздела — в
-      <a href="./KITE-0012-grammar.html">KITE 12 (грамматика)</a>; порядок вычисления,
-      приоритеты и тип результата — в
-      <a href="./KITE-0013-expression-semantics.html">KITE 13 (семантика выражений)</a>.
-      Встроенные функции, упомянутые в таблицах (<code>пара</code>, <code>кортеж</code>,
+      Форма записи конструкций этого пункта нормирована в
+      <a href="./KITE-0012-grammar.html">KITE 12</a>; порядок вычисления, приоритеты и тип
+      результата — в <a href="./KITE-0013-expression-semantics.html">KITE 13</a>. Встроенные
+      функции, упомянутые в таблицах (<code>пара</code>, <code>кортеж</code>,
       <code>байты</code>, <code>тип</code>, …), каталогизированы в
       <a href="./KITE-0016-stdlib.html">KITE 16</a>.
     </div>
   </section>
 
+  <!-- ───────────────────────── 4 ───────────────────────── -->
+  <section class="kite-section" id="primery">
+    <h2>4. Примеры</h2>
+    <p>Примеры информативны и иллюстрируют указанные пункты.</p>
+    <div class="kite-code" data-lang="kumir">
+<pre><code>| § 3.2 — приведение к сим
+с := 65 как сим        | 'A'
+д := "A" как сим       | 'A'
+
+| § 3.11 — деление и целочисленное деление
+x := 7 / 2             | 3.5  (вещ)
+y := 7 див 2           | 3    (цел)
+
+| § 3.12 — диапазон, интерполяция, условное выражение
+нц для i в 1..=3
+  вывод f"шаг {i}"
+кц
+знак := если x &gt; 0 то "плюс" иначе "минус"</code></pre>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 5 ───────────────────────── -->
+  <section class="kite-section" id="sovmestimost">
+    <h2>5. Совместимость</h2>
+    <p>
+      Имена типов КуМир&nbsp;2 — <code>цел</code>, <code>вещ</code>, <code>лит</code>,
+      <code>лог</code>, <code>сим</code>, <code>таб</code> — сохранены в Kumir&nbsp;3 (§&nbsp;3.1,
+      §&nbsp;3.2, §&nbsp;3.3). Правила режима совместимости с КуМир&nbsp;2 нормированы в
+      <a href="./KITE-0006-kumir2-compatibility.html">KITE 6</a>.
+    </p>
+    <p>
+      Возможность с меткой <span class="kite-badge is-available">стабильно</span> подчиняется
+      гарантиям KITE&nbsp;0&nbsp;§&nbsp;5.5: корректная программа, использующая её, ДОЛЖНА
+      сохранять своё поведение в последующих версиях языка. Для возможностей с прочими метками
+      гарантии не действуют, и программа НЕ ДОЛЖНА на них полагаться.
+    </p>
+    <p>
+      Относительно версии&nbsp;1.0.0 настоящего документа набор типов и правила совместимости
+      типов не изменены; изменены состав и нумерация разделов. Прежние пункты §&nbsp;1–§&nbsp;13
+      соответствуют пунктам §&nbsp;3.1–§&nbsp;3.12 и разделу&nbsp;1.
+    </p>
+  </section>
+
   <footer class="kite-footer">
     <span>KITE 2 · Система типов Kumir 3</span>
-    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+    <span>Kumir3 House 🐾🦀 · 2026-07-22</span>
   </footer>
 
 </article>

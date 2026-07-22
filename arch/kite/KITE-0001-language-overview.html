@@ -1,230 +1,226 @@
 <link rel="stylesheet" href="./assets/kite.css">
 <!-- =============================================================================
-     KITE 1 — Kumir 3: язык, цели и преимущества
+     KITE 1 — Kumir 3: язык, цели и преимущества (Руководство)
 ============================================================================== -->
 <article class="kite" data-kite="0001" data-status="active" lang="ru">
 
   <header class="kite-header">
-    <span class="kite-eyebrow">KITE 1 · Информационный</span>
+    <span class="kite-eyebrow">KITE 1 · Руководство</span>
     <h1>Kumir 3: язык, цели и преимущества</h1>
     <dl class="kite-meta">
       <dt>Номер</dt>            <dd>KITE 1</dd>
-      <dt>Название</dt>         <dd>Обзор языка Kumir 3</dd>
+      <dt>Название</dt>         <dd>Kumir 3: язык, цели и преимущества</dd>
+      <dt>Тип</dt>              <dd>Руководство</dd>
       <dt>Статус</dt>           <dd><span class="kite-status is-stable">Active</span></dd>
-      <dt>Тип</dt>              <dd>Информационный</dd>
-      <dt>Автор</dt>            <dd>Вадим Христенко (VAI-Prog)</dd>
+      <dt>Версия документа</dt> <dd>2.0.0</dd>
       <dt>Создан</dt>           <dd>2026-05-30</dd>
-      <dt>Версия документа</dt> <dd>1.0.0</dd>
+      <dt>Обновлён</dt>         <dd>2026-07-22</dd>
     </dl>
   </header>
 
-  <nav class="kite-toc" aria-label="Содержание">
+  <nav class="kite-toc" data-auto aria-label="Содержание">
     <h2>Содержание</h2>
     <ol>
-      <li><a href="#chto">Что такое Kumir 3</a></li>
-      <li><a href="#istoriya">Немного истории</a></li>
-      <li><a href="#filosofiya">Философия</a></li>
-      <li><a href="#celi">Цели</a></li>
-      <li><a href="#preimushchestva">Ключевые преимущества</a></li>
-      <li><a href="#paradigmy">Парадигмы</a></li>
-      <li><a href="#instrumenty">Инструменты</a></li>
-      <li><a href="#sovmestimost">Совместимость с КуМир 2</a></li>
-      <li><a href="#primer">Пример программы</a></li>
-      <li><a href="#roadmap">Дорожная карта</a></li>
+      <li><a href="#dlya-kogo">1. Для кого и о чём</a></li>
+      <li><a href="#chto">2. Что такое Kumir 3</a></li>
+      <li><a href="#dvuyazychie">3. Двуязычная запись</a></li>
+      <li><a href="#vozmozhnosti">4. Что даёт язык</a></li>
+      <li><a href="#paradigmy">5. Стили программирования</a></li>
+      <li><a href="#zapusk">6. Чем запускают программы</a></li>
+      <li><a href="#sovmestimost">7. Переход с КуМир 2</a></li>
+      <li><a href="#primer">8. Пример программы</a></li>
+      <li><a href="#oshibki">9. Типичные ошибки</a></li>
+      <li><a href="#normy">10. Ссылки на нормы</a></li>
     </ol>
   </nav>
 
-  <!-- 1 -->
+  <!-- ───────────────────────── 1 ───────────────────────── -->
+  <section class="kite-section" id="dlya-kogo">
+    <h2>1. Для кого и о чём</h2>
+    <p>
+      Этот документ — вводное чтение о языке <strong>Kumir&nbsp;3</strong> для тех, кто
+      только знакомится с ним: для учеников, преподавателей и разработчиков, пришедших из
+      КуМир&nbsp;2 или из других языков. Предварительная подготовка не требуется:
+      достаточно представления о том, что такое программа и алгоритм.
+    </p>
+    <p>
+      Документ объясняет, чем язык устроен и что он даёт, и служит картой серии KITE.
+      Норму он не задаёт: каждое утверждение о поведении языка сопровождается ссылкой на
+      пункт Спецификации, которая этим поведением владеет (§&nbsp;10).
+    </p>
+
+    <h3>1.1. Принципы, из которых вырос язык</h3>
+    <ul>
+      <li><strong>Понятность важнее краткости.</strong> Запись читается вслух и объясняется
+        словами.</li>
+      <li><strong>Русский — полноценный синтаксис,</strong> а не перевод подписей: русские
+        и английские ключевые слова равноправны.</li>
+      <li><strong>Один язык на весь путь.</strong> Первый цикл и большая программа пишутся
+        на одном языке, без смены инструмента.</li>
+      <li><strong>Явное состояние возможностей.</strong> Каждая возможность несёт метку
+        стабильности (KITE&nbsp;0&nbsp;§&nbsp;5), поэтому доступное отличимо от
+        предложенного с одного взгляда.</li>
+    </ul>
+  </section>
+
+  <!-- ───────────────────────── 2 ───────────────────────── -->
   <section class="kite-section" id="chto">
-    <h2>1. Что такое Kumir 3</h2>
+    <h2>2. Что такое Kumir 3</h2>
     <p>
-      <strong>Kumir&nbsp;3</strong> — это современная реинкарнация легендарного учебного
-      алгоритмического языка <em>КуМир</em>, полностью переписанная на <strong>Rust</strong>.
-      Язык сохраняет главную черту оригинала — обучение программированию на русском языке без
-      боли — но добавляет всё, что нужно для настоящих проектов: строгую и гибкую типизацию,
-      ООП, функциональный стиль, модули и библиотеки, а в планах — модель владения,
-      полноценную асинхронность и прямой мост в Rust.
+      <strong>Kumir&nbsp;3</strong> — учебный алгоритмический язык, продолжающий традицию
+      языка <em>КуМир</em>, созданного в НИИСИ&nbsp;РАН. Он сохраняет главную черту
+      оригинала — обучение программированию на русском языке — и добавляет средства,
+      которые нужны за пределами учебных задач: градуальную типизацию, объектную модель,
+      функциональный стиль, модули и библиотеки.
     </p>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Двуязычность</span>
-      Каждое ключевое слово имеет русский и английский вариант: <code>алг</code>/<code>alg</code>,
-      <code>нач</code>/<code>begin</code>, <code>если</code>/<code>if</code>. Учись на русском —
-      переходи на международный синтаксис без смены языка.
-    </div>
-  </section>
-
-  <!-- 2 -->
-  <section class="kite-section" id="istoriya">
-    <h2>2. Немного истории</h2>
     <p>
-      Оригинальный КуМир был создан в НИИСИ РАН и вырастил не одно поколение школьников.
-      Раньше он был написан на C и выглядел «как софт из нулевых». Kumir&nbsp;3 — независимая
-      реализация: модульное, быстрое и элегантное ядро (<em>Kumir3 House</em>), которое уважает
-      корни, но смотрит в будущее.
+      Kumir&nbsp;3 — независимая реализация: язык описан серией KITE, а не устройством
+      какой-либо программы. Программа на Kumir&nbsp;3 хранится в файле с расширением
+      <code>.kum</code>.
     </p>
-    <div class="kite-callout is-important">
-      <span class="kite-callout-title">От «по приколу» — к профессии</span>
-      Проект начинался как затея «по приколу», на энтузиазме и мемах. Но он перерос рамки
-      развлечения: сегодня Kumir&nbsp;3 целенаправленно становится <strong>профессиональным
-      проектом</strong>, который развивается своим чередом — со стандартами (серия KITE),
-      чистым кодом, тестами и осознанной архитектурой. Лёгкий тон мы сохраняем, но к качеству
-      относимся всерьёз.
-    </div>
   </section>
 
-  <!-- 3 -->
-  <section class="kite-section" id="filosofiya">
-    <h2>3. Философия</h2>
-    <ul>
-      <li><strong>Architecture as Art. Code as Narrative.</strong> Код должен читаться как история.</li>
-      <li><strong>Образование прежде всего.</strong> Понятность важнее «умного» синтаксиса.</li>
-      <li><strong>Русский как первый класс.</strong> Родной язык — не костыль, а полноценный синтаксис.</li>
-      <li><strong>Честность.</strong> Документация чётко разделяет реализованное и предложенное.</li>
-    </ul>
-  </section>
-
-  <!-- 4 -->
-  <section class="kite-section" id="celi">
-    <h2>4. Цели</h2>
-    <ul>
-      <li>Дать плавный путь от первых алгоритмов до промышленного кода в одном языке.</li>
-      <li>Сохранить и улучшить функционал КуМир, приведя его к строгим стандартам (серия KITE).</li>
-      <li>Построить экосистему: пакетный менеджер, плагины IDE, библиотеки, виртуальные окружения.</li>
-      <li>Оставаться кроссплатформенным (Windows, macOS, Linux) и быстрым за счёт Rust.</li>
-    </ul>
-  </section>
-
-  <!-- 5 -->
-  <section class="kite-section" id="preimushchestva">
-    <h2>5. Ключевые преимущества</h2>
-    <div class="kite-grid">
-      <div class="kite-card">
-        <span class="kite-card-icon">🌐</span>
-        <h3>Двуязычные ключевые слова</h3>
-        <p>Полные русские и английские наборы лексем — учись на родном, расти к международному.</p>
-      </div>
-      <div class="kite-card">
-        <span class="kite-card-icon">🎚️</span>
-        <h3>Градуальная типизация</h3>
-        <p>От <code>авто</code> и <code>любой</code> до строгих типов с проверкой — по мере роста.</p>
-      </div>
-      <div class="kite-card">
-        <span class="kite-card-icon">🛡️</span>
-        <h3>Владение и изменяемость</h3>
-        <p><code>измен</code>/<code>конст</code> — изменяемость значений <span class="kite-badge is-available">✅</span>.
-        Полная модель владения (<code>перемещение</code>, <code>заимствовать</code>, <code>клонировать</code>)
-        сегодня <strong>не исполняется</strong>: лексемы разбираются, семантики нет —
-        <span class="kite-badge is-proposed">📋&nbsp;Предложено</span>. См.
-        <a href="./KITE-0002-type-system.html#vladenie">KITE 2 §6</a>.</p>
-      </div>
-      <div class="kite-card">
-        <span class="kite-card-icon">🧩</span>
-        <h3>Мультипарадигменность</h3>
-        <p>Процедурный, ООП, функциональный и асинхронный стиль в одном языке.</p>
-      </div>
-      <div class="kite-card">
-        <span class="kite-card-icon">🦀</span>
-        <h3>Мост в Rust</h3>
-        <p>Блоки <code>РастВставкаНЦ … РастВставкаКЦ</code> для скорости и системных возможностей.</p>
-      </div>
-      <div class="kite-card">
-        <span class="kite-card-icon">⚙️</span>
-        <h3>Интерпретатор + компилятор</h3>
-        <p>Быстрый запуск через интерпретатор <span class="kite-badge is-available">✅</span>;
-        компиляция в Rust / IR / WASM — <span class="kite-badge is-experimental">🧪</span>
-        (не основная тропа исполнения).</p>
-      </div>
-      <div class="kite-card">
-        <span class="kite-card-icon">📦</span>
-        <h3>Библиотеки и окружения</h3>
-        <p>Пользовательские библиотеки, <code>kumir.toml</code>, виртуальные окружения и резолвер зависимостей.</p>
-      </div>
-      <div class="kite-card">
-        <span class="kite-card-icon">🔢</span>
-        <h3>Богатые числа</h3>
-        <p>Движок чисел умеет ширины 8…128 бит, включая повышенную точность.
-        Поверхностный синтаксис пока даёт <code>цел</code> (64) и <code>вещ</code> (64)
-        <span class="kite-badge is-available">✅</span>; размерные имена
-        (<code>цел_8</code>…<code>вещ_128</code>, <code>нат</code>) —
-        <span class="kite-badge is-proposed">📋&nbsp;Предложено</span>. См.
-        <a href="./KITE-0002-type-system.html#chisla">KITE 2 §2</a>.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- 6 -->
-  <section class="kite-section" id="paradigmy">
-    <h2>6. Парадигмы</h2>
-    <ul>
-      <li><strong>Процедурная:</strong> алгоритмы, аргументы <code>арг</code>/<code>рез</code>/<code>аргрез</code>, циклы <code>нц…кц</code>.</li>
-      <li><strong>ООП:</strong> <code>класс</code>, <code>структура</code>, <code>интерфейс</code>, <code>свойство</code> (trait), <code>реализация</code>, видимость, наследование.</li>
-      <li><strong>Функциональная:</strong> <code>лямбда</code>, <code>совпадение</code> (match), охранные выражения <code>когда</code>, конвейер <code>|&gt;</code>.</li>
-      <li><strong>Асинхронная:</strong> <code>асинх</code>/<code>ждать</code>, <code>запустить</code>, <code>уступить</code>, каналы
-        (<span class="kite-badge is-experimental">🧪</span> — исполняется синхронно, см. <a href="./KITE-0003-async-runtime.html">KITE 3</a>).</li>
-    </ul>
-    <div class="kite-callout is-note">
-      <span class="kite-callout-title">Где искать нормы</span>
-      Форма записи — <a href="./KITE-0012-grammar.html">KITE 12 (грамматика)</a>;
-      смысл выражений и операций — <a href="./KITE-0013-expression-semantics.html">KITE 13</a>;
-      ошибки — <a href="./KITE-0014-error-handling.html">KITE 14</a>;
-      модули и импорты — <a href="./KITE-0015-modules.html">KITE 15</a>;
-      стандартная библиотека — <a href="./KITE-0016-stdlib.html">KITE 16</a>.
-    </div>
-  </section>
-
-  <!-- 7 -->
-  <section class="kite-section" id="instrumenty">
-    <h2>7. Инструменты</h2>
-    <div class="kite-table">
-      <table>
-        <thead><tr><th>Инструмент</th><th>Назначение</th><th>Доступность</th></tr></thead>
-        <tbody>
-          <tr><td><code>interpreter-cli</code></td><td>Запуск <code>.kum</code>-программ.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>interpreter-tui</code></td><td>Текстовый интерактивный интерфейс.</td><td><span class="kite-badge is-available">✅</span></td></tr>
-          <tr><td><code>kumir3-compiler</code></td><td>Компиляция в Rust / IR / WASM с уровнями оптимизации.</td><td><span class="kite-badge is-experimental">🧪</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Предложенные инструменты</h3>
-    <p>Чтобы из языка вырос профессиональный экосистемный проект, стандарт предлагает (пока <span class="kite-badge is-proposed">📋&nbsp;Предложено</span>):</p>
-    <div class="kite-table">
-      <table>
-        <thead><tr><th>Инструмент</th><th>Назначение</th><th>Доступность</th></tr></thead>
-        <tbody>
-          <tr><td><code>кумпак</code> (kpm)</td><td>Пакетный менеджер: установка, публикация и версии библиотек.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>кум-лсп</code> (LSP)</td><td>Языковой сервер: автодополнение, переходы, диагностика в IDE.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>кумфмт</code></td><td>Автоформаттер кода по единому стилю.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>кумлинт</code></td><td>Линтер: подсказки и проверки качества кода.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>кумрепл</code></td><td>Интерактивная оболочка (REPL) для быстрых проб.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>Песочница</td><td>Веб-площадка для запуска Кумира прямо в браузере (через WASM).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td><code>кумдок</code></td><td>Генератор документации из исходников (и KITE-страниц).</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-          <tr><td>Отладчик</td><td>Пошаговая отладка с точками останова и инспекцией значений.</td><td><span class="kite-badge is-proposed">📋</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- 8 -->
-  <section class="kite-section" id="sovmestimost">
-    <h2>8. Совместимость с КуМир 2</h2>
+  <!-- ───────────────────────── 3 ───────────────────────── -->
+  <section class="kite-section" id="dvuyazychie">
+    <h2>3. Двуязычная запись</h2>
     <p>
-      Классический синтаксис КуМир 2 поддерживается: типы <code>цел</code>, <code>вещ</code>,
-      <code>лог</code>, <code>сим</code>, <code>лит</code>, <code>таб</code>; структура
-      <code>алг…нач…кон</code>; <code>дано</code>/<code>надо</code>; ввод/вывод. Старые учебные
-      программы продолжают работать, а новые возможности подключаются по мере необходимости.
+      Каждое ключевое слово имеет русский и английский вариант:
+      <code>алг</code>/<code>alg</code>, <code>нач</code>/<code>begin</code>,
+      <code>если</code>/<code>if</code>. Оба написания означают одно и то же, поэтому
+      обучение начинается на родном языке, а переход к международной записи не требует
+      смены языка программирования.
     </p>
     <div class="kite-callout is-tip">
-      <span class="kite-callout-title">Плавный переход</span>
-      Можно начать с чистого КуМир 2 и постепенно добавлять типы, ООП и функциональные приёмы —
-      без переписывания с нуля. Подробности режима — <a href="./KITE-0006-kumir2-compatibility.html">KITE 6</a>;
-      школьные исполнители (Робот, Чертёжник и другие) — <a href="./KITE-0017-executors.html">KITE 17</a>.
+      <span class="kite-callout-title">Совет</span>
+      В пределах одной программы держись одного набора ключевых слов: смешение русских и
+      английских форм затрудняет чтение. Полный перечень ключевых слов —
+      <a href="./KITE-0012-grammar.html#identifikatory">KITE&nbsp;12&nbsp;§&nbsp;3.2</a>.
     </div>
   </section>
 
-  <!-- 9 -->
+  <!-- ───────────────────────── 4 ───────────────────────── -->
+  <section class="kite-section" id="vozmozhnosti">
+    <h2>4. Что даёт язык</h2>
+    <div class="kite-grid">
+      <div class="kite-card">
+        <h3>Двуязычные ключевые слова</h3>
+        <p>Полные русские и английские наборы лексем
+          (<a href="./KITE-0012-grammar.html#identifikatory">KITE&nbsp;12&nbsp;§&nbsp;3.2</a>).
+          <span class="kite-badge is-available">стабильно</span></p>
+      </div>
+      <div class="kite-card">
+        <h3>Градуальная типизация</h3>
+        <p>От <code>авто</code> и <code>любой</code> до строгих типов с проверкой — по мере
+          роста программы
+          (<a href="./KITE-0002-type-system.html#oblast">KITE&nbsp;2&nbsp;§&nbsp;1</a>).
+          <span class="kite-badge is-available">стабильно</span></p>
+      </div>
+      <div class="kite-card">
+        <h3>Изменяемость значений</h3>
+        <p><code>измен</code> и <code>конст</code> различают изменяемые и неизменяемые
+          величины
+          (<a href="./KITE-0002-type-system.html#vladenie">KITE&nbsp;2&nbsp;§&nbsp;3.5</a>).
+          <span class="kite-badge is-available">стабильно</span></p>
+      </div>
+      <div class="kite-card">
+        <h3>Модель владения</h3>
+        <p><code>перемещение</code>, <code>заимствовать</code>, <code>клонировать</code>
+          (<a href="./KITE-0002-type-system.html#vladenie">KITE&nbsp;2&nbsp;§&nbsp;3.5</a>).
+          <span class="kite-badge is-proposed">предложено</span></p>
+      </div>
+      <div class="kite-card">
+        <h3>Мультипарадигменность</h3>
+        <p>Процедурный, объектный, функциональный и асинхронный стиль в одном языке
+          (§&nbsp;5).
+          <span class="kite-badge is-available">стабильно</span></p>
+      </div>
+      <div class="kite-card">
+        <h3>Мост в Rust</h3>
+        <p>Блоки <code>РастВставкаНЦ&nbsp;… РастВставкаКЦ</code> для системных возможностей
+          (<a href="./KITE-0012-grammar.html#rust">KITE&nbsp;12&nbsp;§&nbsp;3.21</a>).
+          <span class="kite-badge is-experimental">экспериментально</span></p>
+      </div>
+      <div class="kite-card">
+        <h3>Библиотеки и окружения</h3>
+        <p>Встроенные и пользовательские библиотеки, <code>kumir.toml</code>, виртуальные
+          окружения (<a href="./KITE-0005-libraries.html">KITE&nbsp;5</a>).
+          <span class="kite-badge is-available">стабильно</span></p>
+      </div>
+      <div class="kite-card">
+        <h3>Числа</h3>
+        <p>Поверхностный синтаксис даёт <code>цел</code> и <code>вещ</code> шириной 64 бита
+          <span class="kite-badge is-available">стабильно</span>; размерные имена
+          <code>цел_8</code>&nbsp;… <code>вещ_128</code> и <code>нат</code>
+          <span class="kite-badge is-proposed">предложено</span>
+          (<a href="./KITE-0002-type-system.html#chisla">KITE&nbsp;2&nbsp;§&nbsp;3.1</a>).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 5 ───────────────────────── -->
+  <section class="kite-section" id="paradigmy">
+    <h2>5. Стили программирования</h2>
+    <ul>
+      <li><strong>Процедурный:</strong> алгоритмы, аргументы
+        <code>арг</code>/<code>рез</code>/<code>аргрез</code>, циклы <code>нц…кц</code>
+        (<a href="./KITE-0012-grammar.html#algoritmy">KITE&nbsp;12&nbsp;§&nbsp;3.8</a>).</li>
+      <li><strong>Объектный:</strong> <code>класс</code>, <code>структура</code>,
+        <code>интерфейс</code>, <code>свойство</code>, <code>реализация</code>, видимость,
+        наследование (<a href="./KITE-0011-oop.html">KITE&nbsp;11</a>).</li>
+      <li><strong>Функциональный:</strong> <code>лямбда</code>, <code>совпадение</code>,
+        охраны <code>когда</code>, конвейер <code>|&gt;</code>
+        (<a href="./KITE-0013-expression-semantics.html#pipe">KITE&nbsp;13&nbsp;§&nbsp;3.15</a>).</li>
+      <li><strong>Асинхронный:</strong> <code>асинх</code>/<code>ждать</code>,
+        <code>запустить</code>, <code>уступить</code>, каналы. Код исполняется
+        последовательно (<a href="./KITE-0003-async-runtime.html">KITE&nbsp;3</a>).
+        <span class="kite-badge is-experimental">экспериментально</span></li>
+    </ul>
+  </section>
+
+  <!-- ───────────────────────── 6 ───────────────────────── -->
+  <section class="kite-section" id="zapusk">
+    <h2>6. Чем запускают программы</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Способ</th><th>Назначение</th><th>Состояние</th></tr></thead>
+        <tbody>
+          <tr><td><code>interpreter-cli</code></td><td>Запуск <code>.kum</code>-программы из командной строки.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>interpreter-tui</code></td><td>Текстовый интерактивный интерфейс.</td><td><span class="kite-badge is-available">стабильно</span></td></tr>
+          <tr><td><code>kumir3-compiler</code></td><td>Компиляция в Rust, промежуточное представление или WASM.</td><td><span class="kite-badge is-experimental">экспериментально</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Основная тропа исполнения — интерпретатор. Пакетный менеджер, языковой сервер,
+      форматтер, линтер, интерактивная оболочка и пошаговый отладчик описаны как замысел и
+      сегодня недоступны: <span class="kite-badge is-proposed">предложено</span>.
+    </p>
+  </section>
+
+  <!-- ───────────────────────── 7 ───────────────────────── -->
+  <section class="kite-section" id="sovmestimost">
+    <h2>7. Переход с КуМир 2</h2>
+    <p>
+      Классическая запись КуМир&nbsp;2 остаётся рабочей: типы <code>цел</code>,
+      <code>вещ</code>, <code>лог</code>, <code>сим</code>, <code>лит</code>,
+      <code>таб</code>; структура <code>алг…нач…кон</code>; контракты
+      <code>дано</code>/<code>надо</code>; ввод и вывод. Учебная программа, написанная для
+      КуМир&nbsp;2, читается Kumir&nbsp;3 без переделки, а новые возможности подключаются
+      по мере надобности.
+    </p>
+    <div class="kite-callout is-tip">
+      <span class="kite-callout-title">Как переходить</span>
+      Начинай с чистого КуМир&nbsp;2 и добавляй типы, объекты и функциональные приёмы
+      постепенно — переписывать программу с нуля не требуется. Режим совместимости —
+      <a href="./KITE-0006-kumir2-compatibility.html">KITE&nbsp;6</a>; школьные
+      исполнители (Робот, Чертёжник и другие) —
+      <a href="./KITE-0017-executors.html">KITE&nbsp;17</a>.
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 8 ───────────────────────── -->
   <section class="kite-section" id="primer">
-    <h2>9. Пример программы</h2>
+    <h2>8. Пример программы</h2>
     <div class="kite-code" data-lang="kumir">
 <pre><code>| Числа Фибоначчи — классический КуМир-стиль
 алг цел Фиб(цел n)
@@ -244,25 +240,90 @@
   кц
 кон</code></pre>
     </div>
+    <p>
+      Программа объявляет два алгоритма: функцию <code>Фиб</code>, возвращающую значение
+      через <code>знач</code>, и точку входа <code>Главный</code>. Форма записи —
+      <a href="./KITE-0012-grammar.html#algoritmy">KITE&nbsp;12&nbsp;§&nbsp;3.8</a>.
+    </p>
   </section>
 
-  <!-- 10 -->
-  <section class="kite-section" id="roadmap">
-    <h2>10. Дорожная карта</h2>
-    <ol>
-      <li>✅ Стабильное ядро исполнения: лексер, парсер, AST, интерпретатор.</li>
-      <li>🧪 Компилятор (Rust / IR / WASM) — экспериментальный, не основная тропа исполнения.</li>
-      <li>📦 Пакетный менеджер и реестр библиотек.</li>
-      <li>🛠 API для плагинов IDE.</li>
-      <li>📚 Полная база учебных материалов и задач
-        (учебный корпус и golden-тесты — <a href="./KITE-0018-testing.html">KITE 18</a>).</li>
-      <li>📐 Стандартизация языка через серию KITE.</li>
-    </ol>
+  <!-- ───────────────────────── 9 ───────────────────────── -->
+  <section class="kite-section" id="oshibki">
+    <h2>9. Типичные ошибки</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Заблуждение</th><th>Как на самом деле</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>«Русские ключевые слова — это перевод, настоящий язык английский».</td>
+            <td>Оба набора равноправны и разбираются одинаково
+              (<a href="./KITE-0012-grammar.html#identifikatory">KITE&nbsp;12&nbsp;§&nbsp;3.2</a>).</td>
+          </tr>
+          <tr>
+            <td>«Возможность упомянута в KITE — значит, её можно использовать».</td>
+            <td>Использовать можно то, что помечено
+              <span class="kite-badge is-available">стабильно</span>,
+              <span class="kite-badge is-unstable">нестабильно</span> или
+              <span class="kite-badge is-experimental">экспериментально</span>. Программа,
+              опирающаяся на <span class="kite-badge is-proposed">предложено</span>,
+              корректной не является (KITE&nbsp;0&nbsp;§&nbsp;5.1).</td>
+          </tr>
+          <tr>
+            <td>«<code>асинх</code>/<code>ждать</code> ускоряют программу».</td>
+            <td>Асинхронные конструкции исполняются последовательно
+              (<a href="./KITE-0003-async-runtime.html">KITE&nbsp;3</a>).</td>
+          </tr>
+          <tr>
+            <td>«Переменную можно не объявлять — она создастся сама».</td>
+            <td>Присваивание необъявленному имени даёт предупреждение, а в строгом режиме —
+              ошибку (<a href="./KITE-0004-environments-scope.html#prisvaivanie">KITE&nbsp;4&nbsp;§&nbsp;4</a>).</td>
+          </tr>
+          <tr>
+            <td>«<code>цел</code> вмещает любое целое число».</td>
+            <td><code>цел</code> — 64-разрядный тип; выход за его пределы даёт ошибку
+              переполнения
+              (<a href="./KITE-0013-expression-semantics.html#overflow">KITE&nbsp;13&nbsp;§&nbsp;3.19</a>).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── 10 ───────────────────────── -->
+  <section class="kite-section" id="normy">
+    <h2>10. Ссылки на нормы</h2>
+    <div class="kite-table">
+      <table>
+        <thead><tr><th>Тема</th><th>Документ</th></tr></thead>
+        <tbody>
+          <tr><td>Правила серии, статусы и метки стабильности</td><td><a href="./KITE-0000-standard.html">KITE 0</a></td></tr>
+          <tr><td>Система типов, числа, владение</td><td><a href="./KITE-0002-type-system.html">KITE 2</a></td></tr>
+          <tr><td>Асинхронность и среда исполнения</td><td><a href="./KITE-0003-async-runtime.html">KITE 3</a></td></tr>
+          <tr><td>Окружения и область видимости</td><td><a href="./KITE-0004-environments-scope.html">KITE 4</a></td></tr>
+          <tr><td>Библиотеки и окружения проекта</td><td><a href="./KITE-0005-libraries.html">KITE 5</a></td></tr>
+          <tr><td>Совместимость с КуМир 2</td><td><a href="./KITE-0006-kumir2-compatibility.html">KITE 6</a></td></tr>
+          <tr><td>Ввод, вывод и форматирование</td><td><a href="./KITE-0007-stdio.html">KITE 7</a></td></tr>
+          <tr><td>Объектная модель</td><td><a href="./KITE-0011-oop.html">KITE 11</a></td></tr>
+          <tr><td>Форма записи (грамматика)</td><td><a href="./KITE-0012-grammar.html">KITE 12</a></td></tr>
+          <tr><td>Смысл выражений и операций</td><td><a href="./KITE-0013-expression-semantics.html">KITE 13</a></td></tr>
+          <tr><td>Модель ошибок</td><td><a href="./KITE-0014-error-handling.html">KITE 14</a></td></tr>
+          <tr><td>Модули и импорты</td><td><a href="./KITE-0015-modules.html">KITE 15</a></td></tr>
+          <tr><td>Стандартная библиотека</td><td><a href="./KITE-0016-stdlib.html">KITE 16</a></td></tr>
+          <tr><td>Исполнители</td><td><a href="./KITE-0017-executors.html">KITE 17</a></td></tr>
+          <tr><td>Тестирование и учебный корпус</td><td><a href="./KITE-0018-testing.html">KITE 18</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Приёмы записи и стиль — <a href="./KITE-0008-style-guide.html">KITE&nbsp;8</a>;
+      запуск, чтение ошибок и отладка —
+      <a href="./KITE-0009-dev-cycle-debugging.html">KITE&nbsp;9</a>.
+    </p>
   </section>
 
   <footer class="kite-footer">
-    <span>KITE 1 · Обзор языка Kumir 3</span>
-    <span>Kumir3 House 🐾🦀 · 2026-05-30</span>
+    <span>KITE 1 · Kumir 3: язык, цели и преимущества</span>
+    <span>Kumir3 House 🐾🦀 · 2026-07-22</span>
   </footer>
 
 </article>

@@ -757,6 +757,15 @@ body:has(> .kite) > .kite {
 .kite-badge.is-deprecated {
     color: var(--kite-red);
 }
+/* Нестабильно (KITE 0 §5): реализовано, но может измениться. */
+.kite-badge.is-unstable {
+    color: var(--kite-yellow);
+}
+/* Отозвано (KITE 0 §5): не станет частью языка — приглушённый вид. */
+.kite-badge.is-withdrawn {
+    color: var(--kite-text-dim);
+    opacity: 0.85;
+}
 
 /* ── Grid / Cards (generic feature grid inside docs) ────────────────────── */
 .kite-grid {
