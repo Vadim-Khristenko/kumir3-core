@@ -1,0 +1,85 @@
+name: Toolchain drift
+
+# Версия Rust закреплена в rust-toolchain.toml, поэтому новый stable сам по себе
+# ветку не ломает. Но узнавать о новых правилах clippy лучше заранее, а не в тот
+# день, когда версию понадобится поднять. Раз в неделю проверяем проект на
+# свежем stable и заводим задачу, если он на что-то ругается.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Проверка на свежем stable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Установить свежий stable
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          echo "STABLE_VERSION=$(rustup run stable rustc --version)" >> "$GITHUB_ENV"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: drift
+
+      - name: cargo fmt --check
+        id: fmt
+        continue-on-error: true
+        run: cargo +stable fmt --all -- --check
+
+      - name: cargo clippy
+        id: clippy
+        continue-on-error: true
+        run: cargo +stable clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: cargo test
+        id: test
+        continue-on-error: true
+        run: cargo +stable test --workspace --locked
+
+      - name: Завести задачу, если что-то сломалось
+        if: steps.fmt.outcome == 'failure' || steps.clippy.outcome == 'failure' || steps.test.outcome == 'failure'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = `Свежий stable Rust ломает сборку: ${process.env.STABLE_VERSION}`;
+            const body = [
+              `На закреплённой версии (см. \`rust-toolchain.toml\`) всё зелено, а на \`${process.env.STABLE_VERSION}\` — нет.`,
+              '',
+              `- fmt: **${{ steps.fmt.outcome }}**`,
+              `- clippy: **${{ steps.clippy.outcome }}**`,
+              `- test: **${{ steps.test.outcome }}**`,
+              '',
+              `Подробности: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'Что делать: починить замечания, затем поднять `channel` в `rust-toolchain.toml` тем же изменением.',
+            ].join('\n');
+
+            // Задача на эту же версию заводится один раз: повторные запуски
+            // дописывают комментарий, а не плодят дубликаты.
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo, state: 'open',
+            });
+            const same = existing.data.find(i => i.title === title);
+            if (same) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: same.number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo, title, body,
+              });
+            }

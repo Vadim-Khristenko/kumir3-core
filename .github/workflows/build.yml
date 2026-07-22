@@ -25,14 +25,18 @@ env:
   CARGO_INCREMENTAL: 0
   CARGO_PROFILE_RELEASE_LTO: true
 
+# Наименьшие права по умолчанию; job, которому нужно больше, просит явно.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ───────────────────────────── Тесты + проверки ─────────────────────────────
-  test:
-    name: Тесты
+  # ───────────────────────── Стиль и линтеры (быстрый отказ) ─────────────────────────
+  lint:
+    name: Стиль и линтеры
     if: ${{ !inputs.rebuild_only }}
     runs-on: ubuntu-latest
     steps:
@@ -40,31 +44,67 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@stable
+      # Версия берётся из rust-toolchain.toml — она же и у разработчика.
+      - name: Установить закреплённый Rust
+        run: rustup show active-toolchain || rustup toolchain install
+
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ runner.os }}-rust
+          shared-key: lint
 
       - name: cargo fmt --check
         run: cargo fmt --all -- --check
 
       - name: cargo clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  # ───────────────────────────── Тесты на трёх системах ─────────────────────────────
+  test:
+    name: Тесты (${{ matrix.os }})
+    if: ${{ !inputs.rebuild_only }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Установить закреплённый Rust
+        run: rustup show active-toolchain || rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test-${{ matrix.os }}
+
+      - name: Install NASM (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/setup-nasm@v1
 
       - name: cargo test
-        run: cargo test --workspace
+        run: cargo test --workspace --locked
 
-      - name: Job Summary
-        if: always()
-        run: |
-          echo "## ✅ Тесты и проверки пройдены" >> $GITHUB_STEP_SUMMARY
-          echo "- fmt + clippy + tests" >> $GITHUB_STEP_SUMMARY
+  # ──────────────────────── Аудит зависимостей ────────────────────────
+  audit:
+    name: Аудит зависимостей
+    if: ${{ !inputs.rebuild_only }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check advisories bans sources
 
   # ─────────────────────── Сборка бинарников ───────────────────────
   build:
     name: Сборка (${{ matrix.os }})
-    needs: [test]
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    needs: [lint, test]
+    if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     strategy:
       fail-fast: false
       matrix:
@@ -84,13 +124,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+      - name: Установить закреплённый Rust
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ runner.os }}-rust
+          shared-key: build-${{ matrix.os }}
         if: ${{ !inputs.force_clean }}
 
       - name: Install NASM (Windows)
@@ -98,7 +139,7 @@ jobs:
         uses: ilammy/setup-nasm@v1
 
       - name: Build release
-        run: cargo build --release --workspace --target ${{ matrix.target }}
+        run: cargo build --release --workspace --locked --target ${{ matrix.target }}
 
       - name: Package (Unix)
         if: runner.os != 'Windows'
@@ -109,6 +150,7 @@ jobs:
           cp "target/${{ matrix.target }}/release/kumir3-compiler" dist/
           cp README.md LICENSE-MIT LICENSE-APACHE dist/ 2>/dev/null || true
           tar -czf "${{ matrix.archive }}" -C dist .
+          shasum -a 256 "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -120,16 +162,16 @@ jobs:
           Copy-Item "target/${{ matrix.target }}/release/kumir3-compiler.exe" dist/
           Copy-Item README.md,LICENSE-MIT,LICENSE-APACHE dist/ -ErrorAction SilentlyContinue
           Compress-Archive -Path dist/* -DestinationPath "${{ matrix.archive }}"
+          $hash = (Get-FileHash "${{ matrix.archive }}" -Algorithm SHA256).Hash.ToLower()
+          "$hash  ${{ matrix.archive }}" | Out-File -Encoding ascii "${{ matrix.archive }}.sha256"
 
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.archive }}
-          path: ${{ matrix.archive }}
+          path: |
+            ${{ matrix.archive }}
+            ${{ matrix.archive }}.sha256
           if-no-files-found: error
-
-      - name: Job Summary (Build)
-        if: always()
-        run: echo "## 📦 Сборка ${{ matrix.os }} завершена" >> $GITHUB_STEP_SUMMARY
 
   # ───────────────── Релиз (по тегу vX.Y.Z) ─────────────────
   release:
@@ -139,11 +181,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Подпись происхождения: подтверждает, что архивы собрал именно этот workflow.
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: 'artifacts/*.tar.gz,artifacts/*.zip'
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
