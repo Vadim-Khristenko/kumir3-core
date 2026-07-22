@@ -13,6 +13,11 @@ on:
 permissions:
   contents: read
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'       # в CI инкрементальная компиляция только раздувает кэш
+  RUSTFLAGS: '-D warnings'     # единое место, clippy и rustc видят одинаковые флаги
+
 jobs:
   check:
     name: Проверка на свежем stable
@@ -22,64 +27,136 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
 
+      # ── Тулчейн ──────────────────────────────────────────────
       - name: Установить свежий stable
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt,clippy
-          echo "STABLE_VERSION=$(rustup run stable rustc --version)" >> "$GITHUB_ENV"
+          STABLE_VER="$(rustup run stable rustc --version)"
+          echo "STABLE_VERSION=$STABLE_VER" >> "$GITHUB_ENV"
+          echo "### 🦀 Rust toolchain" >> "$GITHUB_STEP_SUMMARY"
+          echo '```'               >> "$GITHUB_STEP_SUMMARY"
+          echo "$STABLE_VER"       >> "$GITHUB_STEP_SUMMARY"
+          echo '```'               >> "$GITHUB_STEP_SUMMARY"
 
+      # ── Кэш ──────────────────────────────────────────────────
+      # Ключ автоматически включает версию rustc, Cargo.lock и job-id.
+      # save-if=false — scheduled-запуски *никогда* не пишут кэш, а
+      # только читают. Писать кэш имеет смысл только из основного CI
+      # (default-branch push), иначе каждый понедельник рождался бы
+      # новый ключ и занимал место в 10 GiB квоте.
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: drift
+          save-if: ${{ github.event_name == 'workflow_dispatch' }}
 
+      # ── fmt ───────────────────────────────────────────────────
       - name: cargo fmt --check
         id: fmt
         continue-on-error: true
-        run: cargo +stable fmt --all -- --check
+        run: |
+          echo "::group::cargo fmt --check"
+          cargo +stable fmt --all -- --check 2>&1 | tee /tmp/fmt.log
+          echo "::endgroup::"
 
+      # ── clippy ────────────────────────────────────────────────
+      # --message-format=json + конвертация в GH-аннотации: ошибки
+      # clippy рисуются прямо у строки в diff-е.
       - name: cargo clippy
         id: clippy
         continue-on-error: true
-        run: cargo +stable clippy --workspace --all-targets --locked -- -D warnings
+        run: |
+          echo "::group::cargo clippy"
+          cargo +stable clippy \
+            --workspace --all-targets --locked \
+            --message-format=json -- -D warnings 2>&1 \
+          | jq -r '
+              select(.reason == "compiler-message")
+              | .message
+              | select(.level == "error" or .level == "warning")
+              | .spans[0] as $s
+              | (if .level == "error" then "error" else "warning" end) as $lvl
+              | "::\($lvl) file=\($s.file_name),line=\($s.line_start),col=\($s.column_start)::\(.message)"
+            ' | tee /tmp/clippy-annotations.log
+          # выход по реальному exit-коду clippy, а не jq
+          exit ${PIPESTATUS[0]}
+          echo "::endgroup::"
 
+      # ── test ──────────────────────────────────────────────────
       - name: cargo test
         id: test
         continue-on-error: true
-        run: cargo +stable test --workspace --locked
+        run: |
+          echo "::group::cargo test"
+          cargo +stable test --workspace --locked 2>&1 | tee /tmp/test.log
+          echo "::endgroup::"
 
+      # ── Сводка (Job Summary) ─────────────────────────────────
+      - name: Сводка результатов
+        if: always()
+        run: |
+          status_icon() { [ "$1" = "success" ] && echo "✅" || echo "❌"; }
+
+          {
+            echo "### Результаты проверки на \`$STABLE_VERSION\`"
+            echo ""
+            echo "| Шаг | Результат |"
+            echo "|-----|-----------|"
+            echo "| fmt   | $(status_icon ${{ steps.fmt.outcome }})  \`${{ steps.fmt.outcome }}\` |"
+            echo "| clippy| $(status_icon ${{ steps.clippy.outcome }}) \`${{ steps.clippy.outcome }}\` |"
+            echo "| test  | $(status_icon ${{ steps.test.outcome }}) \`${{ steps.test.outcome }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Issue ─────────────────────────────────────────────────
       - name: Завести задачу, если что-то сломалось
         if: steps.fmt.outcome == 'failure' || steps.clippy.outcome == 'failure' || steps.test.outcome == 'failure'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const title = `Свежий stable Rust ломает сборку: ${process.env.STABLE_VERSION}`;
+
+            const icon = (s) => s === 'success' ? '✅' : '❌';
+
             const body = [
-              `На закреплённой версии (см. \`rust-toolchain.toml\`) всё зелено, а на \`${process.env.STABLE_VERSION}\` — нет.`,
+              `На закреплённой версии (см. \`rust-toolchain.toml\`) всё зелено,`,
+              `а на \`${process.env.STABLE_VERSION}\` — нет.`,
               '',
-              `- fmt: **${{ steps.fmt.outcome }}**`,
-              `- clippy: **${{ steps.clippy.outcome }}**`,
-              `- test: **${{ steps.test.outcome }}**`,
+              '| Шаг | Результат |',
+              '|-----|-----------|',
+              `| fmt    | ${icon('${{ steps.fmt.outcome }}')}  \`${{ steps.fmt.outcome }}\` |`,
+              `| clippy | ${icon('${{ steps.clippy.outcome }}')} \`${{ steps.clippy.outcome }}\` |`,
+              `| test   | ${icon('${{ steps.test.outcome }}')} \`${{ steps.test.outcome }}\` |`,
               '',
-              `Подробности: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `🔗 [Подробности запуска](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
               '',
-              'Что делать: починить замечания, затем поднять `channel` в `rust-toolchain.toml` тем же изменением.',
+              '### Что делать',
+              '1. Починить замечания.',
+              '2. Поднять `channel` в `rust-toolchain.toml` тем же PR.',
             ].join('\n');
 
             // Задача на эту же версию заводится один раз: повторные запуски
             // дописывают комментарий, а не плодят дубликаты.
-            const existing = await github.rest.issues.listForRepo({
-              owner: context.repo.owner, repo: context.repo.repo, state: 'open',
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
             });
-            const same = existing.data.find(i => i.title === title);
+            const same = existing.find(i => i.title === title);
+
             if (same) {
               await github.rest.issues.createComment({
-                owner: context.repo.owner, repo: context.repo.repo,
-                issue_number: same.number, body,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: same.number,
+                body,
               });
             } else {
               await github.rest.issues.create({
-                owner: context.repo.owner, repo: context.repo.repo, title, body,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['toolchain-drift'],
               });
             }
