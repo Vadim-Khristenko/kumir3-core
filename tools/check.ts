@@ -121,8 +121,18 @@ async function runPrograms(): Promise<boolean> {
   const programs = await findPrograms();
   const failed: { path: string; output: string }[] = [];
   let waiting = 0;
+  let needNetwork = 0;
 
   for (const path of programs) {
+    // Программа, помеченная как сетевая, требует интернета: её исход зависит
+    // от того, отвечает ли чужой сервер, а проверка должна давать один и тот
+    // же результат в любых условиях.
+    const source = await Bun.file(path).text();
+    if (/^\s*\|\s*СЕТЬ:\s*да\s*$/m.test(source)) {
+      needNetwork += 1;
+      continue;
+    }
+
     const proc = Bun.spawn([binary, path], {
       cwd: ROOT,
       stdin: "ignore",
@@ -146,7 +156,11 @@ async function runPrograms(): Promise<boolean> {
   }
 
   const ok = failed.length === 0;
-  const note = waiting > 0 ? c.dim(`, ${waiting} ждут ввода`) : "";
+  const skipped = [
+    waiting > 0 ? `${waiting} ждут ввода` : "",
+    needNetwork > 0 ? `${needNetwork} требуют сети` : "",
+  ].filter(Boolean);
+  const note = skipped.length > 0 ? c.dim(`, ${skipped.join(", ")}`) : "";
   console.log(
     `${ok ? c.green("✓") : c.red("✗")} Программы КуМира ${c.dim(`${programs.length} шт.${note}`)}`,
   );
