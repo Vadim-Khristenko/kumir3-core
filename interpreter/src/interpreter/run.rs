@@ -20,6 +20,54 @@ impl Interpreter {
         self.run_program(&program)
     }
 
+    /// Выполняет фрагмент так, как этого ждут в интерактивном режиме.
+    ///
+    /// Отличие от [`Self::run`] одно, но важное: набранные подряд команды
+    /// работают с общим состоянием. Обычный запуск оборачивает свободные
+    /// инструкции в главный алгоритм, а его кадр после выполнения снимается —
+    /// вместе со всеми объявленными переменными. В консоли это означало, что
+    /// `цел счётчик := 5`, набранное строкой выше, следующей строке уже не
+    /// видно.
+    ///
+    /// Поэтому свободные инструкции выполняются прямо в глобальной области, а
+    /// объявления алгоритмов и классов — как обычно, они и так глобальны.
+    /// Программа с собственной точкой входа (`алг главный`) запускается
+    /// целиком: раз человек её написал, он ждёт именно запуска.
+    pub fn run_interactive(&mut self, source: &str) -> RuntimeResult<Value> {
+        let program = parse(source).map_err(|e| {
+            RuntimeError::new(format!("Ошибка разбора: {}", e), RuntimeErrorKind::Other)
+        })?;
+
+        self.load_program(&program)?;
+        self.validate_classes()?;
+
+        for stmt in &program.globals {
+            Executor::execute(stmt, &mut self.env)?;
+        }
+
+        // Свободные инструкции разбор собирает в анонимный алгоритм.
+        // Выполняем их телом, без кадра, — тогда объявленное остаётся.
+        if program.auto_wrapped
+            && let Some(main) = &program.main
+        {
+            let body = main.body.clone().unwrap_or_default();
+            for stmt in &body {
+                if let ControlFlow::Return(value) = Executor::execute(stmt, &mut self.env)? {
+                    return Ok(value.unwrap_or(Value::Null));
+                }
+            }
+            return Ok(Value::Null);
+        }
+
+        // Программа написана как программа — запускаем её целиком.
+        if program.main.is_some() || !program.algorithms.is_empty() {
+            return self.run_program(&program);
+        }
+
+        // Объявлены только классы или импорты — выполнять нечего.
+        Ok(Value::Null)
+    }
+
     /// Выполняет распаршенную программу.
     pub fn run_program(&mut self, program: &Program) -> RuntimeResult<Value> {
         // Загружаем определения в среду

@@ -106,6 +106,7 @@ impl Parser {
                 interfaces: Vec::new(),
                 main,
                 warnings,
+                auto_wrapped: true,
             });
         }
 
@@ -184,6 +185,7 @@ impl Parser {
             interfaces: Vec::new(),
             main,
             warnings,
+            auto_wrapped: false,
         })
     }
 

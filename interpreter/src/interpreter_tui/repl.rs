@@ -68,6 +68,8 @@ pub(crate) struct ReplApp {
     pending: String,
     /// Сколько конструкций ещё не закрыто.
     depth: usize,
+    /// Сколько заголовков `алг` ждут своего `нач`.
+    awaiting_body: usize,
     /// Варианты дополнения текущего слова; пусто — перебор не идёт.
     completions: Vec<String>,
     completion_idx: usize,
@@ -92,6 +94,7 @@ impl ReplApp {
             should_quit: false,
             pending: String::new(),
             depth: 0,
+            awaiting_body: 0,
             completions: Vec::new(),
             completion_idx: 0,
         };
@@ -134,9 +137,7 @@ impl ReplApp {
         }
 
         // Незакрытая конструкция копится до своего `кон`/`кц`/`все`.
-        let opens = opens_in(&line);
-        let closes = closes_in(&line);
-        self.depth = (self.depth + opens).saturating_sub(closes);
+        self.track_depth(&line);
         self.pending.push_str(&line);
         self.pending.push('\n');
 
@@ -148,9 +149,38 @@ impl ReplApp {
         self.run_code(&code);
     }
 
+    /// Пересчитывает число незакрытых конструкций после очередной строки.
+    ///
+    /// `алг` и `нач` считаются вместе, а не по отдельности: заголовок
+    /// алгоритма и его тело закрываются одним `кон`, поэтому `нач`, идущий за
+    /// `алг`, глубину не увеличивает. Без этого `алг цел удвоить(цел x)`
+    /// уходил на выполнение сразу — до того, как человек напишет `нач`, — и
+    /// разбор жаловался на неожиданный конец файла.
+    fn track_depth(&mut self, line: &str) {
+        let algs = count_words(line, &["алг"]);
+        let begins = count_words(line, &["нач"]);
+        let opens = count_words(line, &["нц", "если", "выбор", "попытка"]);
+        let closes = closes_in(line);
+
+        self.depth += algs + opens;
+
+        // `нач`, закрывающий ожидание заголовка, своей глубины не добавляет.
+        let covered = begins.min(self.awaiting_body + algs);
+        self.awaiting_body = self.awaiting_body + algs - covered;
+        self.depth += begins - covered;
+
+        self.depth = self.depth.saturating_sub(closes);
+        if self.depth == 0 {
+            self.awaiting_body = 0;
+        }
+    }
+
     fn run_code(&mut self, code: &str) {
         self.interpreter.clear_output();
-        let outcome = self.interpreter.run(code);
+        // Интерактивный запуск: набранное строкой выше должно быть видно
+        // строкой ниже, поэтому свободные инструкции выполняются в общей
+        // области, а не в снимаемом кадре.
+        let outcome = self.interpreter.run_interactive(code);
 
         // Вывод показывается в обоих случаях: при ошибке он говорит, докуда
         // дошло выполнение, и без него причину искать труднее.
@@ -204,6 +234,7 @@ impl ReplApp {
                 self.interpreter.set_debug_mode(self.debug_mode);
                 self.pending.clear();
                 self.depth = 0;
+                self.awaiting_body = 0;
                 say("Состояние сброшено", OutputLine::Success);
             }
             ".загрузить" | ".load" => self.load_file(arg),
@@ -327,6 +358,7 @@ impl ReplApp {
             (KeyCode::Char('c'), true) => {
                 if self.depth > 0 {
                     self.depth = 0;
+                    self.awaiting_body = 0;
                     self.pending.clear();
                     self.output
                         .push(OutputLine::Warning("  Ввод отменён".to_string()));
@@ -738,6 +770,79 @@ mod tests {
         app.submit();
         assert_eq!(app.depth, 0);
         assert!(app.pending.is_empty(), "накопленное ушло на выполнение");
+    }
+
+    /// Переменные должны переживать нажатие Enter.
+    ///
+    /// Обычный запуск оборачивает свободные инструкции в алгоритм и снимает
+    /// его кадр, поэтому набранное строкой выше следующей строке было не
+    /// видно, а панель состояния оставалась пустой.
+    #[test]
+    fn peremennye_zhivut_mezhdu_strokami() {
+        let mut app = ReplApp::new(false);
+        app.input.set("цел счётчик := 5");
+        app.submit();
+
+        let state = app.interpreter.environment().globals_snapshot();
+        assert!(
+            state.iter().any(|(name, _, _)| name == "счётчик"),
+            "переменная должна попасть в состояние, а получили {state:?}"
+        );
+
+        app.input.set("вывод счётчик * 2");
+        app.submit();
+        assert!(
+            app.output
+                .iter()
+                .any(|l| matches!(l, OutputLine::Normal(s) if s.trim() == "10")),
+            "следующая строка должна видеть переменную"
+        );
+    }
+
+    /// Заголовок алгоритма ждёт своего `нач`, а не уходит на выполнение сразу.
+    #[test]
+    fn zagolovok_algoritma_zhdet_tela() {
+        let mut app = ReplApp::new(false);
+        app.input.set("алг цел удвоить(цел x)");
+        app.submit();
+        assert_eq!(app.depth, 1, "после заголовка ждём `нач`");
+        assert!(
+            !app.output.iter().any(|l| matches!(l, OutputLine::Error(_))),
+            "заголовок сам по себе ошибкой не является"
+        );
+
+        for line in ["нач", "  знач := x * 2", "кон"] {
+            app.input.set(line);
+            app.submit();
+        }
+        assert_eq!(app.depth, 0);
+
+        let algorithms = app.interpreter.environment().algorithm_names();
+        assert!(
+            algorithms.iter().any(|n| n == "удвоить"),
+            "алгоритм должен определиться, а получили {algorithms:?}"
+        );
+
+        app.input.set("вывод удвоить(21)");
+        app.submit();
+        assert!(
+            app.output
+                .iter()
+                .any(|l| matches!(l, OutputLine::Normal(s) if s.trim() == "42")),
+            "определённый алгоритм должен вызываться"
+        );
+    }
+
+    /// `нач` без заголовка открывает конструкцию сам.
+    #[test]
+    fn goloe_nach_otkryvaet_konstrukciyu() {
+        let mut app = ReplApp::new(false);
+        app.input.set("нач");
+        app.submit();
+        assert_eq!(app.depth, 1);
+        app.input.set("кон");
+        app.submit();
+        assert_eq!(app.depth, 0);
     }
 
     #[test]
