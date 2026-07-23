@@ -1,3 +1,5 @@
+//! Math functions and random number generation.
+
 use std::f64::consts::{E, FRAC_PI_2, PI};
 
 use shared::math::MathOperators;
@@ -15,7 +17,7 @@ impl Builtins {
     ) -> RuntimeResult<Option<Value>> {
         let vals = Self::eval_args(args, env)?;
         match name {
-            // ===== МАТЕМАТИЧЕСКИЕ ФУНКЦИИ =====
+            // Math functions
             "abs" | "модуль" => {
                 Self::check_args(name, &vals, 1)?;
                 Ok(Some(Self::abs(&vals[0])?))
@@ -67,7 +69,7 @@ impl Builtins {
 
             "arcctg" | "arccot" => {
                 Self::check_args(name, &vals, 1)?;
-                // arcctg(x) = π/2 − arctg(x), непрерывная ветвь на (0, π).
+                // arcctg(x) = π/2 − arctg(x), continuous branch on (0, π).
                 let x = Self::to_f64(&vals[0])?;
                 Ok(Some(Value::Number(Number::F64(FRAC_PI_2 - x.atan()))))
             }
@@ -155,10 +157,9 @@ impl Builtins {
                 Ok(Some(Value::Number(Number::F64(x.fract()))))
             }
 
-            // Целочисленное деление и остаток как ВЫЗЫВАЕМЫЕ функции.
-            // Слова-операторы `див` / `мод` — это ключевые слова языка; английские
-            // `mod` / `модуль` заняты ключевым словом «модуль» (Token::Module),
-            // поэтому русский псевдоним остатка — `остаток`, а не `mod`.
+            // Integer division and remainder as callable functions.
+            // Keywords `див`/`мод` are reserved; English `mod`/`модуль` collide with
+            // module keyword, so remainder alias is `остаток`.
             "div" | "цел_деление" => {
                 Self::check_args(name, &vals, 2)?;
                 MathOperators::int_div(vals[0].clone(), vals[1].clone(), false)
@@ -234,21 +235,21 @@ impl Builtins {
 
             "е" | "e" => Ok(Some(Value::Number(Number::F64(E)))),
 
-            // ===== СЛУЧАЙНЫЕ ЧИСЛА =====
+            // Random numbers
             "случайное" | "случ" | "random" | "rand" => {
                 if vals.is_empty() {
-                    // случайное число от 0.0 до 1.0
+                    // Random float in [0, 1)
                     let r = Self::simple_random();
                     Ok(Some(Value::Number(Number::F64(r))))
                 } else if vals.len() == 1 {
-                    // случайное целое от 0 до n-1
+                    // Random integer in [0, n)
                     let n = vals[0]
                         .as_int()
                         .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))?;
                     let r = (Self::simple_random() * n as f64) as i64;
                     Ok(Some(Value::Number(Number::I64(r))))
                 } else if vals.len() == 2 {
-                    // случайное целое от a до b
+                    // Random integer in [a, b]
                     let a = vals[0]
                         .as_int()
                         .ok_or_else(|| RuntimeError::type_mismatch("целое число", "не целое"))?;
@@ -262,7 +263,6 @@ impl Builtins {
                 }
             }
 
-            // Функция не найдена
             _ => Ok(None),
         }
     }

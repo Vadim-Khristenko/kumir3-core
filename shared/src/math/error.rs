@@ -1,10 +1,10 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Ошибки математических операций.
+//! Mathematical operation error types.
 
 // =============================================================================
-//         TYPES
+//         SECTION: TYPES
 // =============================================================================
 
 /// [STABLE] Enumeration of mathematical operation errors.
@@ -12,10 +12,9 @@
 /// Provides detailed error messages for various math operation failures,
 /// including division by zero, domain errors, and type mismatches.
 ///
-/// Ошибка ядра НЕСЁТ СВОЙ ВИД: она передаётся вызывающему как значение
-/// (а не как строка), чтобы интерпретатор мог сопоставить каждую разновидность
-/// со своим `RuntimeErrorKind` (KITE-0014 § 3.2) — `DivisionByZero`,
-/// `Overflow`, `TypeMismatch` и т. д.
+/// The error kind is transmitted as a value (not as a string prefix) so the
+/// interpreter can match each variant to its corresponding `RuntimeErrorKind`
+/// (KITE-0014 § 3.2): `DivisionByZero`, `Overflow`, `TypeMismatch`, etc.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MathErr {
     DivisionByZero,
@@ -30,11 +29,10 @@ pub enum MathErr {
 }
 
 impl MathErr {
-    /// [STABLE] Returns a human-readable error message for the error variant.
+    /// [STABLE] Returns a localized human-readable error message.
     ///
-    /// Текст — обычная русская фраза без служебных маркеров: вид ошибки
-    /// передаётся отдельно (самим значением [`MathErr`]), а не префиксом
-    /// в сообщении.
+    /// The message is a plain phrase without error-type markers, because the
+    /// error kind itself (the [`MathErr`] value) conveys the type separately.
     ///
     /// # Returns
     /// * `String` - Localized error message describing the mathematical error.

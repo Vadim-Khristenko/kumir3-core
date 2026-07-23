@@ -1,12 +1,12 @@
-//! Библиотека системных вызовов для КуМир 3
+//! Syscall library for Kumir 3.
 //!
-//! Предоставляет функции для взаимодействия с операционной системой:
-//! - Выполнение команд и процессов
-//! - Работа с переменными окружения
-//! - Операции с путями и директориями
-//! - Получение системной информации
+//! Provides functions for operating system interaction:
+//! - Command and process execution
+//! - Environment variable operations
+//! - Path and directory operations
+//! - System information retrieval
 //!
-//! Без внешних зависимостей, только std.
+//! No external dependencies, uses only std.
 
 mod constants;
 mod env;
@@ -24,7 +24,7 @@ pub use path::*;
 pub use process::*;
 pub use sysinfo::*;
 
-/// Создаёт библиотеку syscall
+/// Creates the syscall library.
 pub fn create_syscall_library() -> LibraryDef {
     let mut lib = LibraryDef::new("syscall", "Системные вызовы");
     lib.aliases = vec![

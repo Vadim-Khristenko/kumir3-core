@@ -1,4 +1,4 @@
-//! Константы для библиотеки системных вызовов
+//! Constants for the syscall library.
 
 use std::sync::Arc;
 

@@ -1,4 +1,4 @@
-//! Сопоставление с образцом.
+//! Pattern matching execution.
 
 use super::super::environment::Environment;
 use super::super::error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
@@ -7,9 +7,9 @@ use super::Executor;
 use shared::types::{Expr, MatchArm, Number, Pattern, Value};
 
 impl Executor {
-    // =========================================================================
-    //                    СОПОСТАВЛЕНИЕ С ОБРАЗЦОМ
-    // =========================================================================
+    // =============================================================================
+    //                        PATTERN MATCHING
+    // =============================================================================
 
     pub(crate) fn execute_match(
         expr: &Expr,
@@ -20,9 +20,9 @@ impl Executor {
 
         for arm in arms {
             if let Some(bindings) = Self::match_pattern(&arm.pattern, &value, env)? {
-                // Проверяем guard если есть
+                // Check guard if present.
                 if let Some(guard) = &arm.guard {
-                    // [KITE 4] Блочная область: guard видит локали алгоритма + привязки.
+                    // [KITE 4] Block scope: guard sees algorithm locals + bindings.
                     env.push_scope();
                     for (name, val) in &bindings {
                         env.define_local(name.clone(), val.clone());
@@ -36,7 +36,7 @@ impl Executor {
                     }
                 }
 
-                // [KITE 4] Блочная область для тела плеча.
+                // [KITE 4] Block scope for arm body.
                 env.push_scope();
                 for (name, val) in bindings {
                     env.define_local(name, val);
@@ -90,7 +90,7 @@ impl Executor {
                     if let Some(data_val) = data
                         && !bindings.is_empty()
                     {
-                        // Extract variable name from pattern
+                        // Extract variable name from the binding pattern.
                         if let Pattern::Variable(var_name) = &bindings[0] {
                             result.push((var_name.clone(), *data_val.clone()));
                         }

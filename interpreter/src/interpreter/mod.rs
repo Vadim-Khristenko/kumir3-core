@@ -1,39 +1,7 @@
-//! Интерпретатор языка Кумир 3
+//! Full-featured Kumir 3 language interpreter.
 //!
-//! Полноценный интерпретатор с поддержкой:
-//! - Всех базовых типов (цел, вещ, лит, лог, сим)
-//! - Массивов, словарей, множеств
-//! - Условных операторов и циклов
-//! - Алгоритмов с параметрами
-//! - ООП (классы, объекты, методы)
-//! - Перечислений и pattern matching
-//! - Обработки исключений
-//! - Встроенных математических и строковых функций
-//!
-//! # Пример использования
-//!
-//! ```rust
-//! use kumir3_core::interpreter::Interpreter;
-//!
-//! let source = r#"
-//! алг Факториал(арг цел n) цел
-//! нач
-//!     если n <= 1 то
-//!         знач := 1
-//!     иначе
-//!         знач := n * Факториал(n - 1)
-//!     все
-//! кон
-//!
-//! алг Главный
-//! нач
-//!     вывод Факториал(5)
-//! кон
-//! "#;
-//!
-//! let mut interpreter = Interpreter::new();
-//! let result = interpreter.run(source);
-//! ```
+//! Supports all core features: basic types, arrays, control flow, algorithms,
+//! object-oriented programming, exception handling, and built-in functions.
 
 mod builtins;
 mod config;
@@ -62,45 +30,33 @@ pub use run::{eval, run, run_and_get_output};
 pub use shared::runtime::KumirRuntime;
 
 // =============================================================================
-//                           ИНТЕРПРЕТАТОР
+//                          INTERPRETER
 // =============================================================================
 
-/// Интерпретатор языка Кумир 3.
+/// Kumir 3 language interpreter.
 ///
-/// Выполняет программы на языке Кумир, поддерживая полный синтаксис версии 3.
-///
-/// ## Интеграция с инфраструктурой
-///
-/// Интерпретатор использует:
-/// - `shared/runtime` - для async операций и событий
-/// - `shared/libraries` - для загрузки стандартных библиотек
-/// - `shared/constants` - для сообщений об ошибках
-/// - `file_importer` - для импорта .kum файлов (как в Python)
-///
-/// ## Организация реализации
-///
-/// Методы `Interpreter` разнесены по подмодулям одного и того же модуля:
-/// - `construct` - конструкторы и `Default`;
-/// - `config` - настройки (пути импорта, отладка, строгий режим);
-/// - `state` - среда, переменные, вывод, предупреждения, библиотеки;
-/// - `run` - запуск программ, вызов алгоритмов, вычисление выражений
-///   и свободные функции `run`/`eval`/`run_and_get_output`;
-/// - `import`, `oop` - импорты и проверки ООП.
+/// Executes Kumir programs with full language support. Methods are organized
+/// across submodules within this module for logical grouping:
+/// - `construct`: constructors and `Default`
+/// - `config`: configuration (import paths, debug, strict mode)
+/// - `state`: environment, variables, output, warnings, libraries
+/// - `run`: program execution, algorithm calls, expression evaluation
+/// - `import`, `oop`: imports and OOP validation
 pub struct Interpreter {
-    /// Среда выполнения
+    /// Execution environment.
     env: Environment,
-    /// Менеджер библиотек (shared для доступа из Environment)
+    /// Library manager (shared for access from Environment).
     libraries: std::sync::Arc<std::sync::RwLock<LibraryManager>>,
-    /// Импортер файлов .kum (shared для доступа из Environment)
+    /// File importer for .kum modules (shared for access from Environment).
     file_importer: std::sync::Arc<std::sync::RwLock<FileImporter>>,
-    /// Runtime для async операций
+    /// Runtime for async operations.
     runtime: Option<KumirRuntime>,
-    /// Режим отладки
+    /// Debug mode flag.
     debug_mode: bool,
 }
 
 // =============================================================================
-//                           ТЕСТЫ
+//                            TESTS
 // =============================================================================
 
 #[cfg(test)]

@@ -1,3 +1,5 @@
+//! Math module unit tests.
+
 use crate::f128::F128;
 use crate::math::MathErr;
 use crate::math::MathOperators;

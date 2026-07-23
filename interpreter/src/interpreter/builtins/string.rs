@@ -1,3 +1,5 @@
+//! String manipulation and bytes operations.
+
 use shared::strings::StringOperations;
 use shared::types::{Expr, Number, Value};
 
@@ -13,7 +15,7 @@ impl Builtins {
     ) -> RuntimeResult<Option<Value>> {
         let vals = Self::eval_args(args, env)?;
         match name {
-            // ===== СТРОКОВЫЕ ФУНКЦИИ =====
+            // String operations
             "длина" | "длин" | "len" | "length" | "размер" | "size" => {
                 Self::check_args(name, &vals, 1)?;
                 match &vals[0] {
@@ -32,7 +34,7 @@ impl Builtins {
                 }
             }
 
-            // ===== БАЙТЫ (KITE 2) =====
+            // Bytes operations [KITE 2]
             "байты" | "bytes" => {
                 Self::check_args(name, &vals, 1)?;
                 match &vals[0] {
@@ -121,7 +123,7 @@ impl Builtins {
                     chars.len() - start + 1
                 };
 
-                // Индексы в Кумире начинаются с 1
+                // Kumir indices are 1-based.
                 let start_idx = start.saturating_sub(1);
                 let end_idx = (start_idx + len).min(chars.len());
 
@@ -143,7 +145,7 @@ impl Builtins {
                 let pos = haystack
                     .find(&needle)
                     .map(|p| {
-                        // Возвращаем позицию в символах (не байтах), начиная с 1
+                        // Return position in characters (not bytes), 1-indexed.
                         haystack[..p].chars().count() as i64 + 1
                     })
                     .unwrap_or(0);
@@ -251,7 +253,6 @@ impl Builtins {
                 Ok(Some(Value::String(parts.join(&delim))))
             }
 
-            // Функция не найдена
             _ => Ok(None),
         }
     }

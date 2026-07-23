@@ -1,12 +1,10 @@
-//! Унарные операции над значениями (хвост `eval_unary_op`).
-
 use shared::types::{Number, Token, Value};
 
 use super::TypeOps;
 use crate::interpreter::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
 impl TypeOps {
-    /// Применяет унарный оператор к уже вычисленному операнду.
+    /// Applies unary operator to already-evaluated operand.
     pub fn unary(op: &Token, value: Value) -> RuntimeResult<Value> {
         match op {
             Token::Minus => match value {
@@ -34,7 +32,7 @@ impl TypeOps {
             Number::F32(v) => Number::F32(-v),
             Number::F64(v) => Number::F64(-v),
             Number::F128(v) => Number::F128(-v),
-            // Беззнаковые нельзя отрицать
+            // Unsigned numbers cannot be negated.
             _ => {
                 return Err(RuntimeError::new(
                     "Нельзя применить унарный минус к беззнаковому числу",

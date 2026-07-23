@@ -1,6 +1,6 @@
-//! Среда выполнения (Environment) для интерпретатора Кумир 3
+//! Runtime environment for the Kumir 3 interpreter.
 //!
-//! Среда хранит переменные, алгоритмы, классы и управляет областями видимости.
+//! The environment stores variables, algorithms, classes, and manages scoping.
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -22,73 +22,72 @@ use frame::CallFrame;
 use scope::Scope;
 
 // =============================================================================
-//                           ENVIRONMENT (Среда выполнения)
+//                            ENVIRONMENT
 // =============================================================================
 
-/// Среда выполнения программы.
+/// Runtime environment for program execution.
 pub struct Environment {
-    /// Глобальные переменные
+    /// Global variables
     globals: Scope,
 
-    /// Стек кадров вызова
+    /// Call stack (algorithm invocation frames)
     call_stack: Vec<CallFrame>,
 
-    /// Определённые алгоритмы
+    /// Defined algorithms
     algorithms: HashMap<String, Algorithm>,
 
-    /// Перегруженные алгоритмы
+    /// Overloaded algorithms
     overloaded_algorithms: HashMap<String, OverloadedAlgorithm>,
 
-    /// Определённые классы
+    /// Defined classes
     classes: HashMap<String, ClassDef>,
 
-    /// Определённые интерфейсы
+    /// Defined interfaces
     interfaces: HashMap<String, InterfaceDef>,
 
-    /// Определённые типажи (trait)
+    /// Defined traits
     traits: HashMap<String, TraitDef>,
 
-    /// Реализации типажей (target_type -> trait_name -> ImplDef)
+    /// Trait implementations (target_type → trait_name → ImplDef)
     impls: HashMap<String, HashMap<String, ImplDef>>,
 
-    /// Определённые перечисления (enum_name -> variants)
+    /// Defined enumerations (enum_name → variants)
     enums: HashMap<String, Vec<String>>,
 
-    /// Нативные функции библиотек (имя -> обработчик)
+    /// Native library functions (name → handler)
     native_functions: HashMap<String, NativeFn>,
 
-    /// Реестр типов
+    /// Type registry
     type_registry: Arc<RwLock<TypeRegistry>>,
 
-    /// Буфер вывода (для тестирования)
+    /// Output buffer (for testing)
     output_buffer: Vec<String>,
 
-    /// Режим отладки
+    /// Debug mode
     debug_mode: bool,
 
-    /// [W0] Строгий режим: присваивание необъявленной переменной — ошибка,
-    /// а не молчаливое создание (по умолчанию выключен).
+    /// [W0] Strict mode: assignment to undeclared variables is an error (disabled by default).
     strict: bool,
 
-    /// [W0] Собранные предупреждения (например, о необъявленных переменных).
-    /// Не попадают в буфер вывода (`вывод`/stdout программы).
+    /// [W0] Collected warnings (e.g., undeclared variables).
+    /// Not included in program output buffer.
     warnings: Vec<String>,
 
-    /// Максимальная глубина вызова (защита от бесконечной рекурсии)
+    /// Call depth limit (stack overflow protection)
     max_call_depth: usize,
 
-    /// Менеджер библиотек (shared reference)
+    /// Library manager (shared reference)
     library_manager: Option<Arc<RwLock<LibraryManager>>>,
 
-    /// Импортер файлов .kum
+    /// .kum file importer
     file_importer: Option<Arc<RwLock<FileImporter>>>,
 
-    /// Runtime для async операций
+    /// Async runtime
     kumir_runtime: Arc<KumirRuntime>,
 }
 
 impl Environment {
-    /// Создаёт новую среду выполнения.
+    /// Creates a new runtime environment.
     pub fn new() -> Self {
         Self {
             globals: Scope::new(),
@@ -113,27 +112,27 @@ impl Environment {
         }
     }
 
-    /// Создаёт среду из программы (загружает алгоритмы, классы и т.д.)
+    /// Initializes an environment from a program (loads algorithms, classes, etc).
     pub fn from_program(program: &Program) -> RuntimeResult<Self> {
         let mut env = Self::new();
 
-        // Загружаем алгоритмы
+        // Load algorithms
         for alg in &program.algorithms {
             env.define_algorithm(alg.clone());
         }
 
-        // Загружаем перегруженные алгоритмы
+        // Load overloaded algorithms
         for overloaded in &program.overloaded_algorithms {
             env.overloaded_algorithms
                 .insert(overloaded.name.to_string(), overloaded.clone());
         }
 
-        // Загружаем классы
+        // Load classes
         for class in &program.classes {
             env.define_class(class.clone());
         }
 
-        // Загружаем главный алгоритм
+        // Load main algorithm
         if let Some(main) = &program.main {
             env.define_algorithm(main.clone());
         }
@@ -141,11 +140,11 @@ impl Environment {
         Ok(env)
     }
 
-    // =========================================================================
-    //                    УПРАВЛЕНИЕ ПЕРЕМЕННЫМИ
-    // =========================================================================
+    // =============================================================================
+    //                        VARIABLE MANAGEMENT
+    // =============================================================================
 
-    /// Определяет глобальную переменную.
+    /// Defines a global variable.
     pub fn define_global(&mut self, name: String, value: Value) {
         self.globals.define(name, value);
     }

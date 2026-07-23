@@ -1,14 +1,10 @@
-// ============================================================================
-//                    СИСТЕМА КОЛЛБЭКОВ
-// ============================================================================
-//
-// Предоставляет механизм регистрации и вызова коллбэков между компонентами:
-// - Синхронные коллбэки (Fn)
-// - Асинхронные коллбэки (async Fn)
-// - Типизированные коллбэки с Value
-// - Коллбэки с произвольными данными
-//
-// ============================================================================
+//! Callback system for inter-component communication.
+//!
+//! Provides mechanism for registering and invoking callbacks between components:
+//! - Synchronous callbacks (Fn)
+//! - Asynchronous callbacks (async Fn)
+//! - Typed callbacks with Value
+//! - Callbacks with arbitrary data (Any)
 
 use std::any::Any;
 use std::collections::HashMap;
@@ -19,28 +15,25 @@ use tokio::sync::Mutex as AsyncMutex;
 
 use crate::types::Value;
 
-// ============================================================================
-//                    ТИПЫ КОЛЛБЭКОВ
-// ============================================================================
+// =============================================================================
+//         SECTION: CALLBACK TYPES
+// =============================================================================
 
-/// Синхронный коллбэк, принимающий и возвращающий Value.
+/// Synchronous callback: takes `Vec<Value>`, returns `CallbackResult`.
 pub type SyncCallback = Arc<dyn Fn(Vec<Value>) -> CallbackResult + Send + Sync>;
 
-/// Асинхронный коллбэк.
+/// Asynchronous callback: takes `Vec<Value>`, returns future of `CallbackResult`.
 pub type AsyncCallback =
     Arc<dyn Fn(Vec<Value>) -> Pin<Box<dyn Future<Output = CallbackResult> + Send>> + Send + Sync>;
 
-/// Сырой коллбэк с Any типами (для продвинутого использования).
+/// Type-erased callback: works with `Any` (advanced usage).
 pub type RawCallback = Arc<dyn Fn(Box<dyn Any + Send>) -> Box<dyn Any + Send> + Send + Sync>;
 
-/// Результат вызова коллбэка.
+/// Result of a callback invocation.
 #[derive(Debug, Clone)]
 pub enum CallbackResult {
-    /// Успешное выполнение с возвращаемым значением
     Ok(Value),
-    /// Ошибка выполнения
     Error(String),
-    /// Коллбэк ничего не возвращает
     Void,
 }
 

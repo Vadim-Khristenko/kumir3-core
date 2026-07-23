@@ -1,12 +1,12 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Бэкенды компиляции для Kumir 3
+//! Kumir 3 compilation backends.
 //!
-//! Каждый бэкенд преобразует IR в конечный формат:
-//! - InterpreterBackend: выполняет IR напрямую (для отладки)
-//! - RustBackend: генерирует Rust код и компилирует через rustc
-//! - WasmBackend: генерирует WebAssembly (TODO)
+//! Each backend transforms IR to a final format:
+//! - InterpreterBackend: executes IR directly (for debugging)
+//! - RustBackend: generates Rust code and compiles via rustc
+//! - WasmBackend: generates WebAssembly (TODO)
 
 use shared::codegen::ir::IrModule;
 use std::path::Path;

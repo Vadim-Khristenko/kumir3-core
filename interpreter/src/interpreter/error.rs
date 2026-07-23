@@ -1,68 +1,66 @@
-//! Ошибки интерпретатора Кумир 3
-//!
-//! Модуль содержит типы ошибок, возникающих во время выполнения программы.
+//! Runtime errors and error types for the Kumir 3 interpreter.
 
 use shared::codegen::RustCodeBlockError;
 use shared::math::MathErr;
 use shared::types::Value;
 use std::fmt;
 
-/// Ошибка времени выполнения.
+/// A runtime error.
 #[derive(Debug, Clone)]
 pub struct RuntimeError {
-    /// Сообщение об ошибке
+    /// Error message.
     pub message: String,
-    /// Номер строки (если известен)
+    /// Line number (if known).
     pub line: Option<usize>,
-    /// Контекст (имя алгоритма, класса и т.д.)
+    /// Context (algorithm name, class, etc.).
     pub context: Option<String>,
-    /// Тип ошибки
+    /// Error kind.
     pub kind: RuntimeErrorKind,
-    /// [KITE-0002] Носитель раннего возврата оператора `?`.
+    /// [KITE-0002] Carrier for early return via the `?` operator.
     ///
-    /// Когда `expr?` применяется к «ошибочному»/«отсутствующему» значению,
-    /// вычислитель возвращает `Err` с заполненным `propagate`, неся исходное
-    /// значение. На границе объемлющего алгоритма (см. `call.rs`, `method.rs`,
-    /// `instance.rs`, `run.rs`) этот сигнал перехватывается и превращается в
-    /// ранний возврат этого значения — как если бы был выполнен `возврат`.
-    /// Это НЕ настоящая ошибка выполнения; поля `message`/`kind` служат лишь
-    /// диагностикой, если сигнал случайно достигнет вершины программы.
+    /// When `expr?` is applied to an "erroneous"/"absent" value, the evaluator
+    /// returns `Err` with `propagate` set, carrying the original value. At the
+    /// boundary of the enclosing algorithm (see `call.rs`, `method.rs`,
+    /// `instance.rs`, `run.rs`), this signal is intercepted and converted to an
+    /// early return of that value — as if `return` were executed.
+    /// This is NOT a true runtime error; `message`/`kind` fields serve only for
+    /// diagnostics if the signal accidentally reaches the program's top level.
     pub propagate: Option<Box<Value>>,
 }
 
-/// Тип ошибки времени выполнения.
+/// Kind of runtime error.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RuntimeErrorKind {
-    /// Деление на ноль
+    /// Division by zero.
     DivisionByZero,
-    /// Переполнение числа
+    /// Number overflow.
     Overflow,
-    /// Неопределённая переменная
+    /// Undefined variable.
     UndefinedVariable,
-    /// Неопределённый алгоритм
+    /// Undefined algorithm.
     UndefinedAlgorithm,
-    /// Неопределённый тип
+    /// Undefined type.
     UndefinedType,
-    /// Несоответствие типов
+    /// Type mismatch.
     TypeMismatch,
-    /// Индекс вне границ массива
+    /// Array index out of bounds.
     IndexOutOfBounds,
-    /// Неверное количество аргументов
+    /// Incorrect number of arguments.
     ArgumentCount,
-    /// Утверждение не выполнено
+    /// Assertion failed.
     AssertionFailed,
-    /// Ошибка ввода/вывода
+    /// I/O error.
     IOError,
-    /// Исключение пользователя
+    /// User exception.
     UserException,
-    /// Не реализовано
+    /// Not implemented.
     NotImplemented,
-    /// Прочая ошибка
+    /// Other error.
     Other,
 }
 
 impl RuntimeError {
-    /// Создаёт новую ошибку.
+    /// Creates a new error.
     pub fn new(message: impl Into<String>, kind: RuntimeErrorKind) -> Self {
         Self {
             message: message.into(),
@@ -73,9 +71,9 @@ impl RuntimeError {
         }
     }
 
-    /// [KITE-0002] Создаёт сигнал раннего возврата для оператора `?`.
+    /// [KITE-0002] Creates an early-return signal for the `?` operator.
     ///
-    /// Несёт значение, которое станет результатом объемлющего алгоритма.
+    /// Carries the value that will become the result of the enclosing algorithm.
     pub fn propagation(value: Value) -> Self {
         Self {
             message: "распространение ошибки оператором '?'".to_string(),
@@ -86,25 +84,27 @@ impl RuntimeError {
         }
     }
 
-    /// Является ли этот `Err` сигналом раннего возврата оператора `?`.
+    /// Checks if this `Err` is an early-return signal from the `?` operator.
     #[inline]
     pub fn is_propagation(&self) -> bool {
         self.propagate.is_some()
     }
 
-    /// Добавляет номер строки.
+    /// Adds a line number.
     pub fn with_line(mut self, line: usize) -> Self {
         self.line = Some(line);
         self
     }
 
-    /// Добавляет контекст.
+    /// Adds context.
     pub fn with_context(mut self, context: impl Into<String>) -> Self {
         self.context = Some(context.into());
         self
     }
 
-    // === Конструкторы для распространённых ошибок ===
+    // =============================================================================
+    //                         COMMON ERROR CONSTRUCTORS
+    // =============================================================================
 
     pub fn division_by_zero() -> Self {
         Self::new("Деление на ноль", RuntimeErrorKind::DivisionByZero)
@@ -194,9 +194,9 @@ impl fmt::Display for RuntimeError {
     }
 }
 
-// ============================================================================
-// Расширение RuntimeError для Rust-блоков
-// ============================================================================
+// =============================================================================
+//                  EXTENSION: RUST CODE BLOCK ERRORS
+// =============================================================================
 impl From<RustCodeBlockError> for RuntimeError {
     fn from(value: RustCodeBlockError) -> Self {
         Self::new(
@@ -207,26 +207,25 @@ impl From<RustCodeBlockError> for RuntimeError {
 }
 impl std::error::Error for RuntimeError {}
 
-// ============================================================================
-// Ошибки математического ядра (`shared::math`)
-// ============================================================================
+// =============================================================================
+//                      MATH KERNEL ERRORS (shared::math)
+// =============================================================================
 
-/// Вид ошибки времени выполнения для ошибки ядра.
+/// Maps math kernel error kinds to runtime error kinds.
 ///
-/// Ядро сообщает, ЧТО именно пошло не так ([`MathErr`]); здесь эта
-/// разновидность сопоставляется с видом ошибки выполнения из KITE-0014 § 3.2.
-/// Раньше любая ошибка арифметики схлопывалась в [`RuntimeErrorKind::Other`],
-/// из-за чего `DivisionByZero` и `Overflow` были недостижимы на практике.
+/// The kernel reports what went wrong ([`MathErr`]); this maps to the runtime
+/// error kind from KITE-0014 § 3.2. Previously, any arithmetic error collapsed
+/// into [`RuntimeErrorKind::Other`], making `DivisionByZero` and `Overflow`
+/// unreachable in practice.
 impl From<MathErr> for RuntimeErrorKind {
     fn from(err: MathErr) -> Self {
         match err {
             MathErr::DivisionByZero => RuntimeErrorKind::DivisionByZero,
             MathErr::Overflow | MathErr::FloatOverflow => RuntimeErrorKind::Overflow,
             MathErr::TypeMismatch(_) => RuntimeErrorKind::TypeMismatch,
-            // Нарушения области определения (корень из отрицательного,
-            // отрицательное основание с дробной степенью, …) — не переполнение
-            // и не рассогласование типов; отдельного вида для них в KITE-0014
-            // нет, поэтому они остаются `Other`.
+            // Domain violations (sqrt of negative, negative base with fractional exponent, ...)
+            // are neither overflow nor type mismatch; KITE-0014 has no dedicated kind for them,
+            // so they remain `Other`.
             MathErr::NegativeSqrt
             | MathErr::NegativeRoot
             | MathErr::NotRealOneSqrt
@@ -242,18 +241,18 @@ impl From<MathErr> for RuntimeError {
     }
 }
 
-/// Результат выполнения интерпретатора.
+/// Result type for interpreter operations.
 pub type RuntimeResult<T> = Result<T, RuntimeError>;
 
-/// Сигнал управления потоком (break, continue, return).
+/// Control flow signal (break, continue, return).
 #[derive(Debug, Clone)]
 pub enum ControlFlow {
-    /// Обычное продолжение
+    /// Normal continuation.
     None,
-    /// Выход из цикла (break)
+    /// Loop break.
     Break,
-    /// Переход к следующей итерации (continue)
+    /// Loop continue.
     Continue,
-    /// Возврат из алгоритма
+    /// Return from algorithm.
     Return(Option<shared::types::Value>),
 }

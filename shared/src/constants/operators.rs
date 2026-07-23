@@ -1,46 +1,45 @@
-//! Операторы языка Кумир.
+//! Kumir language operators.
 //!
-//! Источник истины по *написанию* операторов — таблица `OPERATORS` в
-//! `shared/build.rs`; здесь — сгенерированная единая `phf`-карта символ->Token
-//! и набор первых символов.
+//! Single source of truth for operator *spelling*: `OPERATORS` table in
+//! `shared/build.rs`. This module provides a generated symbol-to-Token map
+//! and the set of operator-starting characters.
 //!
-//! Источник истины по *приоритету* — [`crate::parser::precedence`]
-//! (нормативная таблица парсера выражений). Предикаты ниже опираются на неё,
-//! собственной таблицы приоритетов этот модуль не держит.
+//! Single source of truth for operator *precedence*: [`crate::parser::precedence`].
+//! Predicates here use only that table; this module does not maintain a separate
+//! precedence table to prevent drift.
 
 use crate::parser::precedence::binary_precedence;
 use crate::types::Token;
 
 include!(concat!(env!("OUT_DIR"), "/operators_gen.rs"));
 
-/// Ищет токен оператора по символу (1–3 символа). None, если не оператор.
+/// Looks up an operator token by symbol (1–3 characters), or None.
 #[inline]
 pub fn operator_token(s: &str) -> Option<Token> {
     OPERATOR_INDEX.get(s).cloned()
 }
 
-/// Проверяет, может ли символ начинать оператор.
+/// Checks if a character can start an operator.
 #[inline]
 pub fn is_operator_char(c: char) -> bool {
     OPERATOR_FIRST_CHARS.contains(&c)
 }
 
-/// Проверяет, является ли токен инфиксным бинарным оператором.
+/// Checks if a token is an infix binary operator.
 ///
-/// Выводится из единственной таблицы приоритетов
-/// [`crate::parser::precedence::binary_precedence`] — своего списка здесь
-/// намеренно нет, чтобы предикат и приоритет не могли разойтись.
-/// Точка и `::` бинарными операторами не считаются: это постфиксные
-/// конструкции (доступ к полю / путь), разбираемые отдельными правилами.
+/// Derived from [`crate::parser::precedence::binary_precedence`] — the only
+/// source of truth. We maintain no separate list to prevent divergence.
+/// Dot and `::` are not binary operators: they are postfix constructs
+/// (field access, path separator) handled by separate parser rules.
 #[inline]
 pub fn is_binary_operator(token: &Token) -> bool {
     binary_precedence(token).is_some()
 }
 
-/// Проверяет, является ли токен унарным (префиксным) оператором.
+/// Checks if a token is a unary (prefix) operator.
 ///
-/// `Plus`/`Minus` намеренно и унарные, и бинарные (`-a` и `a - b`);
-/// остальные (`не`, `&`, `^`) в таблице приоритетов отсутствуют.
+/// `Plus` and `Minus` are intentionally both unary and binary (`-a` vs `a - b`);
+/// the others (`не`, `&`, `^`) have no precedence entry.
 pub fn is_unary_operator(token: &Token) -> bool {
     matches!(
         token,
@@ -48,10 +47,10 @@ pub fn is_unary_operator(token: &Token) -> bool {
     )
 }
 
-/// Проверяет, является ли токен оператором присваивания.
+/// Checks if a token is an assignment operator.
 ///
-/// Присваивание — не выражение-оператор Кумира: ни один из этих токенов
-/// не должен иметь приоритета в [`binary_precedence`].
+/// Assignment is not an expression-operator in Kumir: none of these tokens
+/// should have a precedence in [`binary_precedence`].
 pub fn is_assignment_operator(token: &Token) -> bool {
     matches!(
         token,
@@ -67,7 +66,7 @@ pub fn is_assignment_operator(token: &Token) -> bool {
 mod operator_predicate_tests {
     use super::*;
 
-    /// Предикаты не должны противоречить единственной таблице приоритетов.
+    /// Predicates must agree with the single source of truth: the precedence table.
     #[test]
     fn test_predicates_agree_with_precedence_table() {
         // Всё, что имеет приоритет, — бинарный оператор, и наоборот.
@@ -93,16 +92,16 @@ mod operator_predicate_tests {
             Token::Pipe,
             Token::Compose,
         ] {
-            assert!(is_binary_operator(&t), "{t:?} должен быть бинарным");
+            assert!(is_binary_operator(&t), "{t:?} must be binary");
             assert!(binary_precedence(&t).is_some());
         }
 
-        // Постфиксные и унарные конструкции бинарными не считаются.
+        // Postfix and unary constructs are not binary operators.
         for t in [Token::Dot, Token::DoubleColon, Token::Not] {
-            assert!(!is_binary_operator(&t), "{t:?} не бинарный оператор");
+            assert!(!is_binary_operator(&t), "{t:?} is not binary");
         }
 
-        // Присваивание никогда не участвует в precedence-climbing.
+        // Assignment never participates in precedence-climbing.
         for t in [
             Token::Assign,
             Token::PlusAssign,
@@ -111,10 +110,10 @@ mod operator_predicate_tests {
             Token::SlashAssign,
         ] {
             assert!(is_assignment_operator(&t));
-            assert!(!is_binary_operator(&t), "{t:?} не бинарный оператор");
+            assert!(!is_binary_operator(&t), "{t:?} is not binary");
         }
 
-        // Унарные, не являющиеся бинарными.
+        // Unary operators that are not binary.
         for t in [Token::Not, Token::Ampersand, Token::Caret] {
             assert!(is_unary_operator(&t));
             assert!(!is_binary_operator(&t));

@@ -6,7 +6,7 @@ use super::super::environment::Environment;
 use super::super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
 impl ExprEvaluator {
-    /// [KITE 2/0002] Вычисляет диапазон `начало..конец` (или `..=`) в целочисленное значение.
+    /// [KITE 2/0002] Evaluates range `start..end` (or `..=`) to integer value.
     pub(crate) fn eval_range(
         start: Option<&Expr>,
         end: Option<&Expr>,

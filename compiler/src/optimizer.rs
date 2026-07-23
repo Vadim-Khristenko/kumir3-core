@@ -1,12 +1,12 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Оптимизатор IR
+//! IR optimizer.
 //!
-//! Выполняет оптимизации промежуточного представления:
-//! - Свёртка констант (constant folding)
-//! - Удаление мёртвого кода (dead code elimination)
-//! - Упрощение выражений
+//! Performs intermediate representation optimizations:
+//! - Constant folding
+//! - Dead code elimination
+//! - Expression simplification
 
 use shared::codegen::ir::{BinaryOp, IrFunction, IrInstruction, IrModule, IrValue, UnaryOp, VarId};
 use std::collections::{HashMap, HashSet};

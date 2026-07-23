@@ -6,9 +6,9 @@ use super::super::environment::Environment;
 use super::super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
 impl ExprEvaluator {
-    // =========================================================================
-    //                    ООП: ВЫЗОВ МЕТОДОВ
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: OOP METHOD CALLS
+    // =============================================================================
 
     pub(crate) fn eval_method_call(
         object: &Expr,
@@ -16,58 +16,58 @@ impl ExprEvaluator {
         args: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
-        // [KITE 11] Вызов метода предка: `предок.метод(...)` — диспетчеризация
-        // начинается с родителя класса, где определён текущий метод.
+        // [KITE 11] Super method call: `super.method(...)` — dispatch starts
+        // from the parent class where the current method is defined.
         if matches!(object, Expr::SuperRef) {
             return Self::eval_super_method_call(method, args, env);
         }
 
-        // [KITE-0002] Оператор раннего возврата `?`.
+        // [KITE-0002] Early return operator `?`.
         //
-        // Парсер десугарит `expr?` в `expr.__propagate__()`. Семантика:
-        //   * Ok(v)  / Некоторое(v) / не-null-значение  → развернуть до `v`;
-        //   * Err(e) / Ничего / null                    → распространить
-        //     (ранний возврат объемлющего алгоритма с этим значением);
-        //   * иное                                       → ясная ошибка.
+        // Parser desugars `expr?` to `expr.__propagate__()`. Semantics:
+        //   * Ok(v) / Some(v) / non-null-value → unwrap to `v`;
+        //   * Err(e) / None / null → propagate
+        //     (early return of enclosing algorithm with this value);
+        //   * other → clear error.
         if method == "__propagate__" && args.is_empty() {
             let value = Self::evaluate(object, env)?;
             return Self::eval_propagate(value);
         }
 
-        // Обращение по индексу к значению, которое не является переменной:
-        // `разобрать_iso(д)["год"]`, `[1, 2, 3][0]`. Парсер сводит такую запись
-        // к вызову `__index__`, потому что узел обращения к массиву хранит имя
-        // переменной, а не выражение. Семантика — ровно та же, что у `а[и]`.
+        // Indexing value that is not a variable:
+        // `parse_iso(d)["year"]`, `[1, 2, 3][0]`. Parser reduces such syntax
+        // to `__index__` call because the array access node stores a variable name,
+        // not an expression. Semantics are exactly the same as `a[i]`.
         if method == "__index__" {
             let value = Self::evaluate(object, env)?;
             return Self::index_value(value, args, env);
         }
 
-        // Сначала проверяем, является ли object идентификатором библиотеки или модуля
-        // Например: Сеть.http_получить("url") или МояБиблиотека.квадрат(5)
+        // First check if object is a library or module identifier.
+        // Example: Net.http_get("url") or MyLibrary.square(5)
         if let Expr::Variable(lib_name) = object {
-            // Проверяем, есть ли алгоритм с полным именем Модуль.функция
+            // Check if algorithm with full name Module.function exists.
             let full_name = format!("{}.{}", lib_name, method);
             if env.has_algorithm(&full_name) {
-                // Вычисляем аргументы
+                // Evaluate arguments.
                 let evaluated_args: Vec<Value> = args
                     .iter()
                     .map(|arg| Self::evaluate(arg, env))
                     .collect::<RuntimeResult<Vec<_>>>()?;
 
-                // Вызываем алгоритм
+                // Call algorithm.
                 return Self::call_user_algorithm(&full_name, &evaluated_args, env);
             }
 
-            // Проверяем загруженную библиотеку
+            // Check loaded library.
             if env.is_loaded_library(lib_name) {
-                // Вычисляем аргументы
+                // Evaluate arguments.
                 let evaluated_args: Vec<Value> = args
                     .iter()
                     .map(|arg| Self::evaluate(arg, env))
                     .collect::<RuntimeResult<Vec<_>>>()?;
 
-                // Вызываем функцию библиотеки
+                // Call library function.
                 return env
                     .call_library_qualified(lib_name, method, &evaluated_args)?
                     .ok_or_else(|| {
@@ -81,7 +81,7 @@ impl ExprEvaluator {
 
         let obj = Self::evaluate(object, env)?;
 
-        // Встроенные методы для стандартных типов
+        // Built-in methods for standard types.
         match &obj {
             Value::String(s) => {
                 return Self::call_string_method(s, method, args, env);
@@ -90,14 +90,14 @@ impl ExprEvaluator {
                 return Self::call_array_method(arr, method, args, env);
             }
             Value::Object { type_id, fields } => {
-                // [KITE 11] Определяем класс объекта: сначала по type_id, затем по
-                // наиболее производному совпадению набора полей.
+                // [KITE 11] Determine object's class: first by type_id, then by
+                // most specific field set match.
                 let class_name = Self::find_class_name_by_type_id(type_id, env)
                     .or_else(|| Self::find_class_by_fields(fields, env));
 
-                // [KITE 11] Ищем метод по иерархии наследования (класс → предки).
+                // [KITE 11] Look up method in inheritance hierarchy (class → parents).
                 if let Some(class_name) = class_name {
-                    // 1) Собственные и унаследованные методы класса.
+                    // 1) Own and inherited class methods.
                     if let Some((owner, method_def)) =
                         Self::find_method_in_hierarchy(&class_name, method, env)
                     {
@@ -109,7 +109,7 @@ impl ExprEvaluator {
                             env,
                         );
                     }
-                    // 2) [KITE 11, шаг 4] Методы из impl-блоков типажей (по типу и предкам).
+                    // 2) [KITE 11, step 4] Methods from trait impl blocks (by type and parents).
                     if let Some((owner_name, method_def)) =
                         Self::find_impl_method_in_hierarchy(&class_name, method, env)
                     {
@@ -126,7 +126,7 @@ impl ExprEvaluator {
         ))
     }
 
-    /// Вызывает метод класса/impl-блока (владелец передаётся по имени — KITE 11).
+    /// Calls class/impl-block method (owner passed by name—KITE 11).
     fn call_class_method(
         this: &Value,
         class_name: &str,
@@ -134,7 +134,7 @@ impl ExprEvaluator {
         args: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
-        // Проверяем количество аргументов
+        // Check argument count.
         if args.len() != method.algorithm.params.len() {
             return Err(RuntimeError::argument_count(
                 &format!("{}.{}", class_name, method.algorithm.name),
@@ -143,7 +143,7 @@ impl ExprEvaluator {
             ));
         }
 
-        // Если метод абстрактный - ошибка
+        // If method is abstract—error.
         if method.is_abstract {
             return Err(RuntimeError::new(
                 format!(
@@ -154,7 +154,7 @@ impl ExprEvaluator {
             ));
         }
 
-        // Получаем тело метода
+        // Get method body.
         let body = method.algorithm.body.as_ref().ok_or_else(|| {
             RuntimeError::new(
                 format!(
@@ -165,32 +165,32 @@ impl ExprEvaluator {
             )
         })?;
 
-        // [KITE 4] Аргументы вычисляются в кадре вызывающего, до создания кадра метода.
+        // [KITE 4] Arguments evaluated in caller frame, before method frame created.
         let mut bound: Vec<(String, Value)> = Vec::with_capacity(method.algorithm.params.len());
         for (i, param) in method.algorithm.params.iter().enumerate() {
             let value = Self::evaluate(&args[i], env)?;
             bound.push((param.name.to_string(), value));
         }
 
-        // Создаём кадр вызова метода
+        // Create method call frame.
         env.push_method_frame(
             format!("{}.{}", class_name, method.algorithm.name),
             this.clone(),
         )?;
-        // [KITE 11] Запоминаем класс-владельца метода — для разрешения `предок`.
+        // [KITE 11] Remember the method's owning class—for super resolution.
         env.set_current_defining_class(class_name);
         for (name, value) in bound {
             env.define_local(name, value);
         }
 
-        // Выполняем тело метода
+        // Execute method body.
         let result = super::super::executor::Executor::execute_stmts(body, env);
 
-        // Получаем возвращаемое значение
+        // Get return value.
         let return_value = match result {
             Ok(crate::interpreter::ControlFlow::Return(v)) => v,
             Ok(_) => Some(env.get_result_value().cloned().unwrap_or(Value::Null)),
-            // [KITE-0002] Сигнал оператора `?`: ранний возврат этого значения.
+            // [KITE-0002] `?` operator signal: early return of this value.
             Err(e) if e.is_propagation() => {
                 Some(*e.propagate.expect("propagation carries a value"))
             }
@@ -204,14 +204,14 @@ impl ExprEvaluator {
         Ok(return_value.unwrap_or(Value::Null))
     }
 
-    /// [KITE-0002] Реализует семантику оператора `?` (ранний возврат ошибки).
+    /// [KITE-0002] Implements `?` operator semantics (early error return).
     ///
-    /// * `Result::Ok(v)` / `Option::Some(v)` → развернуть до `v`.
-    /// * `Result::Err(e)` → распространить `Err(e)` (ранний возврат).
-    /// * `Option::None` / `Null` → распространить `Пусто` (ранний возврат).
-    /// * `Value::Error{..}` → распространить само значение-ошибку.
-    /// * любое другое значение — не распространяемо и не разворачиваемо →
-    ///   ясная ошибка выполнения (не паника).
+    /// * `Result::Ok(v)` / `Option::Some(v)` → unwrap to `v`.
+    /// * `Result::Err(e)` → propagate `Err(e)` (early return).
+    /// * `Option::None` / `Null` → propagate `Nothing` (early return).
+    /// * `Value::Error{..}` → propagate the error value itself.
+    /// * any other value—not propagatable, not unwrappable →
+    ///   clear runtime error (not panic).
     pub(crate) fn eval_propagate(value: Value) -> RuntimeResult<Value> {
         match value {
             Value::Result(res) => match *res {
@@ -235,17 +235,17 @@ impl ExprEvaluator {
         }
     }
 
-    /// Находит имя класса по TypeId.
+    /// Finds class name by TypeId.
     pub(crate) fn find_class_name_by_type_id(
         type_id: &shared::types::TypeId,
         env: &Environment,
     ) -> Option<String> {
-        // [KITE 11, шаг 1] Идентичность объекта через TypeRegistry.
+        // [KITE 11, step 1] Object identity via TypeRegistry.
         env.class_name_by_type_id(*type_id)
     }
 
-    /// [KITE 11] Находит класс объекта по наиболее производному совпадению полей:
-    /// предпочитается класс с наибольшим числом полей, все из которых есть у объекта.
+    /// [KITE 11] Finds object's class by most specific field set match:
+    /// prefers the class with most fields that all exist in the object.
     pub(crate) fn find_class_by_fields(
         fields: &std::collections::BTreeMap<String, Value>,
         env: &Environment,
@@ -266,8 +266,8 @@ impl ExprEvaluator {
         best.map(|(n, _)| n)
     }
 
-    /// [KITE 11] Разрешение метода по иерархии наследования: от класса вверх по предкам.
-    /// Первый найденный метод выигрывает (vtable-подобно).
+    /// [KITE 11] Method resolution in inheritance hierarchy: from class up through parents.
+    /// First found method wins (vtable-like).
     fn find_method_in_hierarchy(
         start_class: &str,
         method: &str,
@@ -287,7 +287,7 @@ impl ExprEvaluator {
         }
     }
 
-    /// Является ли `sub` тем же классом, что `sup`, или его потомком.
+    /// Is `sub` the same class as `sup`, or its descendant?
     pub(crate) fn is_subclass_of(sub: &str, sup: &str, env: &Environment) -> bool {
         let mut current = sub.to_string();
         loop {
@@ -305,8 +305,8 @@ impl ExprEvaluator {
         }
     }
 
-    /// [KITE 11, шаг 4] Ищет метод в impl-блоках типажей по типу и его предкам.
-    /// Возвращает (имя типа-владельца, метод).
+    /// [KITE 11, step 4] Look up method in trait impl blocks by type and its parents.
+    /// Returns (owner type name, method).
     fn find_impl_method_in_hierarchy(
         start_class: &str,
         method: &str,
@@ -322,9 +322,9 @@ impl ExprEvaluator {
         }
     }
 
-    /// [KITE 11] Вызов метода предка: `предок.метод(...)`.
-    /// Разрешение начинается с родителя класса, в котором определён текущий метод,
-    /// поэтому переопределения подкласса намеренно обходятся.
+    /// [KITE 11] Super method call: `super.method(...)`.
+    /// Resolution starts from the parent class where the current method is defined,
+    /// so subclass overrides are intentionally skipped.
     fn eval_super_method_call(
         method: &str,
         args: &[Expr],

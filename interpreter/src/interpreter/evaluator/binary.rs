@@ -7,9 +7,9 @@ use super::super::error::RuntimeResult;
 use super::super::ops::TypeOps;
 
 impl ExprEvaluator {
-    // =========================================================================
-    //                    БИНАРНЫЕ ОПЕРАЦИИ
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: BINARY OPERATIONS
+    // =============================================================================
 
     pub(crate) fn eval_binary_op(
         left: &Expr,
@@ -17,7 +17,7 @@ impl ExprEvaluator {
         right: &Expr,
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
-        // Ленивые вычисления для логических операций
+        // Lazy evaluation for logical operations.
         match op {
             Token::And => {
                 let left_val = Self::evaluate(left, env)?;
@@ -38,7 +38,7 @@ impl ExprEvaluator {
             _ => {}
         }
 
-        // Вычисляем оба операнда
+        // Evaluate both operands.
         let left_val = Self::evaluate(left, env)?;
         let right_val = Self::evaluate(right, env)?;
 

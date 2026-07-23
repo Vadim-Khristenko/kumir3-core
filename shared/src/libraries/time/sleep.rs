@@ -1,4 +1,4 @@
-//! Функции паузы выполнения
+//! Pause/sleep functions for blocking execution.
 
 use std::sync::Arc;
 use std::time::Duration;

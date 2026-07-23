@@ -1,7 +1,7 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Библиотека компилятора Kumir 3
+//! Kumir 3 compiler library.
 
 pub mod ast_to_ir;
 pub mod backend;

@@ -1,9 +1,9 @@
-//! Мост между интерпретатором и системой библиотек Kumir 3
+//! Bridge between the interpreter and the Kumir 3 library system.
 //!
-//! Этот модуль интегрирует:
-//! - Реестр библиотек из `shared/libraries`
-//! - Нативные обработчики функций библиотек
-//! - Динамическую загрузку и импорт библиотек
+//! Integrates:
+//! - Library registry from `shared/libraries`
+//! - Native function handlers
+//! - Dynamic loading and imports
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -16,26 +16,26 @@ use shared::types::library::{LibFunctionDef, LibraryDef, NativeFn};
 
 use super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
-// ============================================================================
-//                    МЕНЕДЖЕР БИБЛИОТЕК
-// ============================================================================
+// =============================================================================
+//                        LIBRARY MANAGER
+// =============================================================================
 
-/// Менеджер загруженных библиотек для интерпретатора.
+/// Manages loaded libraries for the interpreter.
 pub struct LibraryManager {
-    /// Загруженные библиотеки (имя -> определение)
+    /// Loaded libraries (name -> definition).
     loaded: HashMap<String, LibraryDef>,
-    /// Алиасы библиотек (алиас -> реальное имя)
+    /// Library aliases (alias -> real name).
     aliases: HashMap<String, String>,
-    /// Функции библиотек (полное имя -> нативный обработчик)
+    /// Library functions (full name -> native handler).
     functions: HashMap<String, NativeFn>,
-    /// Функции с алиасами (короткое имя -> полное имя)
+    /// Function aliases (short name -> full name).
     function_aliases: HashMap<String, String>,
-    /// Загрузчик пользовательских библиотек
+    /// User library loader.
     user_loader: UserLibraryLoader,
 }
 
 impl LibraryManager {
-    /// Создаёт новый менеджер.
+    /// Creates a new manager.
     pub fn new() -> Self {
         Self {
             loaded: HashMap::new(),
@@ -46,19 +46,17 @@ impl LibraryManager {
         }
     }
 
-    /// Импортирует библиотеку по имени или пути к файлу.
+    /// Imports a library by name or file path.
     pub fn import(&mut self, name: &str, alias: Option<&str>) -> RuntimeResult<()> {
-        // Проверяем, не загружена ли уже
         if self.loaded.contains_key(name) {
             return Ok(());
         }
 
-        // Если это путь к файлу, загружаем как пользовательскую библиотеку
+        // If it's a file path, load as user library
         if name.ends_with(".kum") || name.contains('/') || name.contains('\\') {
             return self.import_user_library(name, alias);
         }
 
-        // Пробуем найти в реестре встроенных библиотек
         let lib = find_library(name).ok_or_else(|| {
             RuntimeError::new(
                 format!("Библиотека '{}' не найдена", name),
@@ -69,20 +67,18 @@ impl LibraryManager {
         self.load_library(lib, alias)
     }
 
-    /// Импортирует пользовательскую библиотеку из файла или директории.
+    /// Imports a user library from a file or directory.
     pub fn import_user_library(&mut self, path: &str, alias: Option<&str>) -> RuntimeResult<()> {
         let path_obj = Path::new(path);
-
-        // Проверяем наличие kumir.toml для определения типа библиотеки
         let config_path = path_obj.join("kumir.toml");
 
         let lib = if config_path.exists() {
-            // Загружаем из директории с kumir.toml
+            // Load from directory with kumir.toml
             self.user_loader
                 .load_from_directory(path_obj)
                 .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other))?
         } else {
-            // Загружаем из .kum файла
+            // Load from .kum file
             self.user_loader
                 .load_from_file(path_obj)
                 .map_err(|e| RuntimeError::new(e, RuntimeErrorKind::Other))?
@@ -91,14 +87,13 @@ impl LibraryManager {
         self.load_library(lib, alias)
     }
 
-    /// Импортирует библиотеку с версией.
+    /// Imports a library with a version specifier.
     pub fn import_versioned(
         &mut self,
         name: &str,
         version_spec: &str,
         alias: Option<&str>,
     ) -> RuntimeResult<()> {
-        // Проверяем, не загружена ли уже
         if self.loaded.contains_key(name) {
             return Ok(());
         }
@@ -114,19 +109,16 @@ impl LibraryManager {
         self.load_library(lib, alias)
     }
 
-    /// Загружает определение библиотеки.
+    /// Loads a library definition and registers its functions.
     fn load_library(&mut self, lib: LibraryDef, alias: Option<&str>) -> RuntimeResult<()> {
         let lib_name = lib.name.to_string();
 
-        // Регистрируем функции библиотеки
         for func in &lib.functions {
             if let Some(handler) = &func.handler {
-                // Полное имя: библиотека::функция
                 let full_name = format!("{}::{}", lib_name, func.name);
                 self.functions
                     .insert(full_name.clone(), Arc::clone(handler));
 
-                // Регистрируем алиасы функций
                 self.function_aliases
                     .insert(func.name.to_string(), full_name.clone());
                 for fn_alias in &func.aliases {
@@ -136,12 +128,10 @@ impl LibraryManager {
             }
         }
 
-        // Регистрируем алиасы библиотеки
         for lib_alias in &lib.aliases {
             self.aliases.insert(lib_alias.to_string(), lib_name.clone());
         }
 
-        // Дополнительный алиас от пользователя
         if let Some(user_alias) = alias {
             self.aliases
                 .insert(user_alias.to_string(), lib_name.clone());
@@ -151,9 +141,9 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Вызывает функцию библиотеки.
+    /// Calls a library function.
     ///
-    /// `Ok(None)` означает «такой функции нет» — вызывающий продолжает поиск.
+    /// Returns `Ok(None)` to indicate "function not found" — the caller continues search.
     pub fn call_function(&self, name: &str, args: &[Value]) -> RuntimeResult<Option<Value>> {
         let Some(full_name) = self.resolve_function_name(name) else {
             return Ok(None);
@@ -162,10 +152,9 @@ impl LibraryManager {
             return Ok(None);
         };
 
-        // Число аргументов проверяется здесь, а не в каждом обработчике: иначе
-        // лишний аргумент молча игнорируется, а недостающий даёт сообщение
-        // вида «не передан параметр», не называющее ни функции, ни того,
-        // сколько их всего.
+        // Argument count is checked here, not in each handler. Otherwise, an extra
+        // argument is silently ignored and a missing one yields "parameter not passed"
+        // without naming the function or its expected count.
         if let Some(def) = self.get_function_def(name) {
             Self::check_arity(&full_name, def, args.len())?;
         }
@@ -175,7 +164,7 @@ impl LibraryManager {
             .map_err(|message| Self::library_error(&full_name, message))
     }
 
-    /// Полное имя `библиотека::функция` для имени или алиаса функции.
+    /// Resolves the full name `library::function` for a function name or alias.
     fn resolve_function_name(&self, name: &str) -> Option<String> {
         if self.functions.contains_key(name) {
             return Some(name.to_string());
@@ -183,7 +172,7 @@ impl LibraryManager {
         self.function_aliases.get(name).cloned()
     }
 
-    /// Проверяет число переданных аргументов по объявленным параметрам.
+    /// Checks the argument count against declared parameters.
     fn check_arity(full_name: &str, def: &LibFunctionDef, given: usize) -> RuntimeResult<()> {
         let required = def
             .params
@@ -193,21 +182,18 @@ impl LibraryManager {
         let total = def.params.len();
 
         if given < required || given > total {
-            // В сообщении называется то число, от которого пользователь дальше
-            // всего: при недоборе — обязательное, при переборе — предельное.
             let expected = if given < required { required } else { total };
             return Err(RuntimeError::argument_count(full_name, expected, given));
         }
         Ok(())
     }
 
-    /// Превращает сообщение обработчика в ошибку исполнения.
+    /// Converts a handler message into a runtime error.
     ///
-    /// Обработчики библиотек возвращают строку, поэтому вид ошибки
-    /// восстанавливается по её тексту. Это не догадка на глазок: формулировки
-    /// задаются самими библиотеками и перечислены здесь целиком. Без этого
-    /// любая ошибка библиотеки приходила бы как `Other`, и ни `перехват`, ни
-    /// корпус не смогли бы отличить неверный тип от сбоя ввода-вывода
+    /// Library handlers return a string; the error kind is inferred from its text.
+    /// The error phrases are defined by the libraries themselves and listed here in full.
+    /// Without this, any library error would arrive as `Other`, and neither exception
+    /// handling nor the test corpus could distinguish a type error from an I/O error
     /// (KITE 14 § 3.2).
     fn library_error(full_name: &str, message: String) -> RuntimeError {
         let kind = if message.starts_with("Ожидается") || message.starts_with("Ожидался")
@@ -219,8 +205,6 @@ impl LibraryManager {
             RuntimeErrorKind::Other
         };
 
-        // Имя функции добавляется, только если его ещё нет в сообщении: часть
-        // библиотек называет себя сама, и дублировать не нужно.
         let message = if message.contains(full_name) {
             message
         } else {
@@ -229,14 +213,13 @@ impl LibraryManager {
         RuntimeError::new(message, kind)
     }
 
-    /// Проверяет, является ли имя функцией библиотеки.
+    /// Checks if a name is a library function.
     pub fn is_library_function(&self, name: &str) -> bool {
         self.functions.contains_key(name) || self.function_aliases.contains_key(name)
     }
 
-    /// Получает определение функции.
+    /// Gets the definition of a function.
     pub fn get_function_def(&self, name: &str) -> Option<&LibFunctionDef> {
-        // Находим библиотеку и функцию
         for lib in self.loaded.values() {
             for func in &lib.functions {
                 if func.name.as_ref() == name || func.aliases.iter().any(|a| a.as_ref() == name) {
@@ -247,7 +230,7 @@ impl LibraryManager {
         None
     }
 
-    /// Получает константу из библиотеки.
+    /// Gets a constant from a library.
     pub fn get_constant(&self, lib_name: &str, const_name: &str) -> Option<Value> {
         let real_name = self
             .aliases
@@ -267,28 +250,28 @@ impl LibraryManager {
         None
     }
 
-    /// Получает список всех загруженных библиотек.
+    /// Gets the list of all loaded libraries.
     pub fn loaded_libraries(&self) -> Vec<&str> {
         self.loaded.keys().map(|s| s.as_str()).collect()
     }
 
-    /// Получает информацию о загруженной библиотеке.
+    /// Gets information about a loaded library.
     pub fn get_library_info(&self, name: &str) -> Option<&LibraryDef> {
         let real_name = self.aliases.get(name).map(|s| s.as_str()).unwrap_or(name);
         self.loaded.get(real_name)
     }
 
-    /// Получает список всех доступных библиотек (не обязательно загруженных).
+    /// Gets the list of all available libraries (not necessarily loaded).
     pub fn list_available_libraries() -> Vec<String> {
         shared::libraries::registry::list_available()
     }
 
-    /// Получает список всех доступных версий библиотеки.
+    /// Gets all available versions of a library.
     pub fn get_available_versions(name: &str) -> Vec<shared::types::version::Version> {
         shared::libraries::registry::get_library_versions(name)
     }
 
-    /// Выгружает библиотеку.
+    /// Unloads a library.
     pub fn unload(&mut self, name: &str) -> RuntimeResult<()> {
         let real_name = self
             .aliases
@@ -303,7 +286,6 @@ impl LibraryManager {
             ));
         }
 
-        // Удаляем функции библиотеки
         let lib = self.loaded.get(&real_name).unwrap();
         for func in &lib.functions {
             let full_name = format!("{}::{}", real_name, func.name);
@@ -314,16 +296,13 @@ impl LibraryManager {
             }
         }
 
-        // Удаляем алиасы библиотеки
         self.aliases.retain(|_, v| v != &real_name);
-
-        // Удаляем саму библиотеку
         self.loaded.remove(&real_name);
 
         Ok(())
     }
 
-    /// Проверяет, загружена ли библиотека.
+    /// Checks if a library is loaded.
     pub fn is_loaded(&self, name: &str) -> bool {
         self.loaded.contains_key(name)
             || self
@@ -333,27 +312,19 @@ impl LibraryManager {
                 .unwrap_or(false)
     }
 
-    /// Вызывает функцию библиотеки по квалифицированному имени (Библиотека.функция).
-    ///
-    /// # Пример
-    /// ```
-    /// // Сеть.http_получить("https://example.com")
-    /// manager.call_qualified_function("Сеть", "http_получить", &args)
-    /// ```
+    /// Calls a library function by qualified name (Library.function).
     pub fn call_qualified_function(
         &self,
         lib_name: &str,
         func_name: &str,
         args: &[Value],
     ) -> RuntimeResult<Option<Value>> {
-        // Резолвим алиас библиотеки
         let real_lib_name = self
             .aliases
             .get(lib_name)
             .map(|s| s.as_str())
             .unwrap_or(lib_name);
 
-        // Проверяем, загружена ли библиотека
         let lib = self.loaded.get(real_lib_name).ok_or_else(|| {
             RuntimeError::new(
                 format!(
@@ -364,7 +335,6 @@ impl LibraryManager {
             )
         })?;
 
-        // Ищем функцию в библиотеке
         for func in &lib.functions {
             if func.name.as_ref() == func_name
                 || func.aliases.iter().any(|a| a.as_ref() == func_name)
@@ -382,7 +352,6 @@ impl LibraryManager {
             }
         }
 
-        // Функция не найдена
         Err(RuntimeError::new(
             format!(
                 "Функция '{}' не найдена в библиотеке '{}'",
@@ -392,7 +361,7 @@ impl LibraryManager {
         ))
     }
 
-    /// Получает реальное имя библиотеки по алиасу.
+    /// Resolves the real library name from an alias.
     pub fn resolve_library_name<'a>(&'a self, name: &'a str) -> Option<&'a str> {
         if self.loaded.contains_key(name) {
             Some(name)
@@ -402,34 +371,24 @@ impl LibraryManager {
     }
 }
 
-// ============================================================================
-//                    УТИЛИТЫ
-// ============================================================================
+// =============================================================================
+//                          UTILITIES
+// =============================================================================
 
-/// Преобразует путь импорта в имя библиотеки.
-///
-/// Поддерживает:
-/// - "time" -> "time"
-/// - "время" -> "time"
-/// - "net/http" -> "net"
-/// - "файлы" -> "files"
+/// Resolves an import path to a library name.
 pub fn resolve_import_path(path: &str) -> Option<String> {
-    // Убираем .kum расширение если есть
     let clean_path = path.trim_end_matches(".kum").trim_matches('"');
 
-    // Если это путь с /, берём первую часть
     let lib_name = if clean_path.contains('/') {
         clean_path.split('/').next()?
     } else {
         clean_path
     };
 
-    // Проверяем, есть ли такая библиотека
     if is_known_library(lib_name) {
         return Some(lib_name.to_string());
     }
 
-    // Проверяем через find_library
     if let Some(lib) = find_library(lib_name) {
         return Some(lib.name.to_string());
     }
@@ -437,7 +396,7 @@ pub fn resolve_import_path(path: &str) -> Option<String> {
     None
 }
 
-/// Активирует окружение проекта.
+/// Activates a project environment.
 pub fn activate_environment(project_root: &str) -> RuntimeResult<()> {
     shared::libraries::registry::activate_project(project_root).map_err(|e| {
         RuntimeError::new(
@@ -447,9 +406,9 @@ pub fn activate_environment(project_root: &str) -> RuntimeResult<()> {
     })
 }
 
-// ============================================================================
-//                    ТЕСТЫ
-// ============================================================================
+// =============================================================================
+//                            TESTS
+// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -464,7 +423,6 @@ mod tests {
     #[test]
     fn test_import_time_library() {
         let mut manager = LibraryManager::new();
-        // Библиотека time должна быть зарегистрирована
         if is_known_library("time") {
             assert!(manager.import("time", None).is_ok());
             assert!(manager.is_loaded("time"));
@@ -473,7 +431,6 @@ mod tests {
 
     #[test]
     fn test_resolve_import_path() {
-        // Эти тесты зависят от зарегистрированных библиотек
         if is_known_library("time") {
             assert_eq!(resolve_import_path("time"), Some("time".to_string()));
         }
@@ -483,7 +440,6 @@ mod tests {
     fn test_function_lookup() {
         let mut manager = LibraryManager::new();
         if is_known_library("time") && manager.import("time", None).is_ok() {
-            // Проверяем, что функции доступны
             assert!(
                 manager.is_library_function("время_мс") || manager.is_library_function("now_ms")
             );

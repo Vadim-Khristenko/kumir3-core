@@ -1,55 +1,52 @@
-// ============================================================================
-//                    ПРИОРИТЕТ ОПЕРАТОРОВ
-// ============================================================================
+//! Binary operator precedence table and associativity rules.
+//!
+//! **Single source of truth for Kumir 3 operator precedence.** This table
+//! governs the expression parser (`parser::expr`) and is normative for the
+//! grammar (see KITE-0012). Precedence predicates must derive from this
+//! table (see `constants::operators::is_binary_operator`), not duplicate it.
 
 use crate::types::Token;
 
-/// Приоритет бинарного оператора (больше = выше).
+/// Binary operator precedence level (higher value = tighter binding).
 ///
-/// **Единственный источник истины о приоритете операторов языка Кумир 3.**
-/// Эту таблицу использует парсер выражений (`parser::expr`), она нормативна
-/// для грамматики (см. KITE-0012). Любые предикаты вида «является ли токен
-/// бинарным оператором» обязаны выводиться отсюда
-/// (см. `constants::operators::is_binary_operator`), а не дублировать список.
-///
-/// `None` означает «токен не является инфиксным бинарным оператором».
-/// Постфиксные/путевые конструкции (`.`, `::`) и унарные операторы (`не`)
-/// в таблицу намеренно не входят: они разбираются отдельными правилами
-/// парсера и не участвуют в алгоритме precedence-climbing.
+/// `None` means the token is not an infix binary operator.
+/// Postfix/path operators (`.`, `::`) and unary operators (`не`)
+/// are intentionally excluded from this table: they are parsed by
+/// separate parser rules and do not participate in precedence-climbing.
 #[inline]
 pub fn binary_precedence(token: &Token) -> Option<u8> {
     Some(match token {
-        // Логические и null-coalescing (низший приоритет)
+        // Logical and null-coalescing (lowest precedence)
         Token::Or | Token::QuestionQuestion => 1,
         Token::And => 2,
 
-        // Сравнение
+        // Comparison
         Token::Equal | Token::NotEqual => 3,
         Token::Less | Token::Greater | Token::LessEqual | Token::GreaterEqual => 4,
 
-        // Диапазон
+        // Range
         Token::DoubleDot | Token::DoubleDotEq => 5,
 
-        // Аддитивные
+        // Addition
         Token::Plus | Token::Minus => 6,
 
-        // Мультипликативные
+        // Multiplication
         Token::Star | Token::Slash | Token::IntDiv | Token::Percent => 7,
 
-        // Степень (правоассоциативный)
+        // Power (right-associative)
         Token::Power => 8,
 
-        // Pipe (функциональная композиция)
+        // Pipe (function composition)
         Token::Pipe => 9,
 
-        // Compose (композиция функций)
+        // Compose (function composition)
         Token::Compose => 10,
 
         _ => return None,
     })
 }
 
-/// Проверяет, является ли оператор правоассоциативным.
+/// Returns `true` if the operator is right-associative.
 #[inline]
 pub fn is_right_associative(token: &Token) -> bool {
     matches!(token, Token::Power | Token::QuestionQuestion)
@@ -60,14 +57,14 @@ mod tests {
     use super::*;
 
     fn prec(t: Token) -> u8 {
-        binary_precedence(&t).expect("токен должен быть бинарным оператором")
+        binary_precedence(&t).expect("token must be a binary operator")
     }
 
-    /// Страж: порядок ярусов приоритета. Если кто-то заведёт вторую таблицу
-    /// или переставит уровни — тест упадёт.
+    /// Guard: precedence tier ordering. If someone creates a second table
+    /// or reorders levels, this test will fail.
     #[test]
     fn test_precedence_tiers_ordering() {
-        // логические < сравнение < диапазон < аддитивные < мультипликативные < степень
+        // logical < comparison < range < additive < multiplicative < power
         assert!(prec(Token::Or) < prec(Token::And));
         assert!(prec(Token::And) < prec(Token::Equal));
         assert!(prec(Token::Equal) < prec(Token::Less));
@@ -93,12 +90,16 @@ mod tests {
         assert_eq!(prec(Token::Star), prec(Token::Percent));
     }
 
-    /// Не-инфиксные токены не должны попадать в таблицу приоритетов:
-    /// `.`/`::` — постфиксные, `не` — унарный, `:=` — присваивание.
+    /// Non-infix tokens must not appear in the precedence table:
+    /// `.`/`::` are postfix, `не` is unary, `:=` is assignment.
     #[test]
     fn test_non_binary_tokens_have_no_precedence() {
         for t in [Token::Dot, Token::DoubleColon, Token::Not, Token::Assign] {
-            assert_eq!(binary_precedence(&t), None, "{t:?} не бинарный оператор");
+            assert_eq!(
+                binary_precedence(&t),
+                None,
+                "{t:?} is not a binary operator"
+            );
         }
     }
 

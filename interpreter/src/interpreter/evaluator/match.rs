@@ -15,8 +15,8 @@ impl ExprEvaluator {
 
         for (pattern, result_expr) in arms {
             if let Some(bindings) = Self::match_pattern(pattern, &value)? {
-                // [KITE 4] Блочная область: плечо видит локали окружающего алгоритма
-                // плюс привязки паттерна; после плеча привязки исчезают.
+                // [KITE 4] Block scope: the arm sees the surrounding algorithm's locals
+                // plus pattern bindings; after the arm, bindings disappear.
                 env.push_scope();
                 for (name, val) in bindings {
                     env.define_local(name, val);

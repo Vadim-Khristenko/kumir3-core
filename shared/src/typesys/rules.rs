@@ -86,10 +86,11 @@ impl TypeRule for IdentityRule {
 }
 
 // =============================================================================
-//         SECTION: TOP / BOTTOM
+//         SECTION: TOP / BOTTOM TYPES
 // =============================================================================
 
-/// Top (`любой`/`авто`) and bottom (`никогда`) types.
+/// Top type (`любой`, `авто`) and bottom type (`никогда`) — handles widening
+/// to the universal type and narrowing from it, plus reachability.
 pub struct TopBottomRule;
 impl TypeRule for TopBottomRule {
     fn name(&self) -> &'static str {
@@ -127,10 +128,10 @@ impl TypeRule for TopBottomRule {
 }
 
 // =============================================================================
-//         SECTION: NULL / OPTION
+//         SECTION: NULL / OPTIONAL TYPES
 // =============================================================================
 
-/// `пусто` and automatic `T` → `T?` wrapping.
+/// Null type and automatic optional wrapping: `пусто` and `T` → `T?` promotion.
 pub struct NullOptionRule;
 impl TypeRule for NullOptionRule {
     fn name(&self) -> &'static str {
@@ -257,10 +258,10 @@ impl TypeRule for NumericRule {
 }
 
 // =============================================================================
-//         SECTION: COLLECTIONS (structural, covariant)
+//         SECTION: COLLECTION TYPES (structural covariance)
 // =============================================================================
 
-/// Structural recursion for parameterised types.
+/// Structural recursion for parameterized types — arrays, maps, tuples, etc.
 pub struct CollectionRule;
 impl CollectionRule {
     fn combine(parts: &[Conformance]) -> Conformance {
@@ -383,10 +384,11 @@ impl TypeRule for CollectionRule {
 }
 
 // =============================================================================
-//         SECTION: NOMINAL (inheritance via registry)
+//         SECTION: NOMINAL TYPES (inheritance-based subtyping)
 // =============================================================================
 
-/// Nominal subtyping via the attached [`TypeRegistry`](crate::types::TypeRegistry).
+/// Nominal subtyping through an attached [`TypeRegistry`](crate::types::TypeRegistry)
+/// — enables class inheritance and interface implementation hierarchies.
 pub struct NominalRule;
 impl NominalRule {
     fn type_name(t: &TypeKind) -> Option<&str> {

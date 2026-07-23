@@ -8,19 +8,19 @@ use super::super::environment::Environment;
 use super::super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
 impl ExprEvaluator {
-    // =========================================================================
-    //                    ООП: СОЗДАНИЕ ЭКЗЕМПЛЯРА
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: OOP OBJECT INSTANTIATION
+    // =============================================================================
 
     pub(crate) fn eval_new_instance(
         class_name: &str,
         args: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
-        // Получаем определение класса
+        // Get class definition.
         let class = env.get_class(class_name)?.clone();
 
-        // [KITE 11] Нельзя создавать экземпляр абстрактного класса.
+        // [KITE 11] Cannot instantiate abstract class.
         if class.is_abstract {
             return Err(RuntimeError::new(
                 format!(
@@ -31,7 +31,7 @@ impl ExprEvaluator {
             ));
         }
 
-        // Создаём поля со значениями по умолчанию
+        // Create fields with default values.
         let mut fields = BTreeMap::new();
         for field in &class.fields {
             let value = if let Some(default) = &field.default {
@@ -42,9 +42,9 @@ impl ExprEvaluator {
             fields.insert(field.name.to_string(), value);
         }
 
-        // Если есть конструктор, вызываем его
+        // If there is a constructor, call it.
         if !class.constructors.is_empty() {
-            // Ищем подходящий конструктор по количеству аргументов
+            // Find suitable constructor by argument count.
             let constructor = class
                 .constructors
                 .iter()
@@ -58,13 +58,13 @@ impl ExprEvaluator {
                 })?
                 .clone();
 
-            // Создаём объект [KITE 11: стабильный type_id из реестра].
+            // Create object [KITE 11: stable type_id from registry].
             let obj = Value::Object {
                 type_id: env.class_type_id(class_name),
                 fields: fields.clone(),
             };
 
-            // [KITE 4] Аргументы — в кадре вызывающего, до создания кадра конструктора.
+            // [KITE 4] Arguments in caller frame, before constructor frame.
             let mut bound: Vec<(String, Value)> =
                 Vec::with_capacity(constructor.algorithm.params.len());
             for (i, param) in constructor.algorithm.params.iter().enumerate() {
@@ -72,28 +72,28 @@ impl ExprEvaluator {
                 bound.push((param.name.to_string(), value));
             }
 
-            // Вызываем конструктор
+            // Call constructor.
             env.push_method_frame(format!("{}::конструктор", class_name), obj.clone())?;
             for (name, value) in bound {
                 env.define_local(name, value);
             }
 
-            // Выполняем тело конструктора. Ошибка тела конструктора = ошибка
-            // выражения `новый` (её нельзя молча проглатывать — иначе объект
-            // «наполовину сконструирован»). Кадр обязательно снимаем.
+            // Execute constructor body. Constructor body error = `new` error
+            // (cannot be silently ignored—otherwise object is "half-constructed").
+            // Always pop frame.
             let result = super::super::executor::Executor::execute_stmts(
                 constructor.algorithm.body.as_deref().unwrap_or(&[]),
                 env,
             );
 
-            // Получаем обновлённый объект (до снятия кадра — `это` живёт в кадре).
+            // Get updated object (before popping frame—`this` lives in frame).
             let updated_obj = env.get_this().cloned().unwrap_or(obj);
             env.pop_frame();
 
             match result {
                 Ok(_) => {}
-                // [KITE-0002] Оператор `?` в теле конструктора: ранний возврат
-                // конструктора (значением становится сконструированный объект).
+                // [KITE-0002] `?` operator in constructor body: early return
+                // of the constructor (value becomes the constructed object).
                 Err(e) if e.is_propagation() => {}
                 Err(e) => return Err(e),
             }
@@ -101,16 +101,16 @@ impl ExprEvaluator {
             return Ok(updated_obj);
         }
 
-        // Возвращаем объект без конструктора [KITE 11: стабильный type_id].
+        // Return object without constructor [KITE 11: stable type_id].
         Ok(Value::Object {
             type_id: env.class_type_id(class_name),
             fields,
         })
     }
 
-    // =========================================================================
-    //                    ПЕРЕЧИСЛЕНИЯ
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: ENUMERATIONS
+    // =============================================================================
 
     pub(crate) fn eval_enum_construct(
         enum_name: &str,

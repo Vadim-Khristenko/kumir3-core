@@ -1,5 +1,5 @@
-//! Поиск библиотек на диске: локальные каталоги проекта, глобальный реестр,
-//! чтение файлов библиотек и перечисление доступных версий.
+//! Library discovery on disk: project-local directories, global registry,
+//! library file reading, and available version enumeration.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -14,14 +14,14 @@ use super::manifest::LibraryManifest;
 use super::{IntegratedLoader, LoadedLibrary};
 
 impl IntegratedLoader {
-    /// Пытается загрузить из локальной папки
+    /// Try to load from project-local folder.
     pub(super) fn try_load_local(
         &mut self,
         libs_dir: &Path,
         name: &str,
         spec: &VersionSpec,
     ) -> LoaderResult<Option<LoadedLibrary>> {
-        // Новый целевой формат: libs/<name>/manifest.toml + entry_point
+        // New target format: libs/<name>/manifest.toml + entry_point
         let manifest_path = libs_dir.join(name).join("manifest.toml");
         if manifest_path.exists() {
             let manifest = LibraryManifest::load(&manifest_path)?;
@@ -48,7 +48,7 @@ impl IntegratedLoader {
             return Ok(Some(lib));
         }
 
-        // Fallback для старых путей
+        // Fallback for old paths
         let variants = [
             libs_dir.join(format!("{}.kum", name)),
             libs_dir.join(format!("{}/lib.kum", name)),
@@ -68,7 +68,7 @@ impl IntegratedLoader {
         Ok(None)
     }
 
-    /// Пытается загрузить из глобального реестра
+    /// Try to load from global registry.
     pub(super) fn try_load_from_registry(
         &mut self,
         registry_dir: &Path,
@@ -79,14 +79,14 @@ impl IntegratedLoader {
             return Ok(None);
         }
 
-        // Ищем все версии библиотеки
+        // Search for all versions of the library
         let mut versions: Vec<(Version, PathBuf)> = Vec::new();
 
         if let Ok(entries) = fs::read_dir(registry_dir) {
             for entry in entries.flatten() {
                 let dir_name = entry.file_name().to_string_lossy().to_string();
 
-                // Формат: name-version (например sockets-1.0.0)
+                // Format: name-version (e.g. sockets-1.0.0)
                 if let Some(suffix) = dir_name.strip_prefix(&format!("{}-", name))
                     && let Ok(version) = suffix.parse::<Version>()
                 {
@@ -95,7 +95,7 @@ impl IntegratedLoader {
             }
         }
 
-        // Сортируем по убыванию версии
+        // Sort by descending version
         versions.sort_by(|a, b| b.0.cmp(&a.0));
 
         // Ищем подходящую версию

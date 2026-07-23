@@ -1,7 +1,6 @@
-//! Встроенные функции интерпретатора Кумир 3
+//! Built-in functions for the Kumir 3 interpreter.
 //!
-//! Реализация стандартных функций: математика, строки, массивы,
-//! ввод/вывод, работа с типами и т.д.
+//! Implements standard functions: math, strings, arrays, I/O, type operations, etc.
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -21,19 +20,20 @@ pub mod types;
 #[cfg(test)]
 mod tests;
 
-/// Встроенные функции.
+/// Built-in function dispatcher.
 pub struct Builtins;
 
 impl Builtins {
-    /// Пытается вызвать встроенную функцию.
-    /// Возвращает Some(value) если функция найдена, None если нет.
+    /// Attempts to dispatch a built-in function call.
+    ///
+    /// Returns `Some(value)` if the function is found and callable, `None` otherwise.
     pub fn try_call(
         name: &str,
         args: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Option<Value>> {
-        // Функции высшего порядка — первыми: остальные категории начинают с
-        // вычисления всех аргументов, а имя функции-аргумента вычислять нельзя.
+        // Higher-order functions must be dispatched first: other categories evaluate all
+        // arguments up front, but function arguments stay unevaluated (calling them would fail).
         if let Some(v) = Self::try_call_functional(name, args, env)? {
             return Ok(Some(v));
         }
@@ -55,16 +55,16 @@ impl Builtins {
         Ok(None)
     }
 
-    /// Вычисляет аргументы вызова.
+    /// Evaluates all arguments (after arity/type checks pass).
     fn eval_args(args: &[Expr], env: &mut Environment) -> RuntimeResult<Vec<Value>> {
         args.iter()
             .map(|e| ExprEvaluator::evaluate(e, env))
             .collect()
     }
 
-    // =========================================================================
-    //                    ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-    // =========================================================================
+    // =============================================================================
+    //                        HELPER FUNCTIONS
+    // =============================================================================
 
     fn check_args(name: &str, args: &[Value], expected: usize) -> RuntimeResult<()> {
         if args.len() != expected {
@@ -99,7 +99,7 @@ impl Builtins {
         }
     }
 
-    /// Извлекает строку из значения (строгий вариант: только `Value::String`).
+    /// Extracts a string from a value (strict: only `Value::String` is accepted).
     fn as_str(value: &Value) -> RuntimeResult<String> {
         match value {
             Value::String(s) => Ok(s.clone()),
@@ -107,7 +107,7 @@ impl Builtins {
         }
     }
 
-    /// Извлекает неотрицательное количество (для `слева`/`справа`/`повторить`).
+    /// Extracts a non-negative count for operations like `слева`, `справа`, `повторить`.
     fn as_count(value: &Value) -> RuntimeResult<usize> {
         let n = Self::to_int(value)?;
         if n < 0 {
@@ -198,7 +198,7 @@ impl Builtins {
         }
     }
 
-    // Простой генератор псевдослучайных чисел
+    /// Simple pseudo-random number generator (thread-local PRNG).
     fn simple_random() -> f64 {
         use std::cell::Cell;
         use std::time::{SystemTime, UNIX_EPOCH};

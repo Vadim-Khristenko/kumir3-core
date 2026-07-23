@@ -1,10 +1,10 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Интерпретатор IR (для отладки)
+//! IR interpreter (for debugging).
 //!
-//! Выполняет IR напрямую без компиляции в нативный код.
-//! Полезен для быстрого тестирования и отладки компилятора.
+//! Executes IR directly without compiling to native code.
+//! Useful for quick testing and compiler debugging.
 
 use super::Backend;
 use shared::codegen::ir::IrModule;

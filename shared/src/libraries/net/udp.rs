@@ -1,4 +1,4 @@
-//! UDP-операции: отправка, приём, широковещательная рассылка
+//! UDP operations: sending, receiving, broadcasting.
 
 use std::net::UdpSocket;
 use std::sync::Arc;

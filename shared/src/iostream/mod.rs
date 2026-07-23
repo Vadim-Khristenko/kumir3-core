@@ -1,13 +1,15 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
+//! Buffered I/O streams with support for formatted output and input parsing.
+
 use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 
-// ============================================================================
-// Error Handling
-// ============================================================================
+// =============================================================================
+//         SECTION: ERROR HANDLING
+// =============================================================================
 
 #[derive(Debug)]
 pub enum StreamError {
@@ -50,12 +52,11 @@ impl From<fmt::Error> for StreamError {
     }
 }
 
-// ============================================================================
-// Core IO Stream
-// ============================================================================
+// =============================================================================
+//         SECTION: CORE IO STREAM
+// =============================================================================
 
-/// Универсальная структура потока ввода-вывода.
-/// Поддерживает буферизацию, форматированный вывод и парсинг ввода.
+/// Generic buffered I/O stream with formatted output and parsing support.
 pub struct IOStream<R, W> {
     reader: R,
     writer: W,
@@ -70,8 +71,6 @@ impl<R: BufRead, W: Write> IOStream<R, W> {
             buffer: String::new(),
         }
     }
-
-    // --- Output Operations ---
 
     pub fn write(&mut self, data: &str) -> Result<(), StreamError> {
         self.writer.write_all(data.as_bytes())?;

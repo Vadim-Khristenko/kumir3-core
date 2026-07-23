@@ -1,4 +1,4 @@
-//! Сетевые утилиты: DNS, URL-кодирование, Base64, JSON, локальный IP
+//! Network utilities: DNS, URL encoding, Base64, JSON, local IP.
 
 use std::net::ToSocketAddrs;
 use std::sync::Arc;

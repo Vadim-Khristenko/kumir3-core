@@ -1,15 +1,3 @@
-//! Приведение и проверка типов значений (хвосты `eval_cast` / `eval_type_check`).
-//!
-//! Разделение ответственности — как в [`super::binary`]:
-//! * **движок типов** (`shared::typesys`) — авторитет по *типизации*: разрешено
-//!   ли преобразование и какого оно рода ([`Coercion`]), является ли тип
-//!   значения подтипом проверяемого ([`TypeSystem::is_subtype`]);
-//! * **код ниже** — вычислительное ядро: как именно преобразовать значение.
-//!
-//! Движок спрашивается ПЕРЕД преобразованием, поэтому заведомо невозможные
-//! приведения (`"текст" как цел`, `да как сим`) отбраковываются сразу и с
-//! сообщением, называющим оба типа по-русски.
-
 use shared::types::{Number, TypeKind, Value};
 use shared::typesys::{Coercion, TypeError, default_engine};
 
@@ -17,9 +5,9 @@ use super::TypeOps;
 use crate::interpreter::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
 impl TypeOps {
-    /// Приводит значение к целевому типу (`значение как Тип`).
+    /// Casts value to target type (`value as Type`).
     pub fn cast(value: Value, target: &TypeKind) -> RuntimeResult<Value> {
-        // [typesys-seam: подключён] план преобразования от движка — до вычисления.
+        // [typesys-seam: подключён] Engine conversion plan—before computation.
         let source = value.type_kind();
         let plan = default_engine().coercion(target, &source);
         if plan == Coercion::Forbidden && !Self::cast_extension(target, &source) {
@@ -29,19 +17,19 @@ impl TypeOps {
         Self::convert(value, target, plan)
     }
 
-    /// Приведения, которые язык определяет ШИРЕ структурных правил движка.
-    /// Для них отрицательный вердикт движка не является вето.
+    /// Conversions defined by language WIDER than engine's structural rules.
+    /// For these, engine's negative verdict is not veto.
     ///
-    /// Список исчерпывающе повторяет таблицу KITE 13 § 3.16 «Приведение `как`»
-    /// в тех строках, где источником служит НЕ подтип цели:
-    /// * `лит` ← любое — строковое представление определено для всех значений;
-    /// * `лог` ← любое — истинность (§ 3.20) определена для всех значений;
-    /// * `вещ` ← `лит` — разбор десятичной записи (`"2.5" как вещ`);
-    /// * `сим` ← целое (кодовая точка) | `лит` (строка длины 1).
+    /// List exhaustively repeats KITE 13 § 3.16 "Coercion `as`" table
+    /// in rows where source is NOT subtype of target:
+    /// * `string` ← any — string representation defined for all values;
+    /// * `bool` ← any — truthiness (§ 3.20) defined for all values;
+    /// * `float` ← `string` — decimal notation parsing (`"2.5" as float`);
+    /// * `char` ← integer (code point) | `string` (single character).
     ///
-    /// Всё остальное движок выражает сам: числовые сужения/расширения — через
-    /// [`Coercion::Cast`]/[`Coercion::Widen`], `любой` — через верхний тип,
-    /// `Тип ← тот же Тип` — через [`Coercion::Identity`].
+    /// Everything else engine expresses itself: numeric narrowing/widening
+    /// via [`Coercion::Cast`]/[`Coercion::Widen`], `any` via top type,
+    /// `Type ← same Type` via [`Coercion::Identity`].
     fn cast_extension(target: &TypeKind, source: &TypeKind) -> bool {
         match target {
             TypeKind::String | TypeKind::Bool => true,
@@ -53,10 +41,10 @@ impl TypeOps {
         }
     }
 
-    /// Диагностика запрещённого движком приведения.
+    /// Diagnostic for conversion forbidden by engine.
     ///
-    /// Русские имена типов берутся из ошибки движка, поэтому цель и источник
-    /// названы ровно так же, как в остальных типовых сообщениях.
+    /// Russian type names come from engine error, so target and source are named
+    /// exactly as in other type messages.
     fn cast_forbidden(target: &TypeKind, source: &TypeKind) -> RuntimeError {
         let message = match default_engine().check_assignable(target, source) {
             Err(TypeError::NotAssignable { target, source }) => format!(
@@ -64,7 +52,7 @@ impl TypeOps {
                 source, target
             ),
             Err(other) => other.to_string(),
-            // Недостижимо: сюда попадают только несовместимые пары.
+            // Unreachable: only incompatible pairs reach here.
             Ok(_) => format!(
                 "Приведение значения типа '{}' к типу '{}' не определено",
                 source.russian_name(),
@@ -74,11 +62,11 @@ impl TypeOps {
         RuntimeError::new(message, RuntimeErrorKind::TypeMismatch)
     }
 
-    /// Вычислительное ядро: как получить значение уже разрешённого приведения.
+    /// Computation kernel: how to get value of already-approved conversion.
     fn convert(value: Value, target: &TypeKind, plan: Coercion) -> RuntimeResult<Value> {
         match target {
-            // `любой` (top type): приведение к нему — тождество; принимает любое
-            // значение и никогда не ошибается. Всё является подтипом `любой`.
+            // `any` (top type): conversion to it is identity; accepts any value
+            // and never errors. Everything is subtype of `any`.
             TypeKind::Any => Ok(value),
             TypeKind::Int64 => {
                 let n = value
@@ -103,20 +91,19 @@ impl TypeOps {
             },
             TypeKind::String => Ok(Value::String(value.to_string())),
             TypeKind::Bool => Ok(Value::Boolean(TypeOps::is_truthy(&value))),
-            // [W0] `как сим`: символ ← целое (код) | строка длины 1 | символ.
-            // Всё остальное — ясная ошибка (раньше был not_implemented).
+            // [W0] `as char`: char ← integer (code) | string of length 1 | char.
+            // Everything else—clear error (was not_implemented before).
             TypeKind::Char => Self::cast_to_char(value),
-            // `T?`: движок планирует упаковку ([`Coercion::Wrap`]); внутреннее
-            // значение приводится к `T` тем же путём, `пусто` даёт пустой
-            // необязательный.
+            // `T?`: engine plans wrapping ([`Coercion::Wrap`]); inner value
+            // is cast to `T` the same way, `null` gives empty optional.
             TypeKind::Option(inner) => match value {
                 Value::Null => Ok(Value::Option(Box::new(None))),
                 Value::Option(_) => Ok(value),
                 other => Ok(Value::Option(Box::new(Some(Self::cast(other, inner)?)))),
             },
-            // Остальные типы ядро не преобразует. Тождественное приведение
-            // (`значение как ЕгоЖеТип`) движок распознаёт сам — оно ничего не
-            // меняет и потому допустимо.
+            // Other types kernel does not convert. Identity conversion
+            // (`value as ItsType`) is recognized by engine itself—it changes nothing
+            // and is therefore allowed.
             _ => {
                 if plan == Coercion::Identity {
                     Ok(value)
@@ -130,13 +117,13 @@ impl TypeOps {
         }
     }
 
-    /// [W0] Реализация `значение как сим`.
+    /// [W0] Implementation of `value as char`.
     ///
-    /// * `Value::Char(c)` → сам символ (тождество);
-    /// * целое число → символ с этим кодом Unicode (скалярным значением);
-    /// * строка ровно из одного символа → этот символ;
-    /// * всё остальное (в т.ч. строка другой длины, вещественное, логическое,
-    ///   массив, объект) → ясная ошибка выполнения.
+    /// * `Value::Char(c)` → char itself (identity);
+    /// * integer → char with that Unicode code point (scalar value);
+    /// * string of exactly one character → that character;
+    /// * everything else (including string of other length, float, bool,
+    ///   array, object) → clear runtime error.
     fn cast_to_char(value: Value) -> RuntimeResult<Value> {
         match &value {
             Value::Char(c) => Ok(Value::Char(*c)),
@@ -172,19 +159,19 @@ impl TypeOps {
         }
     }
 
-    /// Единая формулировка ошибки приведения к `сим`.
+    /// Unified error message for casting to `char`.
     fn char_cast_error(details: &str) -> RuntimeError {
         RuntimeError::type_mismatch("сим (символ: целое-код или строка длины 1)", details)
     }
 
-    /// Проверяет, соответствует ли значение указанному типу (`значение это Тип`).
+    /// Checks if value conforms to given type (`value is Type`).
     ///
-    /// Вопрос «является ли тип значения подтипом проверяемого» целиком
-    /// принадлежит движку: подтипирование, числовое расширение (`вещ_32`
-    /// это `вещ`), элементы массивов и верхний тип `любой` (всё — его подтип,
-    /// поэтому `значение это любой` всегда истинно) выражены его правилами.
+    /// The question "is value's type a subtype of checked type" belongs entirely
+    /// to engine: subtyping, numeric widening (`float32` is `float`), array elements,
+    /// and top type `any` (everything is its subtype, so `value is any` is always true)
+    /// are expressed by its rules.
     pub fn type_check(value: &Value, check: &TypeKind) -> bool {
-        // [typesys-seam: подключён] вердикт conformance целиком у движка.
+        // [typesys-seam: подключён] Conformance verdict entirely with engine.
         default_engine().is_subtype(&value.type_kind(), check)
     }
 }

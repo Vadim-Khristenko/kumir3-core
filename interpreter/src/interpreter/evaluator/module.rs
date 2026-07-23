@@ -1,10 +1,3 @@
-//! [KITE-0015] Доступ к членам модуля через `::`.
-//!
-//! Парсер превращает `Модуль::член` в [`Expr::ModuleAccess`], а `Модуль::член(…)`
-//! — в `Expr::Call("Модуль::член", args)`. Импорт и объявление `модуль` регистрируют
-//! алгоритмы под ТОЧЕЧНЫМ полным именем (`"Модуль.член"`), поэтому обе формы
-//! приводятся здесь к одному и тому же разрешению имени.
-
 use super::ExprEvaluator;
 
 use shared::types::{Expr, Value};
@@ -13,12 +6,12 @@ use super::super::environment::Environment;
 use super::super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
 impl ExprEvaluator {
-    /// Полное точечное имя члена модуля: `A::B::c` → `A.B.c`.
+    /// Full dotted name of module member: `A::B::c` → `A.B.c`.
     fn dotted_member(module: &str, member: &str) -> String {
         format!("{}.{}", module.replace("::", "."), member)
     }
 
-    /// Ошибка «член модуля не найден» — всегда называет и модуль, и член.
+    /// "Member not found in module" error—always names both module and member.
     fn unknown_member(module: &str, member: &str) -> RuntimeError {
         RuntimeError::new(
             format!("Член '{}' не найден в модуле '{}'", member, module),
@@ -26,30 +19,30 @@ impl ExprEvaluator {
         )
     }
 
-    /// [KITE-0015] Вычисляет `Модуль::член` в позиции ЗНАЧЕНИЯ (без вызова).
+    /// [KITE-0015] Evaluates `Module::member` in VALUE position (no call).
     ///
-    /// Разрешение (в порядке приоритета):
-    /// 1. вариант перечисления `Перечисление::Вариант` → [`Value::Enum`];
-    /// 2. переменная модуля, зарегистрированная под полным именем `Модуль.член`;
-    /// 3. алгоритм `Модуль.член` → ясная ошибка с подсказкой вызвать его;
-    /// 4. иначе — ясная ошибка, называющая модуль и член.
+    /// Resolution (in priority order):
+    /// 1. enumeration variant `Enum::Variant` → [`Value::Enum`];
+    /// 2. module variable registered under full name `Module.member`;
+    /// 3. algorithm `Module.member` → clear error with suggestion to call it;
+    /// 4. otherwise—clear error naming both module and member.
     pub(crate) fn eval_module_access(
         module: &str,
         member: &str,
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
-        // 1) Перечисление: `Цвет::Красный`.
+        // 1) Enumeration: `Color::Red`.
         if env.is_valid_enum_variant(module, member) {
             return Self::eval_enum_construct(module, member, None, env);
         }
 
-        // 2) Переменная модуля под полным именем.
+        // 2) Module variable under full name.
         let dotted = Self::dotted_member(module, member);
         if let Ok(value) = env.get_variable(&dotted) {
             return Ok(value.clone());
         }
 
-        // 3) Алгоритм модуля: голая ссылка значением не является.
+        // 3) Module algorithm: bare reference is not a value.
         if env.has_algorithm(&dotted) || env.get_overloaded_algorithm(&dotted).is_some() {
             return Err(RuntimeError::new(
                 format!(
@@ -60,16 +53,16 @@ impl ExprEvaluator {
             ));
         }
 
-        // 4) Ничего не нашли.
+        // 4) Nothing found.
         Err(Self::unknown_member(module, member))
     }
 
-    /// [KITE-0015] Вычисляет вызов `Модуль::член(args)`.
+    /// [KITE-0015] Evaluates `Module::member(args)` call.
     ///
-    /// Разрешается ровно так же, как точечная форма `Модуль.член(args)`:
-    /// сначала алгоритм под полным точечным именем, затем вариант перечисления
-    /// с данными, затем функция загруженной библиотеки. Иначе — ясная ошибка,
-    /// называющая модуль и член.
+    /// Resolved exactly like dotted form `Module.member(args)`:
+    /// first algorithm under full dotted name, then enumeration variant
+    /// with data, then loaded library function. Otherwise—clear error
+    /// naming both module and member.
     pub(crate) fn eval_qualified_call(
         module: &str,
         member: &str,
@@ -77,18 +70,18 @@ impl ExprEvaluator {
         args: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
-        // Алгоритм, объявленный буквально с `::` в имени (на всякий случай).
+        // Algorithm literally declared with `::` in name (just in case).
         if env.has_algorithm(full_name) || env.get_overloaded_algorithm(full_name).is_some() {
             return Self::eval_plain_call(full_name, args, env);
         }
 
-        // Основной путь: то же имя, что и у точечной формы.
+        // Main path: same name as dotted form.
         let dotted = Self::dotted_member(module, member);
         if env.has_algorithm(&dotted) || env.get_overloaded_algorithm(&dotted).is_some() {
             return Self::eval_plain_call(&dotted, args, env);
         }
 
-        // Вариант перечисления с данными: `Фигура::Круг(5)`.
+        // Enumeration variant with data: `Shape::Circle(5)`.
         if env.is_valid_enum_variant(module, member) {
             return match args {
                 [] => Self::eval_enum_construct(module, member, None, env),
@@ -105,7 +98,7 @@ impl ExprEvaluator {
             };
         }
 
-        // Функция загруженной библиотеки: `Сеть::получить(...)`.
+        // Loaded library function: `Net::get(...)`.
         if env.is_loaded_library(module) {
             let evaluated: Vec<Value> = args
                 .iter()

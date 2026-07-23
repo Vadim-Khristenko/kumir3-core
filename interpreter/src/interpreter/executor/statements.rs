@@ -1,4 +1,4 @@
-//! Остальные вспомогательные инструкции.
+//! Miscellaneous statement execution helpers.
 
 use super::super::environment::Environment;
 use super::super::error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
@@ -8,9 +8,9 @@ use shared::types::{Algorithm, EnumVariant, Expr, Stmt, TypeKind, Value};
 use std::sync::Arc;
 
 impl Executor {
-    // =========================================================================
-    //                    ПРИСВАИВАНИЕ ЭЛЕМЕНТУ МАССИВА
-    // =========================================================================
+    // =============================================================================
+    //                    ARRAY ELEMENT ASSIGNMENT
+    // =============================================================================
 
     pub(crate) fn execute_array_assignment(
         name: &str,
@@ -20,7 +20,7 @@ impl Executor {
     ) -> RuntimeResult<ControlFlow> {
         let value = ExprEvaluator::evaluate(value_expr, env)?;
 
-        // Получаем массив
+        // Fetch the array.
         let array = env.get_variable(name)?.clone();
 
         match array {
@@ -64,9 +64,9 @@ impl Executor {
         Ok(ControlFlow::None)
     }
 
-    // =========================================================================
-    //                    ОБЪЯВЛЕНИЕ ПЕРЕМЕННЫХ
-    // =========================================================================
+    // =============================================================================
+    //                     VARIABLE DECLARATIONS
+    // =============================================================================
 
     pub(crate) fn execute_var_decl(
         type_spec: &TypeKind,
@@ -80,11 +80,11 @@ impl Executor {
             ExprEvaluator::default_value_for_type(type_spec)
         };
 
-        // Если инициализация есть и только одна переменная
+        // If init is present and only one variable, use it.
         if init.is_some() && names.len() == 1 {
             env.define_local(names[0].clone(), initial_value);
         } else {
-            // Для нескольких переменных используем значение по умолчанию
+            // For multiple variables, use the default value for the type.
             let default = ExprEvaluator::default_value_for_type(type_spec);
             for name in names {
                 env.define_local(name.clone(), default.clone());
@@ -94,9 +94,9 @@ impl Executor {
         Ok(ControlFlow::None)
     }
 
-    // =========================================================================
-    //                    ПЕРЕЧИСЛЕНИЯ
-    // =========================================================================
+    // =============================================================================
+    //                         ENUMERATIONS
+    // =============================================================================
 
     pub(crate) fn execute_enum_decl(
         name: &str,
@@ -108,9 +108,9 @@ impl Executor {
         Ok(ControlFlow::None)
     }
 
-    // =========================================================================
-    //                    МОДУЛИ И ЭКСПОРТ
-    // =========================================================================
+    // =============================================================================
+    //                      MODULES AND EXPORTS
+    // =============================================================================
 
     pub(crate) fn execute_module_decl(
         name: &str,

@@ -1,41 +1,40 @@
-//! Полная программа на языке Кумир
+//! Complete program in the Kumir language.
 
 use super::algorithm::{Algorithm, OverloadedAlgorithm};
 use super::class::ClassDef;
 use super::stmt::Stmt;
 
-/// Полная программа на языке Кумир.
+/// Complete program in the Kumir language.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
-    /// Подключённые модули
+    /// Imported modules
     pub imports: Vec<Stmt>,
 
-    /// Объявления глобальных переменных
+    /// Global variable declarations
     pub globals: Vec<Stmt>,
 
-    /// Определения алгоритмов
+    /// Algorithm definitions
     pub algorithms: Vec<Algorithm>,
 
-    /// Перегруженные алгоритмы (Kumir 3)
+    /// Overloaded algorithms (Kumir 3)
     pub overloaded_algorithms: Vec<OverloadedAlgorithm>,
 
-    /// Определения классов (Kumir 3)
+    /// Class definitions (Kumir 3)
     pub classes: Vec<ClassDef>,
 
-    /// Определения интерфейсов (Kumir 3)
+    /// Interface definitions (Kumir 3)
     pub interfaces: Vec<Stmt>,
 
-    /// Главный алгоритм (точка входа)
+    /// Main algorithm (entry point)
     pub main: Option<Algorithm>,
 
-    /// Предупреждения при разборе программы
+    /// Warnings encountered during parsing
     pub warnings: Vec<String>,
 
-    /// Программа не содержала объявления алгоритма, и свободные инструкции
-    /// были обёрнуты в анонимный алгоритм.
+    /// True if the program contained no algorithm declaration, and free statements
+    /// were wrapped in an anonymous algorithm.
     ///
-    /// Признак нужен интерактивному режиму: такие инструкции человек набрал
-    /// «просто так», и выполнять их следует в общей области, чтобы набранное
-    /// строкой выше было видно строкой ниже.
+    /// This flag is needed for interactive mode: statements entered interactively
+    /// are executed in the global scope, so variables declared above remain visible below.
     pub auto_wrapped: bool,
 }

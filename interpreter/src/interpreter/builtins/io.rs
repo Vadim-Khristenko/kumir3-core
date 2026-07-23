@@ -1,3 +1,5 @@
+//! I/O and system time functions.
+
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use shared::types::{Expr, Number, Value};
@@ -14,7 +16,7 @@ impl Builtins {
     ) -> RuntimeResult<Option<Value>> {
         let vals = Self::eval_args(args, env)?;
         match name {
-            // ===== УТИЛИТЫ =====
+            // Utilities
             "печать" | "print" => {
                 let output: Vec<String> = vals.iter().map(|v| v.to_string()).collect();
                 env.print(&output.join(" "));
@@ -28,7 +30,6 @@ impl Builtins {
             }
 
             "нс" | "newline" | "nl" | "новая_строка" => {
-                // Вывод новой строки
                 env.println("");
                 Ok(Some(Value::Null))
             }
@@ -49,7 +50,6 @@ impl Builtins {
                 Ok(Some(Value::Null))
             }
 
-            // Функция не найдена
             _ => Ok(None),
         }
     }

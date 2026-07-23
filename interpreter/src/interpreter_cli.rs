@@ -1,8 +1,4 @@
-//! Kumir 3 CLI - простой консольный интерпретатор без TUI.
-//!
-//! Использование:
-//! - kumir3-cli <файл.kum>   - выполнить файл
-//! - kumir3-cli --help       - показать справку
+//! Simple CLI interpreter for Kumir 3 without TUI.
 
 use std::fs;
 use std::io;
@@ -19,7 +15,6 @@ fn main() {
 
     let file = cli.file();
 
-    // Читаем файл
     let source = fs::read_to_string(file)
         .map_err(|e| {
             eprintln!("Ошибка чтения файла '{}': {}", file.display(), e);
@@ -27,11 +22,10 @@ fn main() {
         })
         .unwrap();
 
-    // Создаём интерпретатор
     let mut interpreter = Interpreter::new();
 
-    // [KITE 5] Базовая директория для импорта — папка скрипта, чтобы
-    // `использовать "соседний.kum"` работало независимо от текущего каталога.
+    // [KITE 5] Base directory for imports is the script's directory, so that
+    // `использовать "neighbor.kum"` works regardless of the current working directory.
     if let Some(dir) = file.parent()
         && !dir.as_os_str().is_empty()
     {
@@ -46,18 +40,16 @@ fn main() {
         interpreter.set_strict(true);
     }
 
-    // Выполняем
     let start = Instant::now();
     match interpreter.run(&source) {
         Ok(_) => {
-            // Выводим результат
             let output = interpreter.get_output();
             if !output.is_empty() {
                 print!("{}", output);
             }
 
-            // [W0] Предупреждения (например, о необъявленных переменных)
-            // печатаем в stderr, чтобы не смешивать с выводом программы.
+            // [W0] Warnings (e.g., undeclared variables) are printed to stderr
+            // to keep them separate from program output.
             for warning in interpreter.warnings() {
                 eprintln!("Предупреждение: {}", warning);
             }
@@ -67,10 +59,10 @@ fn main() {
             }
         }
         Err(e) => {
-            // [KITE 7] Вывод, произведённый до ошибки, уже случился с точки
-            // зрения программы, поэтому печатается и при неудачном завершении:
-            // без него ученик не видит, докуда дошло выполнение, а раннер
-            // корпуса не может проверить частичный вывод (KITE 18 § 3.7, п. 4).
+            // [KITE 7] Output produced before the error has already happened from the program's
+            // perspective, so it is printed even on failure. Without it, students don't see how
+            // far execution got, and the test corpus runner cannot check partial output
+            // (KITE 18 § 3.7, item 4).
             let output = interpreter.get_output();
             if !output.is_empty() {
                 print!("{}", output);

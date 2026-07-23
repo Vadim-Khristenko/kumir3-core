@@ -1,33 +1,35 @@
+//! Call frame for algorithm invocation.
+
 use shared::types::Value;
 
 use super::scope::Scope;
 
 // =============================================================================
-//                           CALL FRAME (Кадр вызова)
+//                             CALL FRAME
 // =============================================================================
 
-/// Кадр вызова алгоритма.
+/// An algorithm invocation frame.
 ///
-/// [KITE 4] Лексическая модель: кадр содержит **стек блочных областей**
-/// (`scopes`), а не одну область. Поиск имени идёт от внутренней области к
-/// внешней внутри этого кадра, затем — в глобальной области; кадры вызывающих
-/// **не** просматриваются (нет динамической утечки видимости).
+/// [KITE 4] Lexical scoping: a frame contains a **stack of block scopes**
+/// (`scopes`), not a single scope. Name lookup proceeds from inner to outer
+/// within this frame, then to globals; caller frames are **not** visible
+/// (no dynamic scoping).
 #[derive(Debug, Clone)]
 pub struct CallFrame {
-    /// Имя алгоритма
+    /// Algorithm name
     pub algorithm_name: String,
-    /// Стек лексических областей видимости (scopes[0] — параметры/верхний уровень)
+    /// Lexical scope stack (scopes[0] = params / top level)
     scopes: Vec<Scope>,
-    /// Возвращаемое значение (знач)
+    /// Return value (знач)
     pub result_value: Option<Value>,
-    /// Текущий объект (для методов)
+    /// Current object (for methods)
     pub this: Option<Value>,
-    /// [KITE 11] Класс, в котором определён исполняемый метод (для `предок`).
+    /// [KITE 11] Class where the executing method is defined (for `предок`).
     pub defining_class: Option<String>,
 }
 
 impl CallFrame {
-    /// Создаёт новый кадр вызова с одной (верхней) областью.
+    /// Creates a new call frame with one initial (top-level) scope.
     pub fn new(algorithm_name: impl Into<String>) -> Self {
         Self {
             algorithm_name: algorithm_name.into(),
@@ -38,7 +40,7 @@ impl CallFrame {
         }
     }
 
-    /// Создаёт кадр для метода с объектом this.
+    /// Creates a call frame for a method with a `this` object.
     pub fn with_this(algorithm_name: impl Into<String>, this: Value) -> Self {
         Self {
             algorithm_name: algorithm_name.into(),
@@ -49,19 +51,19 @@ impl CallFrame {
         }
     }
 
-    /// Открывает вложенную блочную область видимости.
+    /// Opens a nested block scope.
     pub fn push_scope(&mut self) {
         self.scopes.push(Scope::new());
     }
 
-    /// Закрывает текущую блочную область (верхнюю не трогаем).
+    /// Closes the current block scope (the top level is never popped).
     pub fn pop_scope(&mut self) {
         if self.scopes.len() > 1 {
             self.scopes.pop();
         }
     }
 
-    /// Определяет переменную во внутренней (текущей) области.
+    /// Defines a variable in the innermost (current) scope.
     pub(crate) fn define(&mut self, name: String, value: Value) {
         self.scopes
             .last_mut()
@@ -69,12 +71,12 @@ impl CallFrame {
             .define(name, value);
     }
 
-    /// Ищет значение от внутренней области к внешней.
+    /// Looks up a value from inner to outer scopes.
     pub(crate) fn get(&self, name: &str) -> Option<&Value> {
         self.scopes.iter().rev().find_map(|s| s.get(name))
     }
 
-    /// Есть ли имя в любой области кадра.
+    /// Checks if a name exists in any scope of this frame.
     pub(crate) fn contains(&self, name: &str) -> bool {
         self.scopes.iter().any(|s| s.contains(name))
     }

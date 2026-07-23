@@ -1,13 +1,15 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
+//! Comment scanning (pipe and line comments).
+
 use super::{Lexer, LexerResult, Position, Span, SpannedToken};
 use crate::types::Token;
 
 impl<'a> Lexer<'a> {
-    // =========================================================================
-    //         COMMENTS
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: COMMENTS
+    // =============================================================================
 
     /// Scans a pipe comment (| ...).
     pub(super) fn scan_comment(&mut self, start: Position) -> LexerResult<Option<SpannedToken>> {

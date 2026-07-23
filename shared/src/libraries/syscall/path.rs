@@ -1,4 +1,4 @@
-//! Функции работы с путями и директориями
+//! Path and directory functions.
 
 use std::path::Path;
 use std::sync::Arc;

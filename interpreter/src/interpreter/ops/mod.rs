@@ -1,9 +1,9 @@
-//! Слой операций над значениями: единая точка типовых операций интерпретатора.
-//! Извлечён из ExprEvaluator (strangler). Консультируется с shared::typesys:
-//! `default_value` (defaults), типовой вердикт бинарных операций (binary),
-//! план приведения и подтипирование (cast), вердикт упорядочения (predicates).
-//! Все точки подключены и помечены [typesys-seam: подключён]; неподключённых
-//! швов не осталось.
+//! Operations layer for values: unified entry point for type operations in the interpreter.
+//! Extracted from ExprEvaluator (strangler pattern). Consults with shared::typesys:
+//! `default_value` (defaults), type verdict for binary operations (binary),
+//! coercion plan and subtyping (cast), ordering verdict (predicates).
+//! All connection points are marked [typesys-seam: подключён]; no unconnected seams remain.
+
 pub struct TypeOps;
 
 mod binary;

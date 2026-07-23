@@ -1,9 +1,11 @@
+//! Command-line interface for the Kumir 3 interpreter.
+
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
 // =============================================================================
-//                              CLI ARGUMENTS
+//                          CLI ARGUMENTS
 // =============================================================================
 
 #[derive(Parser)]
@@ -19,29 +21,29 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
 
-    /// Файл программы .kum для выполнения
+    /// .kum program file to execute.
     #[arg(value_name = "ФАЙЛ")]
     pub file: Option<PathBuf>,
 
-    /// Режим отладки
+    /// Enable debug mode.
     #[arg(short, long)]
     pub debug: bool,
 
-    /// Строгий режим: присваивание необъявленной переменной — ошибка
+    /// Strict mode: undeclared variable assignment is an error.
     #[arg(long, visible_alias = "строгий")]
     pub strict: bool,
 
-    /// Измерять время выполнения
+    /// Measure execution time.
     #[arg(short, long)]
     pub time: bool,
 
-    /// [KITE 18] Печатать вид ошибки исполнения машиночитаемой строкой
-    /// `[вид ошибки] <Вид>` в поток ошибок. Служит раннеру корпуса,
-    /// поэтому в справке для ученика не показывается.
+    /// [KITE 18] Print the runtime error kind as a machine-readable string
+    /// `[вид ошибки] <Kind>` to stderr. Serves the test corpus runner and is hidden
+    /// from the student-facing help.
     #[arg(long, hide = true)]
     pub error_kind: bool,
 
-    /// Аргументы для программы
+    /// Arguments for the program.
     #[arg(last = true)]
     pub args: Vec<String>,
 }

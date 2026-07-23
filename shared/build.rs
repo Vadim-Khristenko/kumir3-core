@@ -3,10 +3,10 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-// (Token variant, canonical spelling, other spellings). ОДНА строка на вариант Token.
-// Источник истины для ключевых слов языка Кумир (прямой и обратный поиск).
+// (Token variant, canonical spelling, other spellings). ONE line per Token variant.
+// Single source of truth for Kumir language keywords (forward and reverse lookup).
 const KEYWORDS: &[(&str, &str, &[&str])] = &[
-    // ---- ALGORITHM STRUCTURE (KUMIR 2) ----
+    // Algorithm structure (Kumir 2)
     ("Alg", "алг", &["alg", "algorithm"]),
     ("Begin", "нач", &["begin"]),
     ("End", "кон", &["end"]),
@@ -15,14 +15,14 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
     ("Arg", "арг", &["arg"]),
     ("Res", "рез", &["res"]),
     ("ArgRes", "аргрез", &["argres"]),
-    // ---- PRIMITIVE TYPES (KUMIR 2) ----
+    // Primitive types (Kumir 2)
     ("IntType", "цел", &["int", "integer"]),
     ("FloatType", "вещ", &["float", "real"]),
     ("BoolType", "лог", &["bool", "boolean"]),
     ("CharType", "сим", &["char"]),
     ("StringType", "лит", &["string", "str"]),
     ("ArrayType", "таб", &["array", "tab"]),
-    // ---- ADVANCED TYPES (KUMIR 3) ----
+    // Advanced types (Kumir 3)
     ("PointerType", "указатель", &["pointer", "ptr"]),
     ("EnumType", "перечисление", &["enum"]),
     ("AutoType", "авто", &["auto", "var", "пусть"]),
@@ -33,30 +33,28 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
         "необязательно",
         &["Необязательно", "optional", "Optional", "может"],
     ),
-    // ---- MUTABILITY & OWNERSHIP (KUMIR 3) ----
+    // Mutability and ownership (Kumir 3)
     ("Mut", "измен", &["изменяемый", "mut", "mutable"]),
     ("Const", "конст", &["константа", "const", "constant"]),
     ("Move", "перемещение", &["переместить", "move"]),
     ("Borrow", "заимствовать", &["заимств", "borrow"]),
     ("Clone", "клонировать", &["клон", "clone"]),
     ("Copy", "копировать", &["копия", "copy"]),
-    // ---- GENERICS & TYPE ALIASES (KUMIR 3) ----
+    // Generics and type aliases (Kumir 3)
     ("Where", "где", &["where"]),
     ("TypeAlias", "типалиас", &["type", "typedef"]),
-    // ---- LOGIC OPERATORS & CONSTANTS ----
+    // Logic operators and constants
     ("And", "и", &["and"]),
     ("Or", "или", &["or"]),
     ("Not", "не", &["not"]),
-    // Арифметический оператор остатка как ключевое слово (как и/или/не).
-    // Лексится в Token::Percent, далее обрабатывается общей логикой (modulus).
+    // Remainder operator: keyword like и/или/не, lexed as Token::Percent
     ("Percent", "мод", &[]),
-    // Оператор целочисленного деления как ключевое слово (как и `мод`).
-    // Лексится в Token::IntDiv, далее обрабатывается общей логикой (int_div).
-    // Только русское `див`: английское `div` — имя встроенной функции (не трогаем).
+    // Integer division operator: keyword like мод, lexed as Token::IntDiv
+    // Only Russian `див` is a keyword; English `div` is a builtin function name
     ("IntDiv", "див", &[]),
     ("True", "да", &["true", "истина"]),
     ("False", "нет", &["false", "ложь"]),
-    // ---- CONTROL FLOW (KUMIR 2) ----
+    // Control flow (Kumir 2)
     ("If", "если", &["if"]),
     ("Then", "то", &["then"]),
     ("Else", "иначе", &["else"]),
@@ -70,7 +68,7 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
     ("To", "до", &["to"]),
     ("Step", "шаг", &["step"]),
     ("While", "пока", &["while"]),
-    // ---- IO & RUNTIME CONTROL (KUMIR 2) ----
+    // I/O and runtime control (Kumir 2)
     ("Input", "ввод", &["input", "read"]),
     ("Output", "вывод", &["output", "print", "write"]),
     ("Assert", "утв", &["assert"]),
@@ -79,20 +77,20 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
     ("Use", "использовать", &["use"]),
     ("Return", "вернуть", &["return"]),
     ("ResultValue", "знач", &["result"]),
-    // ---- MODULE SYSTEM (KUMIR 3) ----
+    // Module system (Kumir 3)
     ("Import", "подключить", &["import", "include"]),
     ("Module", "модуль", &["module", "mod"]),
     ("Export", "экспорт", &["export", "pub"]),
-    // ---- MEMORY & POINTERS (KUMIR 3) ----
+    // Memory and pointers (Kumir 3)
     ("New", "новый", &["new", "создать"]),
     ("Delete", "удалить", &["delete", "free"]),
     ("Ref", "ссылка", &["ref"]),
     ("Deref", "разыменовать", &["deref"]),
-    // ---- ENUMS & PATTERN MATCHING (KUMIR 3) ----
+    // Enums and pattern matching (Kumir 3)
     ("EnumDecl", "объявить_перечисление", &["enum_decl"]),
     ("Match", "совпадение", &["match"]),
     ("When", "когда", &["when", "guard"]),
-    // ---- OBJECT MODEL (KUMIR 3) ----
+    // Object model (Kumir 3)
     ("Class", "класс", &["Класс", "class", "Class"]),
     (
         "Struct",
@@ -145,25 +143,25 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
     ("Final", "финальный", &["финал", "final", "sealed"]),
     ("Extends", "расширяет", &["extends", "наследует"]),
     ("Implements", "реализует", &["implements"]),
-    // ---- RUST EMBEDS (KUMIR 3) ----
+    // Rust embeddings (Kumir 3)
     ("RustBlockStart", "РастВставкаНЦ", &[]),
     ("RustBlockEnd", "РастВставкаКЦ", &[]),
     ("Rust", "ржавчина", &["Ржавчина", "rust"]),
-    // ---- FUNCTIONAL PROGRAMMING (KUMIR 3) ----
+    // Functional programming (Kumir 3)
     ("Lambda", "лямбда", &["lambda", "fn", "func"]),
-    // ---- ASYNC & CONCURRENCY (KUMIR 3) ----
+    // Async and concurrency (Kumir 3)
     ("Async", "асинх", &["async", "асинхронный"]),
     ("Await", "ждать", &["await", "ожидать"]),
     ("Spawn", "запустить", &["spawn"]),
     ("Yield", "уступить", &["yield"]),
-    // ---- ERROR HANDLING (KUMIR 3) ----
+    // Error handling (Kumir 3)
     ("Try", "попытка", &["try"]),
     ("Catch", "перехват", &["catch", "except"]),
     ("Throw", "бросить", &["throw", "raise"]),
     ("Finally", "наконец", &["finally"]),
-    // ---- RESOURCE GUARDING (KUMIR 3) ----
+    // Resource guarding (Kumir 3)
     ("Defer", "отложить", &["defer"]),
-    // ---- SPECIAL VALUES (KUMIR 3) ----
+    // Special values (Kumir 3)
     (
         "None",
         "Пусто",
@@ -197,20 +195,20 @@ const KEYWORDS: &[(&str, &str, &[&str])] = &[
     ),
 ];
 
-// (имя, категория). Источник истины для встроенных функций.
+// (name, category). Single source of truth for built-in functions.
 // Math/String/Io -> is_builtin_function=true; Other -> false.
 //
-// ИНВАРИАНТ (проверяется тестами в interpreter/src/interpreter/builtins/tests.rs):
-//   * каждое имя таблицы РЕАЛЬНО диспетчеризуется `Builtins::try_call`;
-//   * каждое имя, диспетчеризуемое интерпретатором и НЕ являющееся ключевым
-//     словом языка, присутствует в таблице.
-// Имена, совпадающие с ключевыми словами (`int`, `print`, `цел`, `mod`, `таб`,
-// `ввод`, `утв` …), в таблицу НЕ входят: лексер превращает их в keyword-токен,
-// поэтому `имя(x)` никогда не доходит до диспетчера встроенных функций.
-// Категория = модуль реализации: math.rs -> Math, string.rs -> String,
+// INVARIANT (checked by tests in interpreter/src/interpreter/builtins/tests.rs):
+//   * Every table entry is actually dispatched by `Builtins::try_call`;
+//   * Every name dispatched by the interpreter and not a language keyword
+//     is present in this table.
+// Names that collide with keywords (`int`, `print`, `цел`, `mod`, `таб`,
+// `ввод`, `утв`, etc.) are NOT in this table: the lexer converts them to
+// keyword tokens, so `name(x)` never reaches the builtin dispatcher.
+// Category maps to implementation module: math.rs -> Math, string.rs -> String,
 // io.rs -> Io, array.rs / types.rs -> Other.
 const BUILTINS: &[(&str, &str)] = &[
-    // ----- Math -----
+    // Math functions
     ("abs", "Math"),
     ("sqrt", "Math"),
     ("корень", "Math"),
@@ -277,7 +275,7 @@ const BUILTINS: &[(&str, &str)] = &[
     ("случ", "Math"),
     ("random", "Math"),
     ("rand", "Math"),
-    // ----- Functional (higher-order over tables) -----
+    // Functional programming (higher-order functions over tables)
     ("отобразить", "Other"),
     ("map", "Other"),
     ("отобрать", "Other"),
@@ -296,7 +294,7 @@ const BUILTINS: &[(&str, &str)] = &[
     ("count", "Other"),
     ("сортировать_по", "Other"),
     ("sort_by", "Other"),
-    // ----- String -----
+    // String functions
     ("длина", "String"),
     ("длин", "String"),
     ("len", "String"),
@@ -348,7 +346,7 @@ const BUILTINS: &[(&str, &str)] = &[
     ("разбить", "String"),
     ("соединить", "String"),
     ("join", "String"),
-    // ----- Io -----
+    // I/O functions
     ("печать", "Io"),
     ("печатьстр", "Io"),
     ("println", "Io"),
@@ -360,7 +358,7 @@ const BUILTINS: &[(&str, &str)] = &[
     ("время", "Io"),
     ("time", "Io"),
     ("sleep", "Io"),
-    // ----- Other -----
+    // Other (conversions, collections, type inspection)
     ("массив", "Other"),
     ("добавить", "Other"),
     ("push", "Other"),
@@ -455,15 +453,15 @@ fn write_builtins(out_dir: &str) {
     writeln!(w, "];").unwrap();
 }
 
-// (символ, Token-вариант). Несколько символов могут давать один Token — это ок;
-// обратный поиск для операторов НЕ генерируется.
+// (symbol, Token variant). Multiple symbols can yield one Token (fine);
+// reverse lookup for operators is NOT generated.
 const OPERATORS: &[(&str, &str)] = &[
-    // 3-char
+    // Three-character operators
     ("...", "Ellipsis"),
     ("..=", "DoubleDotEq"),
     ("<<=", "Assign"),
     (">>=", "Assign"),
-    // 2-char
+    // Two-character operators
     ("<>", "NotEqual"),
     ("!=", "NotEqual"),
     ("<=", "LessEqual"),
@@ -486,7 +484,7 @@ const OPERATORS: &[(&str, &str)] = &[
     ("||", "Or"),
     ("??", "QuestionQuestion"),
     ("?.", "QuestionDot"),
-    // 1-char
+    // Single-character operators
     ("+", "Plus"),
     ("-", "Minus"),
     ("*", "Star"),
@@ -517,8 +515,7 @@ fn write_operators(out_dir: &str) {
     let path = Path::new(out_dir).join("operators_gen.rs");
     let mut w = BufWriter::new(File::create(&path).unwrap());
 
-    // Прямая карта: значения должны пережить карту до вызова `build()`,
-    // поэтому собираем их заранее во владеющий Vec (как в write_keywords).
+    // Map values must outlive the map until build(), so collect in owned Vec first.
     let entries: Vec<(&str, String)> = OPERATORS
         .iter()
         .map(|(sym, variant)| {
@@ -540,7 +537,7 @@ fn write_operators(out_dir: &str) {
     )
     .unwrap();
 
-    // Множество первых символов всех операторов (для is_operator_char).
+    // Set of all operator-starting characters (for is_operator_char check)
     let mut first_chars: Vec<char> = OPERATORS
         .iter()
         .map(|(sym, _)| sym.chars().next().unwrap())
@@ -563,8 +560,7 @@ fn write_keywords(out_dir: &str) {
     let path = Path::new(out_dir).join("keywords_gen.rs");
     let mut w = BufWriter::new(File::create(&path).unwrap());
 
-    // Значения (`Token::Variant`) должны пережить карту до вызова `build()`,
-    // поэтому собираем их заранее во владеющий Vec.
+    // Values must outlive the map until build(), so collect in owned Vec
     let entries: Vec<(&str, String)> = KEYWORDS
         .iter()
         .flat_map(|(variant, canonical, aliases)| {

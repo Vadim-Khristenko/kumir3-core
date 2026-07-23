@@ -1,12 +1,12 @@
-//! Библиотека файловых операций для КуМир 3
+//! File operations library for Kumir 3.
 //!
-//! Предоставляет функции для работы с файловой системой:
-//! - Чтение и запись текстовых/бинарных файлов
-//! - Копирование, перемещение, удаление
-//! - Работа с директориями
-//! - Метаданные файлов
+//! Provides functions for filesystem operations:
+//! - Reading and writing text/binary files
+//! - Copying, moving, deleting
+//! - Directory operations
+//! - File metadata
 //!
-//! Без внешних зависимостей, только std.
+//! No external dependencies, uses only std.
 
 mod dir;
 mod io;
@@ -22,7 +22,7 @@ pub use io::*;
 pub use meta::*;
 pub use ops::*;
 
-/// Создаёт библиотеку files
+/// Creates the files library.
 pub fn create_files_library() -> LibraryDef {
     let mut lib = LibraryDef::new("files", "Файлы");
     lib.aliases = vec![
@@ -39,7 +39,7 @@ pub fn create_files_library() -> LibraryDef {
     lib.stable = false;
 
     lib.functions = vec![
-        // === Чтение/запись ===
+        // === Reading/writing ===
         read_text_fn(),
         read_lines_fn(),
         write_text_fn(),
@@ -47,7 +47,7 @@ pub fn create_files_library() -> LibraryDef {
         read_bytes_fn(),
         write_bytes_fn(),
         write_lines_fn(),
-        // === Файловые операции ===
+        // === File operations ===
         copy_file_fn(),
         move_file_fn(),
         remove_file_fn(),
@@ -55,7 +55,7 @@ pub fn create_files_library() -> LibraryDef {
         remove_dir_all_fn(),
         touch_fn(),
         symlink_fn(),
-        // === Директории ===
+        // === Directories ===
         list_dir_fn(),
         list_files_fn(),
         list_dirs_fn(),
@@ -63,7 +63,7 @@ pub fn create_files_library() -> LibraryDef {
         make_dirs_fn(),
         walk_dir_fn(),
         glob_ext_fn(),
-        // === Метаданные ===
+        // === Metadata ===
         exists_fn(),
         is_file_fn(),
         is_dir_fn(),

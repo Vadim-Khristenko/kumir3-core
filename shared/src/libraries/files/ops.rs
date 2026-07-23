@@ -1,4 +1,4 @@
-//! Операции с файлами: копирование, перемещение, удаление
+//! File operations: copying, moving, deleting.
 
 use std::sync::Arc;
 

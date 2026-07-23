@@ -1,8 +1,7 @@
-//! Модуль вычисления выражений для интерпретатора Кумир 3
+//! Expression evaluation for the Kumir 3 interpreter.
 //!
-//! Реализует вычисление всех типов выражений: литералы, переменные,
-//! бинарные и унарные операции, вызовы алгоритмов, доступ к массивам,
-//! ООП (поля, методы, создание объектов), лямбды и т.д.
+//! Implements evaluation of all expression types: literals, variables, binary and unary
+//! operations, algorithm calls, array access, OOP (fields, methods, object creation), lambdas, etc.
 
 mod array;
 mod binary;
@@ -34,28 +33,13 @@ impl ExprEvaluator {
     /// Вычисляет выражение.
     pub fn evaluate(expr: &Expr, env: &mut Environment) -> RuntimeResult<Value> {
         match expr {
-            // Литералы
             Expr::Literal(value) => Ok(value.clone()),
-
-            // Переменные
             Expr::Variable(name) => env.get_variable(name).cloned(),
-
-            // Бинарные операции
             Expr::BinaryOp(left, op, right) => Self::eval_binary_op(left, op, right, env),
-
-            // Унарные операции
             Expr::UnaryOp(op, operand) => Self::eval_unary_op(op, operand, env),
-
-            // Вызов алгоритма
             Expr::Call(name, args) => Self::eval_call(name, args, env),
-
-            // Доступ к элементу массива
             Expr::ArrayAccess(name, indices) => Self::eval_array_access(name, indices, env),
-
-            // ООП: доступ к полю
             Expr::FieldAccess(object, field) => Self::eval_field_access(object, field, env),
-
-            // ООП: вызов метода
             Expr::MethodCall {
                 object,
                 method,
@@ -111,13 +95,12 @@ impl ExprEvaluator {
                 )
             }),
 
-            // [KITE-0011] Ссылка на предка (super).
+            // [KITE-0011] Super reference (super).
             //
-            // Голый `предок` НЕ является значением: объект Кумира — единая
-            // плоская запись полей (`Value::Object`), отдельного «объекта-предка»
-            // в модели не существует, поэтому сформировать значение-предок
-            // нечем. Единственная осмысленная форма — вызов метода предка,
-            // о чём и сообщает ошибка (раньше здесь был not_implemented).
+            // Bare `super` is not a value: a Kumir object is a flat record of fields
+            // (`Value::Object`), and there is no separate "parent object" in the model,
+            // so there's no way to construct a parent value. The only meaningful form
+            // is super method call, as indicated by the error below.
             Expr::SuperRef => Err(RuntimeError::new(
                 "'предок' можно использовать только как вызов метода предка: \
                  'предок.метод(...)' — самостоятельным значением он не является",
@@ -130,24 +113,18 @@ impl ExprEvaluator {
             // Проверка типа
             Expr::TypeCheck { expr, check_type } => Self::eval_type_check(expr, check_type, env),
 
-            // [KITE-0015] Доступ к члену модуля: `Модуль::член`
-            // (разрешается так же, как точечная форма `Модуль.член`).
+            // [KITE-0015] Module member access: `Module::member`
+            // (resolved the same way as dotted form `Module.member`).
             Expr::ModuleAccess(module, name) => Self::eval_module_access(module, name, env),
-
-            // Создание значения перечисления
             Expr::EnumConstruct {
                 enum_name,
                 variant,
                 data,
             } => Self::eval_enum_construct(enum_name, variant, data.as_deref(), env),
-
-            // Получение ссылки
             Expr::Ref(inner) => {
                 let value = Self::evaluate(inner, env)?;
                 Ok(Value::Pointer(Box::new(value)))
             }
-
-            // Разыменование
             Expr::Deref(inner) => {
                 let value = Self::evaluate(inner, env)?;
                 match value {
@@ -155,14 +132,10 @@ impl ExprEvaluator {
                     _ => Err(RuntimeError::type_mismatch("указатель", "не указатель")),
                 }
             }
-
-            // Создание указателя
             Expr::New(inner) => {
                 let value = Self::evaluate(inner, env)?;
                 Ok(Value::Pointer(Box::new(value)))
             }
-
-            // Лямбда-выражение
             Expr::Lambda {
                 params,
                 param_types,
@@ -190,13 +163,9 @@ impl ExprEvaluator {
                 })))
             }
 
-            // Pipe-выражение: x |> f
-            Expr::Pipe(value, func) => Self::eval_pipe(value, func, env),
-
-            // [KITE-0013] Композиция функций: f >> g  ≡  лямбда(x) -> g(f(x))
+            // [KITE-0013] Function composition: f >> g  ≡  lambda(x) -> g(f(x))
             Expr::Compose(left, right) => Self::eval_compose(left, right, env),
-
-            // Условное выражение
+            Expr::Pipe(value, func) => Self::eval_pipe(value, func, env),
             Expr::IfExpr {
                 condition,
                 then_expr,
@@ -209,22 +178,13 @@ impl ExprEvaluator {
                     Self::evaluate(else_expr, env)
                 }
             }
-
-            // Match-выражение
             Expr::MatchExpr { expr, arms } => Self::eval_match_expr(expr, arms, env),
-
-            // Rust-вставка
             Expr::RustExpr(_code) => Err(RuntimeError::not_implemented("Rust-вставки")),
-
-            // Пусто
             Expr::None => Ok(Value::Null),
-
-            // Не реализовано
             Expr::NotImplemented(msg) => {
                 let error_msg = msg.as_deref().unwrap_or("не указано");
                 Err(RuntimeError::not_implemented(error_msg))
             }
-
             // [KITE-0002] Null-coalescing operator: a ?? b
             Expr::Coalesce(lhs, rhs) => {
                 let left_value = Self::evaluate(lhs, env)?;
@@ -237,10 +197,8 @@ impl ExprEvaluator {
                     other => Ok(other),
                 }
             }
-
-            // [KITE-0002] Литерал массива `[a, b, c]` → Value::Array.
-            // Каждый элемент вычисляется штатным вычислителем (ранее не-литералы
-            // молча превращались в Undefined на этапе разбора).
+            // [KITE-0002] Array literal `[a, b, c]` → Value::Array.
+            // Each element is evaluated by the standard evaluator.
             Expr::ArrayLiteral(elems) => {
                 let values = elems
                     .iter()
@@ -248,9 +206,8 @@ impl ExprEvaluator {
                     .collect::<RuntimeResult<Vec<_>>>()?;
                 Ok(Value::Array(values))
             }
-
-            // [KITE-0002] Кортежный литерал `(a, b, c)` → Value::Tuple.
-            // Каждый элемент вычисляется штатным вычислителем выражений.
+            // [KITE-0002] Tuple literal `(a, b, c)` → Value::Tuple.
+            // Each element is evaluated by the standard evaluator.
             Expr::TupleExpr(elems) => {
                 let values = elems
                     .iter()
@@ -258,31 +215,27 @@ impl ExprEvaluator {
                     .collect::<RuntimeResult<Vec<_>>>()?;
                 Ok(Value::Tuple(values))
             }
-
-            // [KITE-0003] Async в позиции выражения — синхронный passthrough.
-            // Модель асинхронности Кумира сейчас упрощена/кооперативна: `ждать`
-            // и `запустить` просто вычисляют вложенное выражение синхронно и
-            // отдают его значение. Это делает работоспособным пример KITE-3 §6
-            // (`знач := ждать f()`) и снимает падение `запустить` в выражении.
+            // [KITE-0003] Async in expression position—synchronous passthrough.
+            // Kumir's asynchrony model is currently simplified/cooperative: `await`
+            // and `spawn` simply evaluate the inner expression synchronously and
+            // return its value.
             Expr::Await(inner) => Self::evaluate(inner, env),
             Expr::Spawn(inner) => Self::evaluate(inner, env),
-
-            // Все остальные выражения (не реализованы)
             _ => Err(RuntimeError::not_implemented("данное выражение")),
         }
     }
 
-    // =========================================================================
-    //                    ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: HELPER FUNCTIONS
+    // =============================================================================
 
-    /// Проверяет "истинность" значения (тонкий делегатор к [`TypeOps`]).
+    /// Checks value truthiness (thin delegate to [`TypeOps`]).
     #[inline]
     pub fn is_truthy(value: &Value) -> bool {
         TypeOps::is_truthy(value)
     }
 
-    /// Проверяет, является ли значение `null` или `Option::None`.
+    /// Checks if value is `null` or `Option::None`.
     #[inline]
     fn is_null_or_none(value: &Value) -> bool {
         match value {
@@ -292,13 +245,13 @@ impl ExprEvaluator {
         }
     }
 
-    /// Сравнивает два значения на равенство (тонкий делегатор к [`TypeOps`]).
+    /// Compares two values for equality (thin delegate to [`TypeOps`]).
     #[inline]
     pub fn values_equal(a: &Value, b: &Value) -> bool {
         TypeOps::values_equal(a, b)
     }
 
-    /// Возвращает значение по умолчанию для типа (тонкий делегатор к [`TypeOps`]).
+    /// Returns default value for a type (thin delegate to [`TypeOps`]).
     #[inline]
     pub fn default_value_for_type(type_spec: &TypeKind) -> Value {
         TypeOps::default_value(type_spec)

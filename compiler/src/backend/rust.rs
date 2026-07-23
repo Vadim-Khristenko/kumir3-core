@@ -1,9 +1,9 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Rust бэкенд компилятора
+//! Rust backend.
 //!
-//! Генерирует Rust код из IR и компилирует через rustc.
+//! Generates Rust code from IR and compiles via rustc.
 
 use super::Backend;
 use shared::codegen::ir::{BasicBlock, BinaryOp, IrFunction, IrInstruction, IrModule};

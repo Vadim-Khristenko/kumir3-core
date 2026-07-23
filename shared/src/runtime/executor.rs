@@ -1,14 +1,10 @@
-// ============================================================================
-//                    ИСПОЛНИТЕЛЬ ЗАДАЧ
-// ============================================================================
-//
-// Предоставляет управление async задачами:
-// - TaskExecutor: управление пулом задач
-// - Task: представление отдельной задачи
-// - TaskHandle: хэндл для управления запущенной задачей
-// - Scheduler: планировщик отложенных и периодических задач
-//
-// ============================================================================
+//! Async task execution and scheduling.
+//!
+//! Manages async task lifecycle:
+//! - TaskExecutor: task pool management
+//! - Task: individual task representation
+//! - TaskHandle: handle for running task
+//! - Scheduler: scheduler for delayed and periodic tasks
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -21,19 +17,17 @@ use tokio::task::JoinHandle;
 
 use crate::types::Value;
 
-/// Boxed future type used by the scheduler.
 type TaskFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
 
-// ============================================================================
-//                    ИДЕНТИФИКАТОРЫ
-// ============================================================================
+// =============================================================================
+//         SECTION: TASK IDENTIFIERS
+// =============================================================================
 
-/// Уникальный идентификатор задачи.
+/// Unique task identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TaskId(pub u64);
 
 impl TaskId {
-    /// Генерирует новый уникальный ID.
     pub fn new() -> Self {
         static COUNTER: AtomicU64 = AtomicU64::new(1);
         Self(COUNTER.fetch_add(1, Ordering::SeqCst))

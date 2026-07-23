@@ -1,9 +1,9 @@
-//! Строки вывода консоли.
+//! Console output lines.
 //!
-//! У каждой строки есть вид, а у вида — знак на левом поле и цвет. Знак
-//! важнее цвета: он отличает ввод от результата, а ошибку от предупреждения
-//! даже там, где цвет не помогает — в монохромном терминале, при копировании
-//! в текст, при дальтонизме.
+//! Each line has a type, and each type has a gutter symbol and color. The symbol
+//! is more important than color: it distinguishes input from result, error from
+//! warning even where color fails — on monochrome terminals, when copying to
+//! text, or for colorblindness.
 
 use ratatui::prelude::*;
 
@@ -11,26 +11,26 @@ use super::theme;
 
 #[derive(Clone)]
 pub(crate) enum OutputLine {
-    /// То, что напечатала программа.
+    /// What the program printed.
     Normal(String),
-    /// Ошибка выполнения или разбора.
+    /// Execution or parse error.
     Error(String),
-    /// Значение выражения или успешно выполненная команда.
+    /// Expression value or successful command.
     Success(String),
-    /// Предупреждение.
+    /// Warning message.
     Warning(String),
-    /// Эхо набранной строки.
+    /// Echo of input line.
     Input(String),
-    /// Сообщение самой консоли.
+    /// Console's own message.
     System(String),
-    /// Заголовок раздела.
+    /// Section header.
     Header(String),
-    /// Фрагмент кода в сообщении консоли.
+    /// Code fragment in console message.
     Code(String),
 }
 
 impl OutputLine {
-    /// Знак на левом поле — два столбца вместе с отбивкой.
+    /// Gutter symbol — two columns with padding.
     fn gutter(&self) -> &'static str {
         match self {
             Self::Input(_) => "› ",
@@ -67,8 +67,8 @@ impl OutputLine {
     }
 
     pub(crate) fn to_styled_line(&self) -> Line<'_> {
-        // Эхо ввода подсвечивается как код: набранное читается так же, как в
-        // строке ввода, и глазу не приходится перестраиваться.
+        // Input echo is highlighted as code: typed text reads the same in the
+        // input line, so the eye doesn't have to adjust.
         if let Self::Input(text) = self {
             let mut spans = vec![Span::styled(
                 self.gutter(),

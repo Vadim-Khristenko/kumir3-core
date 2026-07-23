@@ -1,11 +1,10 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Базовая арифметика: сложение, вычитание, умножение, деление,
-//! целочисленное деление, остаток и возведение в степень.
+//! Basic arithmetic: addition, subtraction, multiplication, division, integer division, modulus, and exponentiation.
 
 // =============================================================================
-//         IMPORTS
+//         SECTION: IMPORTS
 // =============================================================================
 
 use super::MathErr;
@@ -14,7 +13,7 @@ use crate::types::{Number, Value};
 use std::collections::HashMap;
 
 // =============================================================================
-//         CORE LOGIC
+//         SECTION: CORE LOGIC
 // =============================================================================
 
 impl MathOperators {

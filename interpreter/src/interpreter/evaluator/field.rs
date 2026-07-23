@@ -6,9 +6,9 @@ use super::super::environment::Environment;
 use super::super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
 impl ExprEvaluator {
-    // =========================================================================
-    //                    ООП: ДОСТУП К ПОЛЮ
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: OOP FIELD ACCESS
+    // =============================================================================
 
     pub(crate) fn eval_field_access(
         object: &Expr,
@@ -25,7 +25,7 @@ impl ExprEvaluator {
                         RuntimeErrorKind::Other,
                     )
                 })?;
-                // [KITE 11, шаг 5] Проверка инкапсуляции (видимость поля).
+                // [KITE 11, step 5] Encapsulation check (field visibility).
                 let class_name = Self::find_class_name_by_type_id(&type_id, env)
                     .or_else(|| Self::find_class_by_fields(&fields, env));
                 if let Some(cn) = class_name {
@@ -54,9 +54,9 @@ impl ExprEvaluator {
         }
     }
 
-    /// [KITE 11, шаг 5] Проверяет видимость поля при доступе.
-    /// Публичные поля доступны всегда; закрытые — только из класса-владельца;
-    /// защищённые — из владельца и его потомков.
+    /// [KITE 11, step 5] Checks field visibility on access.
+    /// Public fields are always accessible; private fields only from the owning class;
+    /// protected fields from the owner and its descendants.
     fn check_field_access(object_class: &str, field: &str, env: &Environment) -> RuntimeResult<()> {
         use shared::types::Visibility;
         let mut current = object_class.to_string();

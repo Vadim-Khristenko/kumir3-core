@@ -1,4 +1,4 @@
-//! Функции работы с переменными окружения
+//! Environment variable functions.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

@@ -1,4 +1,4 @@
-//! TCP-операции: подключение, отправка, приём, прослушивание
+//! TCP operations: connecting, sending, receiving, listening.
 
 use std::io::{Read, Write};
 use std::net::TcpStream;

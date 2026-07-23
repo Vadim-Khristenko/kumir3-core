@@ -1,4 +1,4 @@
-//! Rust-вставки.
+//! Rust block execution.
 
 use super::super::environment::Environment;
 use super::super::error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
@@ -7,17 +7,17 @@ use shared::codegen::rust_block::{RustBlockConfig, RustBlockExecutor, RustExecut
 use std::collections::HashMap;
 
 impl Executor {
-    // =========================================================================
-    //                    RUST-ВСТАВКИ
-    // =========================================================================
+    // =============================================================================
+    //                         RUST BLOCKS
+    // =============================================================================
 
-    /// Выполняет Rust-блок с захваченными переменными
+    /// Executes a Rust block with captured variables.
     pub(crate) fn execute_rust_block(
         code: &str,
         captured_vars: &[String],
         env: &mut Environment,
     ) -> RuntimeResult<ControlFlow> {
-        // Собираем захваченные переменные из окружения
+        // Collect captured variables from the environment.
         let mut vars = HashMap::new();
         for var_name in captured_vars {
             if let Ok(value) = env.get_variable(var_name) {
@@ -25,18 +25,17 @@ impl Executor {
             }
         }
 
-        // Создаём исполнитель Rust-блоков
-        // По умолчанию используем интерпретацию, если rustc недоступен
+        // Create a Rust block executor (interpret if rustc unavailable).
         let config = RustBlockConfig {
             execution_mode: RustExecutionMode::Interpret,
             ..Default::default()
         };
         let mut executor = RustBlockExecutor::with_config(config);
 
-        // Выполняем код
+        // Execute the code.
         let result = executor.execute(code, &vars)?;
 
-        // Выводим stdout если есть
+        // Print stdout if present.
         if !result.stdout.is_empty() {
             env.print(&result.stdout);
             if env.is_debug_mode() {
@@ -44,7 +43,7 @@ impl Executor {
             }
         }
 
-        // Выводим stderr если есть
+        // Print stderr if present.
         if !result.stderr.is_empty() {
             env.print(&format!("[stderr] {}", result.stderr));
             if env.is_debug_mode() {
@@ -52,7 +51,7 @@ impl Executor {
             }
         }
 
-        // Проверяем код возврата
+        // Check exit code.
         if let Some(code) = result.exit_code
             && code != 0
         {

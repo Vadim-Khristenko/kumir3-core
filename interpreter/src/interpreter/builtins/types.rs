@@ -1,3 +1,5 @@
+//! Type checking and conversion functions.
+
 use shared::types::{Expr, Number, Value};
 
 use super::super::environment::Environment;
@@ -13,7 +15,7 @@ impl Builtins {
     ) -> RuntimeResult<Option<Value>> {
         let vals = Self::eval_args(args, env)?;
         match name {
-            // ===== ПРЕОБРАЗОВАНИЕ ТИПОВ =====
+            // Type conversions
             "цел" | "int" | "целое" | "to_int" => {
                 Self::check_args(name, &vals, 1)?;
                 let i = Self::to_int(&vals[0])?;
@@ -36,7 +38,7 @@ impl Builtins {
                 Ok(Some(Value::Boolean(ExprEvaluator::is_truthy(&vals[0]))))
             }
 
-            // ===== ПРОВЕРКИ ТИПОВ =====
+            // Type checks
             "это_число" | "is_number" => {
                 Self::check_args(name, &vals, 1)?;
                 Ok(Some(Value::Boolean(vals[0].is_number())))
@@ -65,8 +67,7 @@ impl Builtins {
                 Ok(Some(Value::String(type_name)))
             }
 
-            // ===== ОШИБКИ =====
-            // ошибка(сообщение) или ошибка(сообщение, вид)
+            // Error construction: ошибка(message) or ошибка(message, kind)
             "ошибка" | "error" => {
                 if vals.is_empty() || vals.len() > 2 {
                     return Err(RuntimeError::argument_count(name, 1, vals.len()));
@@ -79,7 +80,7 @@ impl Builtins {
                 Ok(Some(Value::error(message, kind)))
             }
 
-            // ===== ПАРЫ И КОРТЕЖИ =====
+            // Pairs and tuples
             "пара" | "pair" => {
                 Self::check_args(name, &vals, 2)?;
                 Ok(Some(Value::Pair(
@@ -99,7 +100,7 @@ impl Builtins {
 
             "кортеж" | "tuple" => Ok(Some(Value::Tuple(vals))),
 
-            // ===== ОПЦИИ =====
+            // Options
             "некоторое" | "some" => {
                 Self::check_args(name, &vals, 1)?;
                 Ok(Some(Value::Option(Box::new(Some(vals[0].clone())))))
@@ -141,7 +142,6 @@ impl Builtins {
                 }
             }
 
-            // Функция не найдена
             _ => Ok(None),
         }
     }

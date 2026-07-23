@@ -1,27 +1,27 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
+//! String, character, and escape sequence scanning.
+
 use super::{
     Lexer, LexerError, LexerErrorKind, LexerResult, LexerState, Position, Span, SpannedToken,
 };
 use crate::types::Token;
 
 impl<'a> Lexer<'a> {
-    // =========================================================================
-    //         STRING LITERALS
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: STRING LITERALS
+    // =============================================================================
 
     /// Scans a string literal ("..." or """...""").
     pub(super) fn scan_string(&mut self, start: Position) -> LexerResult<Option<SpannedToken>> {
-        self.advance(); // opening quote
+        self.advance();
 
-        // Check for triple quotes
         let is_multiline = if self.peek() == Some('"') && self.peek_at(1) == Some('"') {
             self.advance();
             self.advance();
             true
         } else if self.peek() == Some('"') {
-            // Empty string ""
             self.advance();
             return Ok(Some(SpannedToken::new(
                 Token::StringLiteral(String::new()),
@@ -83,9 +83,8 @@ impl<'a> Lexer<'a> {
 
     /// Scans a raw string literal (r"..." or r#"..."#).
     pub(super) fn scan_raw_string(&mut self, start: Position) -> LexerResult<Option<SpannedToken>> {
-        self.advance(); // 'r'
+        self.advance();
 
-        // Count opening hashes
         let mut hash_count = 0;
         while self.peek() == Some('#') {
             hash_count += 1;
@@ -99,7 +98,7 @@ impl<'a> Lexer<'a> {
                 self.position,
             ));
         }
-        self.advance(); // opening quote
+        self.advance();
 
         let mut value = String::new();
 
@@ -140,14 +139,14 @@ impl<'a> Lexer<'a> {
         )))
     }
 
-    /// Scans start of interpolated string (f"...).
+    /// Scans start of interpolated string (f"...").
     /// Emits InterpolatedStringStart, then switches to InterpolatedStringText state.
     pub(super) fn scan_interpolated_string(
         &mut self,
         start: Position,
     ) -> LexerResult<Option<SpannedToken>> {
-        self.advance(); // 'f'
-        self.advance(); // opening quote
+        self.advance();
+        self.advance();
 
         self.state = LexerState::InterpolatedStringText;
 
@@ -157,12 +156,13 @@ impl<'a> Lexer<'a> {
         )))
     }
 
-    /// Scans text portion of interpolated string until `{` or `"`.
+    /// Scans text portion of interpolated string.
     ///
-    /// State machine:
-    /// - `"` → emit part (if any), then emit InterpolatedStringEnd, go Normal
-    /// - `{` → emit part (if any), consume `{`, go InterpolatedStringExpr  
-    /// - `\\` → escape sequence
+    /// Transitions:
+    /// - `"` → emit part, emit InterpolatedStringEnd, return to Normal
+    /// - `{` → emit part, switch to InterpolatedStringExpr
+    /// - `\\` → parse escape sequence
+    /// - `}}` → escaped closing brace (emit single `}`)
     /// - other → accumulate text
     pub(super) fn scan_interpolated_text(
         &mut self,
@@ -180,45 +180,15 @@ impl<'a> Lexer<'a> {
                     ));
                 }
                 Some('"') => {
-                    self.advance(); // consume closing quote
+                    self.advance();
                     self.state = LexerState::Normal;
 
-                    // If there's accumulated text, return it as a part.
-                    // InterpolatedStringEnd will be returned on next call via pending_end.
-                    // Actually, simplify: emit End right away (text can be empty).
                     if value.is_empty() {
                         return Ok(Some(SpannedToken::new(
                             Token::InterpolatedStringEnd,
                             Span::new(start, self.position),
                         )));
                     } else {
-                        // We need to return BOTH the text part AND the end token.
-                        // Store end token position for next call.
-                        // But we can't really buffer. So: return the part,
-                        // and on next call, state is Normal, the quote is already consumed.
-                        // The parser just won't see InterpolatedStringEnd.
-
-                        // SOLUTION: Use peek() BEFORE consuming the quote.
-                        // Back up: we already advanced. Let's just return both conceptually
-                        // by returning InterpolatedStringPart and letting the caller understand
-                        // that no InterpolatedStringEnd means the string is done.
-
-                        // BETTER SOLUTION: don't consume quote here. Let the main loop do it.
-                        // But we already consumed it...
-
-                        // CLEANEST: Just return the part with the text.
-                        // The state is Normal. When the parser sees no more interpolated tokens,
-                        // it knows the string ended. This works because the parser can check
-                        // for InterpolatedStringEnd OR just no more InterpolatedStringPart.
-
-                        // Actually, let's just always emit the End token and skip text emit
-                        // for trailing text (embed it in the End token semantics).
-                        // The parser typically just collects parts anyway.
-
-                        // PRAGMATIC: Return InterpolatedStringPart here.
-                        // The parser will see: Start, [Part|tokens]*, and then a non-interpolated token.
-                        // We document that InterpolatedStringEnd may be absent if trailing text exists.
-
                         return Ok(Some(SpannedToken::new(
                             Token::InterpolatedStringPart(value),
                             Span::new(start, self.position),
@@ -226,7 +196,6 @@ impl<'a> Lexer<'a> {
                     }
                 }
                 Some('{') => {
-                    // Check for {{ escape
                     if self.peek_at(1) == Some('{') {
                         self.advance();
                         self.advance();
@@ -234,7 +203,6 @@ impl<'a> Lexer<'a> {
                         continue;
                     }
 
-                    // If we have accumulated text, return it first (don't consume {)
                     if !value.is_empty() {
                         return Ok(Some(SpannedToken::new(
                             Token::InterpolatedStringPart(value),
@@ -242,13 +210,11 @@ impl<'a> Lexer<'a> {
                         )));
                     }
 
-                    // No text — start expression directly: consume {
                     self.advance();
                     self.state = LexerState::InterpolatedStringExpr { brace_depth: 1 };
-                    return Ok(None); // next_token() will lex the expression
+                    return Ok(None);
                 }
                 Some('}') => {
-                    // Check for }} escape
                     if self.peek_at(1) == Some('}') {
                         self.advance();
                         self.advance();
@@ -273,29 +239,25 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Scans tokens inside an interpolated expression { ... }.
-    /// Returns normal tokens until the matching closing brace.
+    /// Scans tokens inside an interpolated expression `{...}`.
+    /// Handles brace nesting to find the expression boundary.
     pub(super) fn scan_interpolated_expr(
         &mut self,
         _start: Position,
     ) -> LexerResult<Option<SpannedToken>> {
-        // Check for closing brace at current depth
         if let LexerState::InterpolatedStringExpr { brace_depth } = self.state
             && self.peek() == Some('}')
             && brace_depth == 1
         {
-            // End of interpolated expression
-            self.advance(); // consume }
+            self.advance();
             self.state = LexerState::InterpolatedStringText;
-            return Ok(None); // Skip, resume scanning text
+            return Ok(None);
         }
 
-        // Otherwise lex a normal token, tracking brace depth
         let old_state = self.state;
         self.state = LexerState::Normal;
         let result = self.next_token();
 
-        // Restore interpolated state, adjusting brace depth
         if let LexerState::InterpolatedStringExpr { brace_depth } = old_state {
             let mut new_depth = brace_depth;
             if let Ok(Some(ref tok)) = result {
@@ -304,7 +266,6 @@ impl<'a> Lexer<'a> {
                     Token::RBrace => {
                         new_depth -= 1;
                         if new_depth == 0 {
-                            // Back to text scanning
                             self.state = LexerState::InterpolatedStringText;
                             return Ok(None);
                         }
@@ -320,13 +281,13 @@ impl<'a> Lexer<'a> {
         result
     }
 
-    // =========================================================================
-    //         CHARACTER LITERALS
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: CHARACTER LITERALS
+    // =============================================================================
 
     /// Scans a character literal ('x').
     pub(super) fn scan_char(&mut self, start: Position) -> LexerResult<Option<SpannedToken>> {
-        self.advance(); // opening quote
+        self.advance();
 
         let c = match self.peek() {
             None | Some('\n') => {
@@ -376,11 +337,11 @@ impl<'a> Lexer<'a> {
         )))
     }
 
-    // =========================================================================
-    //         ESCAPE SEQUENCES
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: ESCAPE SEQUENCES
+    // =============================================================================
 
-    /// Scans an escape sequence.
+    /// Scans an escape sequence (starting after backslash).
     pub(super) fn scan_escape_sequence(&mut self) -> LexerResult<char> {
         let pos = self.position;
 
@@ -437,7 +398,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Scans a hex escape (\xNN).
+    /// Scans a hex escape sequence (\xNN).
     pub(super) fn scan_hex_escape(&mut self, digits: usize) -> LexerResult<char> {
         let pos = self.position;
         let mut value = 0u32;
@@ -467,7 +428,7 @@ impl<'a> Lexer<'a> {
         })
     }
 
-    /// Scans a unicode escape (\u{NNNN}).
+    /// Scans a Unicode escape sequence (\u{...}).
     pub(super) fn scan_unicode_escape(&mut self) -> LexerResult<char> {
         let pos = self.position;
 

@@ -1,7 +1,7 @@
-//! Глобальный реестр библиотек для КуМир 3
+//! Global library registry for Kumir 3.
 //!
-//! Регистрирует все встроенные библиотеки и предоставляет
-//! интерфейс поиска через `LibraryProvider` trait.
+//! Registers all built-in libraries and provides
+//! a lookup interface via the `LibraryProvider` trait.
 
 use std::sync::RwLock;
 
@@ -18,13 +18,13 @@ use super::{
     create_files_library, create_net_library, create_syscall_library, create_time_library,
 };
 
-// ===== Глобальное состояние =====
+// ===== Global state =====
 
-/// Менеджер окружений (глобальное + стек проектных)
+/// Environment manager (global + project stack).
 static ENVIRONMENT_MANAGER: Lazy<RwLock<EnvironmentManager>> =
     Lazy::new(|| RwLock::new(EnvironmentManager::default()));
 
-/// Одноразовая инициализация: регистрация встроенных библиотек
+/// One-time initialization: registration of built-in libraries.
 static BUILTINS_LOADER_INIT: Lazy<()> = Lazy::new(|| {
     let builtins = vec![
         create_time_library(),
@@ -34,10 +34,10 @@ static BUILTINS_LOADER_INIT: Lazy<()> = Lazy::new(|| {
     ];
 
     for lib in builtins {
-        // Регистрируем через интегрированный загрузчик
+        // Register via integrated loader.
         venv_loader::register_builtin(lib.clone());
 
-        // Также регистрируем в глобальном окружении
+        // Also register in global environment.
         if let Ok(mut mgr) = ENVIRONMENT_MANAGER.write() {
             let env = mgr.global_mut();
             env.register_builtin(lib);
@@ -45,27 +45,27 @@ static BUILTINS_LOADER_INIT: Lazy<()> = Lazy::new(|| {
     }
 });
 
-// ===== Публичное API =====
+// ===== Public API =====
 
-/// Регистрирует все встроенные библиотеки.
-/// Вызовите один раз при запуске интерпретатора.
+/// Registers all built-in libraries.
+/// Call once at interpreter startup.
 pub fn register_all_builtins() {
     Lazy::force(&BUILTINS_LOADER_INIT);
 }
 
-/// Ищет библиотеку по имени (или алиасу).
-/// Автоматически инициализирует встроенные библиотеки при первом вызове.
+/// Finds a library by name (or alias).
+/// Automatically initializes built-in libraries on first call.
 pub fn find_library(name: &str) -> Option<LibraryDef> {
     register_all_builtins();
 
-    // Сначала пробуем через EnvironmentManager
+    // First try EnvironmentManager.
     if let Ok(mgr) = ENVIRONMENT_MANAGER.read()
         && let Some(versioned) = mgr.find_library(name)
     {
         return Some(versioned.def.clone());
     }
 
-    // Затем через интегрированный загрузчик
+    // Then try integrated loader.
     if let Ok(loaded) = venv_loader::load_library(name) {
         return Some(loaded.def);
     }
@@ -73,27 +73,27 @@ pub fn find_library(name: &str) -> Option<LibraryDef> {
     None
 }
 
-/// Ищет библиотеку по имени и версии.
-/// Поддерживает точные версии и спецификации версий (^1.0, ~1.2.3, >=1.0.0).
+/// Finds a library by name and version.
+/// Supports exact versions and version specs (^1.0, ~1.2.3, >=1.0.0).
 pub fn find_library_with_version(name: &str, version_spec: &str) -> Option<LibraryDef> {
     register_all_builtins();
 
-    // Парсим спецификацию версии
+    // Parse version spec.
     let spec = VersionSpec::parse(version_spec).ok()?;
 
-    // Получаем все доступные версии библиотеки
+    // Get all available versions of the library.
     if let Ok(mgr) = ENVIRONMENT_MANAGER.read() {
         let env = mgr.active();
         let available = env.available_versions(name);
 
-        // Находим лучшую подходящую версию
+        // Find the best matching version.
         let mut matching_versions: Vec<_> =
             available.into_iter().filter(|v| spec.matches(v)).collect();
 
-        // Сортируем по убыванию (самая новая первая)
+        // Sort in descending order (newest first).
         matching_versions.sort_by(|a, b| b.cmp(a));
 
-        // Берём самую новую подходящую версию
+        // Use the newest matching version.
         if let Some(best_version) = matching_versions.first()
             && let Some(versioned) = mgr.find_library_version(name, best_version)
         {
@@ -101,9 +101,9 @@ pub fn find_library_with_version(name: &str, version_spec: &str) -> Option<Libra
         }
     }
 
-    // Пробуем через интегрированный загрузчик
+    // Try integrated loader.
     if let Ok(loaded) = venv_loader::load_library(name) {
-        // Проверяем, подходит ли версия
+        // Check if version matches.
         let spec = VersionSpec::parse(version_spec).ok()?;
         if spec.matches(&loaded.version) {
             return Some(loaded.def);
@@ -113,7 +113,7 @@ pub fn find_library_with_version(name: &str, version_spec: &str) -> Option<Libra
     None
 }
 
-/// Получает список всех доступных версий библиотеки
+/// Gets all available versions of a library.
 pub fn get_library_versions(name: &str) -> Vec<Version> {
     register_all_builtins();
 
@@ -125,11 +125,11 @@ pub fn get_library_versions(name: &str) -> Vec<Version> {
     Vec::new()
 }
 
-/// Проверяет, является ли имя (или алиас) известной библиотекой
+/// Checks if a name (or alias) is a known library.
 pub fn is_known_library(name: &str) -> bool {
     register_all_builtins();
 
-    // Быстрая проверка по известным id и aliases
+    // Fast check against known ids and aliases.
     let known_names = [
         "time",
         "время",
@@ -152,7 +152,7 @@ pub fn is_known_library(name: &str) -> bool {
         return true;
     }
 
-    // Проверяем через менеджер окружений
+    // Check via environment manager.
     if let Ok(mgr) = ENVIRONMENT_MANAGER.read()
         && mgr.find_library(name).is_some()
     {
@@ -162,31 +162,30 @@ pub fn is_known_library(name: &str) -> bool {
     false
 }
 
-/// Активирует окружение проекта (загружает зависимости из lock-файла)
+/// Activates a project environment (loads dependencies from lock file).
 pub fn activate_project(project_path: &str) -> Result<(), String> {
     register_all_builtins();
     venv_loader::activate_project(project_path)
         .map_err(|e| format!("Ошибка активации проекта: {}", e))
 }
 
-/// Деактивирует текущее окружение проекта
+/// Deactivates the current project environment.
 pub fn deactivate_project() -> Result<(), String> {
     venv_loader::deactivate_project();
     Ok(())
 }
 
-/// Список всех доступных библиотек
+/// Lists all available libraries.
 pub fn list_available() -> Vec<String> {
     register_all_builtins();
     venv_loader::list_available()
 }
 
-/// Ищет встроенную библиотеку, предоставляющую функцию с таким именем.
+/// Finds a built-in library that provides a function with the given name.
 ///
-/// Нужна для подсказки: программа зовёт `текущий_год()`, забыв
-/// `использовать время`, и вместо «алгоритм не определён» получает ответ,
-/// из которого видно, что делать. Возвращается имя библиотеки на языке
-/// программы — то, что пишут после `использовать`.
+/// Used for hints: if a program calls `текущий_год()` without importing the time library,
+/// instead of "algorithm not defined", the user gets a hint showing which library to import.
+/// Returns the library name in the language of the program—what goes after `использовать`.
 pub fn library_providing_function(function: &str) -> Option<String> {
     register_all_builtins();
 
@@ -198,9 +197,8 @@ pub fn library_providing_function(function: &str) -> Option<String> {
             f.name.as_ref() == function || f.aliases.iter().any(|a| a.as_ref() == function)
         });
         if provides {
-            // Русское название («Время») читается в подсказке лучше
-            // служебного идентификатора («time»), но после `использовать`
-            // пишут именно то, что понимает импорт, — берём первый алиас.
+            // The Russian name ("Время") reads better in hints than the utility ID ("time"),
+            // but after `использовать` you write what the import understands—take the first alias.
             let import_name = lib
                 .aliases
                 .iter()
@@ -215,8 +213,8 @@ pub fn library_providing_function(function: &str) -> Option<String> {
 
 // ===== LibraryProvider =====
 
-/// Глобальный провайдер библиотек, реализующий `LibraryProvider` trait
-/// для системы разрешения зависимостей
+/// Global library provider implementing the `LibraryProvider` trait
+/// for the dependency resolution system.
 pub struct GlobalLibraryProvider;
 
 impl LibraryProvider for GlobalLibraryProvider {
@@ -244,7 +242,7 @@ impl LibraryProvider for GlobalLibraryProvider {
     fn get_dependencies(&self, name: &str, _version: &Version) -> Vec<DependencySpec> {
         register_all_builtins();
 
-        // Ищем библиотеку и возвращаем её зависимости как DependencySpec
+        // Find library and return its dependencies as DependencySpec.
         if let Some(lib) = find_library(name) {
             return lib
                 .dependencies
@@ -269,14 +267,14 @@ impl LibraryProvider for GlobalLibraryProvider {
     }
 }
 
-/// Возвращает глобальный провайдер библиотек
+/// Returns the global library provider.
 pub fn get_global_provider() -> GlobalLibraryProvider {
     GlobalLibraryProvider
 }
 
-// ===== Вспомогательный реестр (для простого использования без окружений) =====
+// ===== Helper registry (for simple use without environments) =====
 
-/// Создаёт простой реестр со всеми встроенными библиотеками
+/// Creates a simple registry with all built-in libraries.
 pub fn create_builtin_registry() -> LibraryRegistry {
     let mut registry = LibraryRegistry::new();
     registry.register(create_time_library());
@@ -293,7 +291,7 @@ mod tests {
     #[test]
     fn test_register_all_builtins() {
         register_all_builtins();
-        // Повторный вызов не должен паниковать
+        // Repeated calls should not panic.
         register_all_builtins();
     }
 
@@ -330,15 +328,15 @@ mod tests {
     fn test_global_provider() {
         let provider = get_global_provider();
         let versions = provider.available_versions("time");
-        // У встроенных библиотек должна быть хотя бы одна версия
-        // (зависит от того, зарегистрированы ли они через EnvironmentManager)
+        // Built-in libraries should have at least one version
+        // (depends on whether they're registered via EnvironmentManager).
         let _ = versions;
     }
 
     #[test]
     fn test_list_available() {
         let available = list_available();
-        // Должны быть хотя бы встроенные
+        // At least the built-ins should be present.
         assert!(available.len() >= 4);
     }
 }

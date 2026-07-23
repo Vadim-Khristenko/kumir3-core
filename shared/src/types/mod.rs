@@ -1,22 +1,22 @@
-//! Модуль типов языка Кумир 3
+//! Type system for the Kumir 3 language.
 //!
-//! Структура модуля:
-//! - `number` - числовые типы (Number)
-//! - `value` - значения времени выполнения (Value)
-//! - `token` - токены (лексемы) языка
-//! - `expr` - выражения (Expr)
-//! - `stmt` - инструкции (Stmt)
-//! - `pattern` - паттерны для pattern matching
-//! - `class` - классы и ООП (AST определения)
-//! - `algorithm` - алгоритмы и параметры
-//! - `program` - полная программа
-//! - `registry` - реестр типов (TypeRegistry v2)
-//! - `library` - определения библиотек (LibraryDef)
-//! - `version` - семантическое версионирование (SemVer)
-//! - `environment` - виртуальные окружения
-//! - `import_spec` - спецификации импорта
-//! - `config` - конфигурация проекта (kumir.toml)
-//! - `resolver` - резолвер зависимостей
+//! Module organization:
+//! - `number` — numeric types (Number)
+//! - `value` — runtime values (Value)
+//! - `token` — lexical tokens
+//! - `expr` — expressions (Expr)
+//! - `stmt` — statements (Stmt)
+//! - `pattern` — pattern matching patterns
+//! - `class` — classes and OOP (AST definitions)
+//! - `algorithm` — algorithms and parameters
+//! - `program` — complete program
+//! - `registry` — type registry (TypeRegistry v2)
+//! - `library` — library definitions (LibraryDef)
+//! - `version` — semantic versioning (SemVer)
+//! - `environment` — virtual environments
+//! - `import_spec` — import specifications
+//! - `config` — project configuration (kumir.toml)
+//! - `resolver` — dependency resolver
 
 mod algorithm;
 mod class;
@@ -36,7 +36,7 @@ pub mod value;
 pub mod venv_loader;
 pub mod version;
 
-// Re-export всех публичных типов
+// Re-export all public types
 pub use algorithm::{
     Algorithm, AlgorithmKind, Attribute, CallConvention, EffectFlags, NodeId, OverloadedAlgorithm,
     ParamMode, Parameter, SourceSpan, TypeConstraint, TypeParam,
@@ -99,5 +99,5 @@ pub use venv_loader::{
     load_library_versioned, load_library_with_deps, loader, register_builtin,
 };
 
-// Вспомогательные структуры
+// Helper structures
 pub use stmt::{EnumVariant, MatchArm, VarModifiers, YieldParam};

@@ -1,4 +1,4 @@
-//! Операции с директориями
+//! Directory operations.
 
 use std::sync::Arc;
 

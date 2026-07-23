@@ -1,3 +1,5 @@
+//! AST viewer — displays parsed program structure.
+
 use crate::terminal::{init_terminal, restore_terminal};
 use crate::ui::OutputLine;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};

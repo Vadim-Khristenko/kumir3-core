@@ -1,11 +1,10 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Строковые и агрегатные помощники арифметических операций
-//! (умножение/деление строк, удаление подстроки, ключ значения).
+//! String and aggregate helpers for arithmetic operations (string multiplication/division, substring removal, value keys).
 
 // =============================================================================
-//         IMPORTS
+//         SECTION: IMPORTS
 // =============================================================================
 
 use super::MathErr;
@@ -13,7 +12,7 @@ use super::MathOperators;
 use crate::types::{Number, Value};
 
 // =============================================================================
-//         CORE LOGIC
+//         SECTION: CORE LOGIC
 // =============================================================================
 
 impl MathOperators {

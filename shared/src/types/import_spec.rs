@@ -1,12 +1,12 @@
-//! Спецификация импорта для Kumir 3
+//! Import specification for Kumir 3.
 //!
-//! Поддерживает различные формы импорта:
+//! Supports various forms of imports:
 //! ```kumir
-//! подключить Сокеты
-//! подключить из Сокеты (TCP_Сервер, UDP_Клиент)
-//! подключить из Сокеты:2.0.0 (TCP_Сервер)
-//! подключить из ./локальный_модуль (функция)
-//! подключить Сокеты:1.0 как СокетыV1
+//! import Sockets
+//! import from Sockets (TCP_Server, UDP_Client)
+//! import from Sockets:2.0.0 (TCP_Server)
+//! import from ./local_module (function)
+//! import Sockets:1.0 as SocketsV1
 //! ```
 
 use std::path::PathBuf;
@@ -14,29 +14,29 @@ use std::path::PathBuf;
 use super::version::{VersionParseError, VersionSpec};
 
 // ============================================================================
-//                         ТИП ИМПОРТА
+//                         IMPORT ITEM
 // ============================================================================
 
-/// Что именно импортируется
+/// What exactly is being imported.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportItem {
-    /// Вся библиотека целиком
+    /// Entire library
     All,
-    /// Конкретный элемент (функция, тип, константа)
+    /// Specific element (function, type, constant)
     Named(String),
-    /// Элемент с переименованием: `функция как новое_имя`
+    /// Element with alias: `function as new_name`
     Aliased { name: String, alias: String },
-    /// Групповой импорт: `(элемент1, элемент2)`
+    /// Group import: `(element1, element2)`
     Group(Vec<ImportItem>),
 }
 
 impl ImportItem {
-    /// Создаёт именованный импорт
+    /// Creates a named import.
     pub fn named(name: impl Into<String>) -> Self {
         ImportItem::Named(name.into())
     }
 
-    /// Создаёт импорт с псевдонимом
+    /// Creates an aliased import.
     pub fn aliased(name: impl Into<String>, alias: impl Into<String>) -> Self {
         ImportItem::Aliased {
             name: name.into(),
@@ -44,12 +44,12 @@ impl ImportItem {
         }
     }
 
-    /// Создаёт групповой импорт
+    /// Creates a group import.
     pub fn group(items: Vec<ImportItem>) -> Self {
         ImportItem::Group(items)
     }
 
-    /// Возвращает все импортируемые имена
+    /// Returns all imported names.
     pub fn names(&self) -> Vec<&str> {
         match self {
             ImportItem::All => vec!["*"],
@@ -59,7 +59,7 @@ impl ImportItem {
         }
     }
 
-    /// Возвращает имя для использования в коде (с учётом алиаса)
+    /// Returns the name to use in code (considering alias).
     pub fn use_name(&self) -> Option<&str> {
         match self {
             ImportItem::All => None,
@@ -71,31 +71,31 @@ impl ImportItem {
 }
 
 // ============================================================================
-//                         ИСТОЧНИК ИМПОРТА
+//                         IMPORT SOURCE
 // ============================================================================
 
-/// Откуда импортировать
+/// Where to import from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportSource {
-    /// Библиотека по имени: `подключить Сокеты`
+    /// Library by name: `import Sockets`
     Library(String),
-    /// Библиотека с версией: `подключить из Сокеты:2.0.0`
+    /// Versioned library: `import from Sockets:2.0.0`
     VersionedLibrary { name: String, version: VersionSpec },
-    /// Относительный путь: `подключить из ./модуль`
+    /// Relative path: `import from ./module`
     RelativePath(PathBuf),
-    /// Абсолютный путь: `подключить из /путь/к/модулю`
+    /// Absolute path: `import from /path/to/module`
     AbsolutePath(PathBuf),
-    /// URL (для будущего): `подключить из https://kumir.dev/libs/sockets`
+    /// URL (for future): `import from https://kumir.dev/libs/sockets`
     Url(String),
 }
 
 impl ImportSource {
-    /// Создаёт источник из имени библиотеки
+    /// Creates a source from a library name.
     pub fn library(name: impl Into<String>) -> Self {
         ImportSource::Library(name.into())
     }
 
-    /// Создаёт версионированный источник
+    /// Creates a versioned source.
     pub fn versioned(name: impl Into<String>, version: VersionSpec) -> Self {
         ImportSource::VersionedLibrary {
             name: name.into(),
@@ -103,7 +103,7 @@ impl ImportSource {
         }
     }
 
-    /// Создаёт источник из пути
+    /// Creates a source from a path.
     pub fn path(path: impl Into<PathBuf>) -> Self {
         let path = path.into();
         if path.is_absolute() {
@@ -113,7 +113,7 @@ impl ImportSource {
         }
     }
 
-    /// Возвращает имя библиотеки (если это библиотека)
+    /// Returns the library name (if this is a library).
     pub fn library_name(&self) -> Option<&str> {
         match self {
             ImportSource::Library(name) => Some(name),
@@ -122,7 +122,7 @@ impl ImportSource {
         }
     }
 
-    /// Возвращает спецификацию версии (если есть)
+    /// Returns the version specification (if any).
     pub fn version_spec(&self) -> Option<&VersionSpec> {
         match self {
             ImportSource::VersionedLibrary { version, .. } => Some(version),
@@ -130,7 +130,7 @@ impl ImportSource {
         }
     }
 
-    /// Является ли источник локальным путём
+    /// Whether the source is a local path.
     pub fn is_path(&self) -> bool {
         matches!(
             self,
@@ -140,23 +140,23 @@ impl ImportSource {
 }
 
 // ============================================================================
-//                         СПЕЦИФИКАЦИЯ ИМПОРТА
+//                         IMPORT SPECIFICATION
 // ============================================================================
 
-/// Полная спецификация импорта
+/// Complete import specification.
 #[derive(Debug, Clone)]
 pub struct ImportSpec {
-    /// Источник импорта
+    /// Import source
     pub source: ImportSource,
-    /// Что импортировать
+    /// What to import
     pub items: ImportItem,
-    /// Псевдоним для всей библиотеки: `подключить Сокеты как С`
+    /// Alias for the entire library: `import Sockets as S`
     pub library_alias: Option<String>,
-    /// Позиция в исходном коде (для ошибок)
+    /// Position in source code (for errors)
     pub location: Option<SourceLocation>,
 }
 
-/// Позиция в исходном коде
+/// Position in source code.
 #[derive(Debug, Clone, Copy)]
 pub struct SourceLocation {
     pub line: usize,
@@ -165,7 +165,7 @@ pub struct SourceLocation {
 }
 
 impl ImportSpec {
-    /// Создаёт простой импорт всей библиотеки
+    /// Creates a simple import of the entire library.
     pub fn library(name: impl Into<String>) -> Self {
         Self {
             source: ImportSource::library(name),
@@ -175,7 +175,7 @@ impl ImportSpec {
         }
     }
 
-    /// Создаёт импорт с конкретными элементами
+    /// Creates an import with specific items.
     pub fn from_library(name: impl Into<String>, items: Vec<ImportItem>) -> Self {
         Self {
             source: ImportSource::library(name),
@@ -185,7 +185,7 @@ impl ImportSpec {
         }
     }
 
-    /// Создаёт версионированный импорт
+    /// Creates a versioned import.
     pub fn versioned(name: impl Into<String>, version: VersionSpec, items: ImportItem) -> Self {
         Self {
             source: ImportSource::versioned(name, version),
@@ -195,13 +195,13 @@ impl ImportSpec {
         }
     }
 
-    /// Добавляет псевдоним библиотеки
+    /// Adds a library alias.
     pub fn with_alias(mut self, alias: impl Into<String>) -> Self {
         self.library_alias = Some(alias.into());
         self
     }
 
-    /// Добавляет позицию в коде
+    /// Adds source code position.
     pub fn at(mut self, line: usize, column: usize, offset: usize) -> Self {
         self.location = Some(SourceLocation {
             line,
@@ -211,7 +211,7 @@ impl ImportSpec {
         self
     }
 
-    /// Возвращает имя для использования (с учётом алиаса)
+    /// Returns the name to use (considering alias).
     pub fn effective_name(&self) -> Option<&str> {
         self.library_alias
             .as_deref()
@@ -220,10 +220,10 @@ impl ImportSpec {
 }
 
 // ============================================================================
-//                         ПАРСИНГ ИМПОРТА
+//                         IMPORT PARSING
 // ============================================================================
 
-/// Ошибка парсинга импорта
+/// Import parsing error.
 #[derive(Debug, Clone)]
 pub struct ImportParseError {
     pub message: String,
@@ -258,7 +258,7 @@ impl From<VersionParseError> for ImportParseError {
     }
 }
 
-/// Парсер импортов
+/// Import parser.
 pub struct ImportParser<'a> {
     input: &'a str,
     pos: usize,
@@ -269,11 +269,11 @@ impl<'a> ImportParser<'a> {
         Self { input, pos: 0 }
     }
 
-    /// Парсит спецификацию импорта
+    /// Parses an import specification.
     pub fn parse(&mut self) -> Result<ImportSpec, ImportParseError> {
         self.skip_whitespace();
 
-        // Проверяем ключевое слово "подключить"
+        // Check for "import" keyword
         if !self.consume_keyword("подключить") && !self.consume_keyword("использовать")
         {
             return Err(ImportParseError::new(

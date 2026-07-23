@@ -1,4 +1,4 @@
-//! Условия, обработка исключений и присваивание полей.
+//! Conditionals, error handling, and field assignment.
 
 use super::super::environment::Environment;
 use super::super::error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
@@ -7,9 +7,9 @@ use super::Executor;
 use shared::types::{Expr, Stmt, Value};
 
 impl Executor {
-    // =========================================================================
-    //                    УСЛОВНЫЙ ОПЕРАТОР
-    // =========================================================================
+    // =============================================================================
+    //                         IF STATEMENT
+    // =============================================================================
 
     pub(crate) fn execute_if(
         condition: &Expr,
@@ -28,9 +28,9 @@ impl Executor {
         }
     }
 
-    // =========================================================================
-    //                    УТВЕРЖДЕНИЕ
-    // =========================================================================
+    // =============================================================================
+    //                           ASSERTIONS
+    // =============================================================================
 
     pub(crate) fn execute_assert(expr: &Expr, env: &mut Environment) -> RuntimeResult<ControlFlow> {
         let value = ExprEvaluator::evaluate(expr, env)?;
@@ -42,9 +42,9 @@ impl Executor {
         Ok(ControlFlow::None)
     }
 
-    // =========================================================================
-    //                    ОБРАБОТКА ИСКЛЮЧЕНИЙ
-    // =========================================================================
+    // =============================================================================
+    //                       ERROR HANDLING
+    // =============================================================================
 
     pub(crate) fn execute_try_catch(
         try_block: &[Stmt],
@@ -58,7 +58,7 @@ impl Executor {
         let control_flow = match result {
             Ok(flow) => flow,
             Err(error) => {
-                // [KITE 4] Блочная область: catch видит локали алгоритма + переменную ошибки.
+                // [KITE 4] Block scope: catch sees algorithm locals + error variable.
                 env.push_scope();
 
                 if let Some(var) = catch_var {
@@ -72,7 +72,7 @@ impl Executor {
             }
         };
 
-        // Выполняем finally если есть
+        // Execute finally if present.
         if let Some(finally_stmts) = finally_block {
             Self::execute_stmts(finally_stmts, env)?;
         }
@@ -80,9 +80,9 @@ impl Executor {
         Ok(control_flow)
     }
 
-    // =========================================================================
-    //                    ООП: ПРИСВАИВАНИЕ ПОЛЮ
-    // =========================================================================
+    // =============================================================================
+    //                     OOP: FIELD ASSIGNMENT
+    // =============================================================================
 
     pub(crate) fn execute_field_assignment(
         object: &Expr,
@@ -92,11 +92,11 @@ impl Executor {
     ) -> RuntimeResult<ControlFlow> {
         let value = ExprEvaluator::evaluate(value_expr, env)?;
 
-        // Получаем имя переменной с объектом
+        // Get the variable name containing the object.
         let var_name = match object {
             Expr::Variable(name) => name.clone(),
             Expr::SelfRef => {
-                // Работаем с this
+                // Work with this.
                 if let Some(this) = env.get_this().cloned()
                     && let Value::Object {
                         type_id,
@@ -104,7 +104,7 @@ impl Executor {
                     } = this
                 {
                     fields.insert(field.to_string(), value);
-                    // Обновляем this в текущем кадре
+                    // Update this in the current frame.
                     if let Some(frame) = env.current_frame_mut() {
                         frame.this = Some(Value::Object { type_id, fields });
                     }
@@ -119,7 +119,7 @@ impl Executor {
             }
         };
 
-        // Получаем объект
+        // Fetch the object.
         let obj = env.get_variable(&var_name)?.clone();
 
         match obj {

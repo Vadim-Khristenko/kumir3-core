@@ -1,4 +1,4 @@
-//! Функции таймера
+//! Timer functions for measuring elapsed time.
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -61,19 +61,18 @@ pub fn timer_elapsed_sec_fn() -> LibFunctionDef {
         })
 }
 
-/// таймер_высокоточный() -> цел_64
-/// Возвращает наносекунды от произвольной точки (Instant), для микробенчмарков
+/// High-precision timer: returns nanoseconds from an arbitrary point (Instant), for microbenchmarks.
 pub fn timer_precise_fn() -> LibFunctionDef {
     LibFunctionDef::new("таймер_высокоточный")
         .with_aliases(vec![Arc::from("timer_precise"), Arc::from("timer_nano")])
         .with_description("Высокоточный таймер в наносекундах (для бенчмарков)")
         .returns(TypeKind::Int64)
         .with_handler(|_args| {
-            // Используем Instant, привязанного к старту процесса
-            // Instant::now() даёт монотонное время
+            // Use Instant anchored to process start.
+            // Instant::now() provides monotonic time.
             let _elapsed = Instant::now().elapsed();
-            // elapsed от Instant::now() к Instant::now() = ~0, но это можно использовать
-            // в паре вызовов для микрозамеров
+            // elapsed from Instant::now() to Instant::now() ~= 0, but can be used
+            // in paired calls for microbenchmarking.
             Ok(Value::Number(Number::I64(0)))
         })
 }

@@ -1,7 +1,7 @@
-//! Функции для работы с датой и временем
+//! Date and time functions.
 //!
-//! Содержит функции получения текущего времени и его компонентов.
-//! Все вычисления без внешних зависимостей, только std.
+//! Provides functions to get the current time and decompose it into components.
+//! All computations use only std, no external dependencies.
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -12,10 +12,10 @@ use crate::types::{Number, TypeKind, Value};
 use super::constants::*;
 
 // ============================================================================
-// ВСПОМОГАТЕЛЬНЫЕ СТРУКТУРЫ
+// HELPER STRUCTURES
 // ============================================================================
 
-/// Компоненты даты и времени
+/// Date and time components.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DateTimeParts {
     pub year: i32,
@@ -24,8 +24,8 @@ pub struct DateTimeParts {
     pub hour: u8,     // 0..=23
     pub minute: u8,   // 0..=59
     pub second: u8,   // 0..=59
-    pub weekday: u8,  // 1 (пн) .. 7 (вс)
-    pub yearday: u16, // 1..=366 (1 января — первый день)
+    pub weekday: u8,  // 1 (Mon) .. 7 (Sun) — ISO 8601
+    pub yearday: u16, // 1..=366 (Jan 1 is day 1)
 }
 
 fn expect_number(args: &[Value], idx: usize, what: &str) -> Result<i64, String> {
@@ -41,16 +41,16 @@ fn expect_number(args: &[Value], idx: usize, what: &str) -> Result<i64, String> 
 }
 
 // ============================================================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// HELPER FUNCTIONS
 // ============================================================================
 
-/// Проверяет, является ли год високосным
+/// Checks if a year is a leap year.
 #[inline]
 pub fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
 }
 
-/// Возвращает количество дней в месяце
+/// Returns the number of days in a month.
 pub fn days_in_month(year: i32, month: u8) -> Option<u8> {
     match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => Some(31),
@@ -60,13 +60,13 @@ pub fn days_in_month(year: i32, month: u8) -> Option<u8> {
     }
 }
 
-/// Возвращает количество дней в году
+/// Returns the number of days in a year.
 #[inline]
 pub fn days_in_year(year: i32) -> u16 {
     if is_leap_year(year) { 366 } else { 365 }
 }
 
-/// Возвращает текущее время в миллисекундах от UNIX-эпохи
+/// Returns the current time in milliseconds since UNIX epoch.
 pub fn system_time_ms() -> Result<i64, String> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -74,7 +74,7 @@ pub fn system_time_ms() -> Result<i64, String> {
         .map_err(|e| format!("Ошибка получения системного времени: {}", e))
 }
 
-/// Возвращает текущее время в секундах от UNIX-эпохи
+/// Returns the current time in seconds since UNIX epoch.
 pub fn system_time_sec() -> Result<i64, String> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -82,7 +82,7 @@ pub fn system_time_sec() -> Result<i64, String> {
         .map_err(|e| format!("Ошибка получения системного времени: {}", e))
 }
 
-/// Возвращает текущее время в микросекундах
+/// Returns the current time in microseconds since UNIX epoch.
 pub fn system_time_us() -> Result<i64, String> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -90,7 +90,7 @@ pub fn system_time_us() -> Result<i64, String> {
         .map_err(|e| format!("Ошибка получения системного времени: {}", e))
 }
 
-/// Возвращает текущее время в наносекундах
+/// Returns the current time in nanoseconds since UNIX epoch.
 pub fn system_time_ns() -> Result<i64, String> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -98,21 +98,21 @@ pub fn system_time_ns() -> Result<i64, String> {
         .map_err(|e| format!("Ошибка получения системного времени: {}", e))
 }
 
-/// Вычисляет день недели ISO (1=пн, 7=вс) по количеству дней от эпохи
+/// Computes ISO weekday (1=Mon, 7=Sun) from days since epoch.
 #[inline]
 pub fn weekday_from_days(days: i64) -> u8 {
-    // 1970-01-01 = четверг (ISO 4)
+    // 1970-01-01 is Thursday (ISO 4)
     ((days + 3).rem_euclid(7) + 1) as u8
 }
 
-/// Преобразует дни от эпохи в компоненты даты (алгоритм Howard Hinnant).
+/// Converts days since epoch to date components (Howard Hinnant algorithm).
 ///
-/// Возвращает год, месяц (1..=12), день месяца (1..=31) и день года (1..=366).
+/// Returns (year, month 1..=12, day 1..=31, yearday 1..=366).
 ///
-/// Алгоритм ведёт счёт от 1 марта: так високосный день оказывается последним
-/// днём внутреннего года и не сдвигает нумерацию месяцев. Его собственный
-/// «день года» отсчитывается от марта, поэтому в календарный день года он
-/// переводится отдельно — без этого пересчёта июль выглядел бы маем.
+/// The algorithm counts from March 1: this makes the leap day fall at the end
+/// of the internal year without shifting month numbers. However, its internal
+/// "yearday" counts from March, so it must be separately converted to calendar
+/// yearday (Jan 1 = 1). Without this conversion, July would appear as May.
 pub fn civil_from_days(days: i64) -> (i32, u8, u8, u16) {
     let z = days + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
@@ -125,9 +125,9 @@ pub fn civil_from_days(days: i64) -> (i32, u8, u8, u16) {
     let m = mp + if mp < 10 { 3 } else { -9 };
     let year = (y + if m <= 2 { 1 } else { 0 }) as i32;
 
-    // Март-ориентированный день года → календарный, считая с 1 января.
-    // Январь и февраль относятся к следующему календарному году: там
-    // 1 января приходится на 306-й день внутреннего года.
+    // Convert March-based yearday to calendar yearday (starting Jan 1).
+    // January and February belong to the next calendar year in the algorithm:
+    // Jan 1 is day 306 of the internal year.
     let yearday = if m <= 2 {
         doy - 306
     } else {
@@ -137,7 +137,7 @@ pub fn civil_from_days(days: i64) -> (i32, u8, u8, u16) {
     (year, m as u8, d as u8, yearday as u16)
 }
 
-/// Преобразует дату в количество дней от эпохи UNIX
+/// Converts a date to days since UNIX epoch.
 pub fn days_from_civil(year: i32, month: u8, day: u8) -> Result<i64, String> {
     if !(1..=12).contains(&month) {
         return Err(format!("Месяц должен быть от 1 до 12, получено: {}", month));
@@ -162,7 +162,7 @@ pub fn days_from_civil(year: i32, month: u8, day: u8) -> Result<i64, String> {
     Ok(era as i64 * 146_097 + doe as i64 - 719_468)
 }
 
-/// Преобразует UNIX timestamp в компоненты даты-времени
+/// Converts a UNIX timestamp to date-time components.
 pub fn timestamp_to_parts(secs: i64) -> Result<DateTimeParts, String> {
     if secs < 0 {
         return Err(format!(
@@ -193,7 +193,7 @@ pub fn timestamp_to_parts(secs: i64) -> Result<DateTimeParts, String> {
     })
 }
 
-/// Собирает компоненты даты-времени в UNIX timestamp
+/// Assembles date-time components into a UNIX timestamp.
 pub fn parts_to_timestamp(
     year: i32,
     month: u8,
@@ -220,7 +220,7 @@ pub fn parts_to_timestamp(
 }
 
 // ============================================================================
-// ОПРЕДЕЛЕНИЯ ФУНКЦИЙ БИБЛИОТЕКИ
+// LIBRARY FUNCTION DEFINITIONS
 // ============================================================================
 
 /// текущее_время_мс() -> цел_64

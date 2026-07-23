@@ -1,18 +1,17 @@
-//! Подсветка кода на Кумире.
+//! Code highlighting for Kumir.
 //!
-//! Разбор здесь свой, а не лексером языка: подсвечивать нужно и незаконченную
-//! строку, которую человек ещё набирает, — лексер на ней сообщил бы об ошибке.
-//! Перечни ключевых слов и встроенных функций берутся из `shared::constants`,
-//! то есть из того же источника, что и сам язык: добавленное слово
-//! подсвечивается само, без правки этого файла.
+//! Has its own scanner, not the language lexer: we must highlight incomplete
+//! lines as the user types them, while the lexer would report an error.
+//! Keywords and builtin function lists come from `shared::constants`, the same
+//! source as the language itself: adding a word highlights it automatically.
 
 use ratatui::prelude::*;
 use shared::constants::{builtins, keywords};
 
 use super::theme;
 
-/// Типы языка подсвечиваются иначе, чем остальные ключевые слова: в тексте
-/// программы они читаются как «существительные» среди «глаголов».
+/// Type keywords are highlighted differently from other keywords: in code they
+/// read as "nouns" among "verbs".
 const TYPE_WORDS: &[&str] = &[
     "цел",
     "вещ",
@@ -28,7 +27,7 @@ const TYPE_WORDS: &[&str] = &[
     "необязательно",
 ];
 
-/// Разбивает строку кода на окрашенные куски.
+/// Splits a code line into colored spans.
 pub(crate) fn highlight(line: &str) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
     let chars: Vec<char> = line.chars().collect();
@@ -37,8 +36,7 @@ pub(crate) fn highlight(line: &str) -> Vec<Span<'static>> {
     while i < chars.len() {
         let ch = chars[i];
 
-        // Комментарий: от `|` до конца строки. Проверяется первым — внутри
-        // комментария больше ничего не разбирается.
+        // Comment: from `|` to end of line. Checked first — nothing else parses inside.
         if ch == '|' {
             spans.push(Span::styled(
                 chars[i..].iter().collect::<String>(),
@@ -47,8 +45,8 @@ pub(crate) fn highlight(line: &str) -> Vec<Span<'static>> {
             break;
         }
 
-        // Строка или символ. Незакрытая кавычка тоже подсвечивается: человек
-        // ещё печатает, и «поломанная» подсветка мешала бы читать.
+        // String or char literal. Unclosed quotes are still highlighted: the user
+        // is still typing, and broken highlighting would make it hard to read.
         if ch == '"' || ch == '\'' {
             let quote = ch;
             let start = i;
@@ -88,7 +86,7 @@ pub(crate) fn highlight(line: &str) -> Vec<Span<'static>> {
             continue;
         }
 
-        // Всё прочее — знаки препинания и пробелы — цвета не меняет.
+        // Everything else — punctuation and spaces — has no color.
         let start = i;
         while i < chars.len()
             && !is_word_char(chars[i])
@@ -105,7 +103,7 @@ pub(crate) fn highlight(line: &str) -> Vec<Span<'static>> {
     spans
 }
 
-/// Символ, из которых состоят имена: буквы любого алфавита, цифры и `_`.
+/// Characters that make up identifiers: letters of any alphabet, digits, and `_`.
 fn is_word_char(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
 }
@@ -127,7 +125,7 @@ fn word_style(word: &str) -> Style {
 mod tests {
     use super::*;
 
-    /// Собирает текст обратно: подсветка не имеет права терять символы.
+    /// Reassembles text: highlighting must not lose any characters.
     fn joined(line: &str) -> String {
         highlight(line)
             .iter()
@@ -146,11 +144,11 @@ mod tests {
             "лямбда(x) -> x + 1",
             "|только комментарий",
         ] {
-            assert_eq!(joined(line), line, "потерян текст строки «{line}»");
+            assert_eq!(joined(line), line, "lost text of line «{line}»");
         }
     }
 
-    /// Незакрытая кавычка встречается на каждом втором нажатии клавиши.
+    /// Unclosed quotes happen on every other keystroke.
     #[test]
     fn nezakrytaya_kavychka_ne_lomaet_razbor() {
         assert_eq!(joined("вывод \"нача"), "вывод \"нача");
@@ -162,7 +160,7 @@ mod tests {
             highlight(line)
                 .into_iter()
                 .find(|s| s.content.as_ref() == word)
-                .unwrap_or_else(|| panic!("в «{line}» нет куска «{word}»"))
+                .unwrap_or_else(|| panic!("in «{line}» no fragment «{word}»"))
                 .style
         };
 
@@ -175,7 +173,7 @@ mod tests {
     #[test]
     fn kommentarij_pogloshchaet_ostatok_stroki() {
         let spans = highlight("x := 1 | тут цел и вывод — просто слова");
-        let last = spans.last().expect("комментарий разобран");
+        let last = spans.last().expect("comment parsed");
         assert_eq!(last.style.fg, Some(theme::COMMENT));
         assert!(last.content.contains("просто слова"));
     }

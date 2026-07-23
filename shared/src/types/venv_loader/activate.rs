@@ -1,4 +1,4 @@
-//! Активация окружения проекта и применение lock-файла.
+//! Project environment activation and lock file application.
 
 use std::path::{Path, PathBuf};
 
@@ -10,14 +10,14 @@ use super::IntegratedLoader;
 use super::error::{LoaderError, LoaderResult};
 
 impl IntegratedLoader {
-    /// Активирует окружение проекта
+    /// Activate project environment.
     pub fn activate_project(&mut self, project_root: impl AsRef<Path>) -> LoaderResult<()> {
         let project_root = project_root.as_ref();
 
-        // Активируем окружение
+        // Activate environment
         self.env_manager.activate_project(project_root);
 
-        // Загружаем kumir.lock если есть
+        // Load kumir.lock if it exists
         let lock_path = project_root.join("kumir.lock");
         if lock_path.exists() {
             self.load_lock_file(&lock_path)?;
@@ -26,7 +26,7 @@ impl IntegratedLoader {
         Ok(())
     }
 
-    /// Загружает lock-файл
+    /// Load lock file.
     fn load_lock_file(&mut self, path: &Path) -> LoaderResult<()> {
         let lock = LockFile::load(path).map_err(|e| LoaderError::ManifestError {
             path: path.to_path_buf(),
@@ -68,7 +68,7 @@ impl IntegratedLoader {
         Ok(())
     }
 
-    /// Деактивирует проект
+    /// Deactivate project.
     pub fn deactivate_project(&mut self) {
         self.env_manager.deactivate();
     }

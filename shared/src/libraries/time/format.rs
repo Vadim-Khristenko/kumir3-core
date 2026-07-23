@@ -1,4 +1,4 @@
-//! Функции форматирования даты и времени
+//! Date and time formatting functions.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -10,10 +10,10 @@ use super::constants::*;
 use super::datetime::{DateTimeParts, parts_to_timestamp, system_time_sec, timestamp_to_parts};
 
 // ============================================================================
-// ФОРМАТИРОВАНИЕ
+// FORMATTING
 // ============================================================================
 
-/// Форматирует дату-время в ISO 8601 UTC формат
+/// Formats date-time to ISO 8601 UTC format.
 pub fn format_iso_utc(parts: &DateTimeParts) -> String {
     format!(
         "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
@@ -21,17 +21,17 @@ pub fn format_iso_utc(parts: &DateTimeParts) -> String {
     )
 }
 
-/// Форматирует только дату в ISO формат
+/// Formats only the date in ISO format.
 pub fn format_date_iso(parts: &DateTimeParts) -> String {
     format!("{:04}-{:02}-{:02}", parts.year, parts.month, parts.day)
 }
 
-/// Форматирует только время в ISO формат
+/// Formats only the time in ISO format.
 pub fn format_time_iso(parts: &DateTimeParts) -> String {
     format!("{:02}:{:02}:{:02}", parts.hour, parts.minute, parts.second)
 }
 
-/// Форматирует дату по-русски: "5 декабря 2024 г."
+/// Formats date in Russian: "5 December 2024".
 pub fn format_date_ru(parts: &DateTimeParts) -> String {
     let month_name = MONTH_RU_LONG
         .get((parts.month - 1) as usize)
@@ -39,7 +39,7 @@ pub fn format_date_ru(parts: &DateTimeParts) -> String {
     format!("{} {} {} г.", parts.day, month_name, parts.year)
 }
 
-/// Форматирует дату-время по-русски
+/// Formats date-time in Russian.
 pub fn format_datetime_ru(parts: &DateTimeParts) -> String {
     format!(
         "{} {:02}:{:02}:{:02}",
@@ -51,10 +51,10 @@ pub fn format_datetime_ru(parts: &DateTimeParts) -> String {
 }
 
 // ============================================================================
-// ПАРСИНГ
+// PARSING
 // ============================================================================
 
-/// Парсит последовательность ASCII-цифр в число
+/// Parses a sequence of ASCII digits into a number.
 pub fn parse_digits(slice: &[u8]) -> Option<u32> {
     if slice.is_empty() {
         return None;
@@ -69,7 +69,7 @@ pub fn parse_digits(slice: &[u8]) -> Option<u32> {
     Some(value)
 }
 
-/// Парсит ISO 8601 строку в компоненты
+/// Parses an ISO 8601 string into components.
 pub fn parse_iso(s: &str) -> Result<(i32, u8, u8, u8, u8, u8), String> {
     let s = s.trim();
     let bytes = s.as_bytes();
@@ -103,13 +103,12 @@ pub fn parse_iso(s: &str) -> Result<(i32, u8, u8, u8, u8, u8), String> {
     Ok((year, month, day, hour, minute, second))
 }
 
-/// Раскладывает дату-время в словарь.
+/// Decomposes date-time into a bilingual dict.
 ///
-/// Каждое поле кладётся под русским ключом и под английским: русский —
-/// основной, английский оставлен для программ, писавшихся до перевода.
-/// Раньше пары были неполными (`день_недели` и `день_года` существовали
-/// только по-английски), из-за чего словарь приходилось читать на двух языках
-/// сразу.
+/// Each field is stored under both Russian and English keys: Russian is primary,
+/// English is retained for programs written before the translation. Previously,
+/// the mapping was incomplete (e.g., `weekday` and `yearday` existed only in English),
+/// requiring programs to read the dict in both languages simultaneously.
 fn parts_to_value_map(parts: &DateTimeParts) -> Value {
     let fields: [(&str, &str, Value); 9] = [
         ("год", "year", Value::Number(Number::I32(parts.year))),
@@ -153,7 +152,7 @@ fn expect_number(args: &[Value], idx: usize, what: &str) -> Result<i64, String> 
 }
 
 // ============================================================================
-// ОПРЕДЕЛЕНИЯ ФУНКЦИЙ
+// FUNCTION DEFINITIONS
 // ============================================================================
 
 /// дата_время_iso_utc() -> лит

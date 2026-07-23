@@ -1,67 +1,63 @@
-// =============================================================================
-//                  МОДУЛЬ: СОСТОЯНИЕ ИНТЕРПРЕТАТОРА
-// =============================================================================
-// Доступ к среде выполнения, переменным, буферу вывода, предупреждениям [W0],
-// менеджеру библиотек и async-runtime.
+//! Access to execution state: environment, variables, output, warnings, and runtime.
+
 use super::{Environment, Interpreter, KumirRuntime, LibraryManager, RuntimeResult};
 use shared::types::Value;
 
 impl Interpreter {
-    /// [W0] Возвращает предупреждения, собранные во время выполнения
-    /// (например, об использовании необъявленных переменных). Они НЕ попадают
-    /// в вывод программы (`вывод`/stdout).
+    /// [W0] Returns warnings collected during execution (e.g., undeclared variables).
+    /// These do NOT appear in program output (`вывод`/stdout).
     pub fn warnings(&self) -> &[String] {
         self.env.warnings()
     }
 
-    /// Возвращает ссылку на среду выполнения.
+    /// Returns a reference to the execution environment.
     pub fn environment(&self) -> &Environment {
         &self.env
     }
 
-    /// Возвращает изменяемую ссылку на среду выполнения.
+    /// Returns a mutable reference to the execution environment.
     pub fn environment_mut(&mut self) -> &mut Environment {
         &mut self.env
     }
 
-    // =========================================================================
-    //                    ПЕРЕМЕННЫЕ
-    // =========================================================================
+    // =============================================================================
+    //                           VARIABLES
+    // =============================================================================
 
-    /// Устанавливает глобальную переменную.
+    /// Sets a global variable.
     pub fn set_global(&mut self, name: impl Into<String>, value: Value) {
         self.env.define_global(name.into(), value);
     }
 
-    /// Получает значение переменной.
+    /// Gets the value of a variable.
     pub fn get_variable(&self, name: &str) -> RuntimeResult<&Value> {
         self.env.get_variable(name)
     }
 
-    // =========================================================================
-    //                    ВЫВОД
-    // =========================================================================
+    // =============================================================================
+    //                            OUTPUT
+    // =============================================================================
 
-    /// Получает вывод программы.
+    /// Gets the program output.
     pub fn get_output(&self) -> String {
         self.env.get_output()
     }
 
-    /// Очищает буфер вывода.
+    /// Clears the output buffer.
     pub fn clear_output(&mut self) {
         self.env.clear_output();
     }
 
-    // =========================================================================
-    //                    RUNTIME И БИБЛИОТЕКИ
-    // =========================================================================
+    // =============================================================================
+    //                      RUNTIME AND LIBRARIES
+    // =============================================================================
 
-    /// Получает менеджер библиотек.
+    /// Gets the library manager.
     pub fn libraries(&self) -> &std::sync::Arc<std::sync::RwLock<LibraryManager>> {
         &self.libraries
     }
 
-    /// Получает runtime (если инициализирован).
+    /// Gets the runtime (if initialized).
     pub fn runtime(&self) -> Option<&KumirRuntime> {
         self.runtime.as_ref()
     }

@@ -1,12 +1,12 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Компилятор языка Кумир 3
+//! Kumir 3 compiler.
 //!
-//! Компилирует программы на языке Кумир в различные форматы:
-//! - Нативные исполняемые файлы (через Rust backend)
-//! - WebAssembly модули
-//! - Интерпретируемый IR (для отладки)
+//! Compiles Kumir programs to various targets:
+//! - Native executables (via Rust backend)
+//! - WebAssembly modules
+//! - Interpretable IR (for debugging)
 
 use std::path::{Path, PathBuf};
 use std::process;
@@ -16,7 +16,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use kumir3_compiler::Compiler;
 
 // =============================================================================
-//                           CLI АРГУМЕНТЫ
+//                           CLI ARGUMENTS
 // =============================================================================
 
 #[derive(Parser)]
@@ -107,7 +107,7 @@ enum Target {
 fn main() {
     let cli = Cli::parse();
 
-    // Обработка подкоманд
+    // Handle subcommands
     if let Some(command) = cli.command {
         match command {
             Commands::Build { path, release } => {
@@ -129,7 +129,7 @@ fn main() {
         return;
     }
 
-    // Основная компиляция
+    // Main compilation
     if let Err(e) = compile(&cli) {
         eprintln!("Ошибка компиляции: {}", e);
         process::exit(1);
@@ -137,27 +137,27 @@ fn main() {
 }
 
 // =============================================================================
-//                           ФУНКЦИИ
+//                           FUNCTIONS
 // =============================================================================
 
 fn compile(cli: &Cli) -> Result<(), String> {
-    // Создаём компилятор
+    // Create compiler
     let mut compiler = Compiler::new();
     compiler.set_debug(cli.debug);
     compiler.set_opt_level(cli.opt_level);
 
-    // Читаем исходный файл
+    // Read source file
     let source = std::fs::read_to_string(&cli.input)
         .map_err(|e| format!("Не удалось прочитать файл '{}': {}", cli.input.display(), e))?;
 
-    // Только проверка синтаксиса
+    // Syntax check only
     if cli.check {
         compiler.check(&source)?;
         println!("✓ Синтаксис корректен");
         return Ok(());
     }
 
-    // Определяем выходной файл
+    // Determine output file
     let output = cli.output.clone().unwrap_or_else(|| {
         let mut out = cli.input.clone();
         out.set_extension(match cli.target {
@@ -175,7 +175,7 @@ fn compile(cli: &Cli) -> Result<(), String> {
         out
     });
 
-    // Компилируем
+    // Compile
     println!("Компиляция {} → {}", cli.input.display(), output.display());
 
     match cli.target {
@@ -193,7 +193,7 @@ fn compile(cli: &Cli) -> Result<(), String> {
         }
     }
 
-    // Дополнительные выводы
+    // Emit additional outputs
     if cli.emit_ir {
         let ir_path = output.with_extension("ir");
         compiler.emit_ir(&ir_path)?;
@@ -217,7 +217,7 @@ fn build_project(path: &Path, release: bool) -> Result<(), String> {
     } else {
         println!("Режим: Debug");
     }
-    // TODO: реализация сборки проекта
+    // TODO: implement project build
     Err("Сборка проектов пока не реализована".to_string())
 }
 
@@ -226,7 +226,7 @@ fn run_program(file: &Path, args: &[String]) -> Result<(), String> {
     if !args.is_empty() {
         println!("Аргументы: {:?}", args);
     }
-    // TODO: компиляция и запуск
+    // TODO: compile and run
     Err("Запуск программ пока не реализован".to_string())
 }
 

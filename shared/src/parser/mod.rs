@@ -1,20 +1,16 @@
-// ============================================================================
-//                         ПАРСЕР ЯЗЫКА КУМИР 3
-// ============================================================================
-//
-// Модульная структура парсера:
-//
-// - error.rs      — типы ошибок и результаты
-// - precedence.rs — приоритеты операторов
-// - core.rs       — ядро парсера (навигация по токенам)
-// - types.rs      — парсинг типов (TypeKind, generics)
-// - expr.rs       — парсинг выражений (Expr, BinaryOp, Call, OOP, …)
-// - pattern.rs    — парсинг паттернов для match / деструктуризации
-// - stmt.rs       — парсинг инструкций (Stmt, циклы, if, match, …)
-// - decl.rs       — парсинг объявлений (алгоритмы, модули, enum, Program)
-// - oop.rs        — парсинг классов и ООП (ClassDef, Interface, Trait, Impl)
-//
-// ============================================================================
+//! Kumir 3 parser module.
+//!
+//! Modular structure:
+//!
+//! - `error` — error types and results
+//! - `precedence` — operator precedence tables
+//! - `core` — parser core (token stream navigation)
+//! - `types` — type parsing (TypeKind, generics)
+//! - `expr` — expression parsing (Expr, BinaryOp, Call, OOP, …)
+//! - `pattern` — pattern parsing for match / destructuring
+//! - `stmt` — statement parsing (Stmt, loops, if, match, …)
+//! - `decl` — top-level declarations (algorithms, modules, enum, Program)
+//! - `oop` — class and OOP parsing (ClassDef, Interface, Trait, Impl)
 
 mod core;
 mod decl;
@@ -26,29 +22,20 @@ pub mod precedence;
 mod stmt;
 mod types;
 
-// Реэкспорты
 pub use core::Parser;
 pub use error::{ParseError, ParseResult};
 
 use crate::types::{Expr, Program};
 
-// ============================================================================
-//                         УДОБНЫЕ ФУНКЦИИ
-// ============================================================================
-
-/// Парсить исходный код и вернуть программу.
+/// Parse source code and return a program.
 pub fn parse(source: &str) -> ParseResult<Program> {
     Parser::new(source)?.parse_program()
 }
 
-/// Парсить одно выражение.
+/// Parse a single expression.
 pub fn parse_expression(source: &str) -> ParseResult<Expr> {
     Parser::new(source)?.parse_expr()
 }
-
-// ============================================================================
-//                         ТЕСТЫ
-// ============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -56,7 +43,7 @@ mod tests {
     use crate::types::{Expr, Number, Stmt, Token, TypeKind, Value};
 
     // ────────────────────────────────────────────────────────────────
-    //  SECTION: Algorithms — basic parsing
+    //  SECTION: Algorithm parsing
     // ────────────────────────────────────────────────────────────────
 
     #[test]
@@ -151,7 +138,7 @@ mod tests {
     #[test]
     fn test_expression_precedence() {
         let expr = parse_expression("2 + 3 * 4").unwrap();
-        // Должно быть: 2 + (3 * 4)
+        // Should be: 2 + (3 * 4)
         if let Expr::BinaryOp(left, Token::Plus, right) = &expr {
             assert!(matches!(
                 left.as_ref(),
@@ -166,7 +153,7 @@ mod tests {
     #[test]
     fn test_logical_operators() {
         let expr = parse_expression("a и b или не c").unwrap();
-        // или имеет меньший приоритет чем и
+        // "или" (OR) has lower precedence than "и" (AND)
         assert!(matches!(expr, Expr::BinaryOp(_, Token::Or, _)));
     }
 

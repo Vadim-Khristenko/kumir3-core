@@ -1,10 +1,10 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Преобразование AST в IR
+//! AST to IR transformation.
 //!
-//! Конвертирует абстрактное синтаксическое дерево (AST) в
-//! промежуточное представление (IR) для дальнейшей компиляции.
+//! Converts abstract syntax tree (AST) into intermediate representation (IR)
+//! for further compilation.
 
 use shared::codegen::ir::{
     BinaryOp, BlockId, FuncId, IrFunction, IrInstruction, IrModule, IrType, IrValue, UnaryOp, VarId,

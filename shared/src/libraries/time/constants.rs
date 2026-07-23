@@ -1,4 +1,4 @@
-//! Константы для работы со временем
+//! Time-related constants.
 
 use std::sync::Arc;
 
@@ -6,30 +6,30 @@ use crate::types::library::LibConstantDef;
 use crate::types::{Number, TypeKind, Value};
 
 // ============================================================================
-// ВРЕМЕННЫЕ КОНСТАНТЫ
+// TIME CONSTANTS
 // ============================================================================
 
-/// Секунд в минуте
+/// Seconds per minute.
 pub const SECONDS_PER_MINUTE: i64 = 60;
-/// Секунд в часе
+/// Seconds per hour.
 pub const SECONDS_PER_HOUR: i64 = 60 * SECONDS_PER_MINUTE;
-/// Секунд в сутках
+/// Seconds per day.
 pub const SECONDS_PER_DAY: i64 = 24 * SECONDS_PER_HOUR;
-/// Миллисекунд в секунде
+/// Milliseconds per second.
 pub const MILLIS_PER_SECOND: i64 = 1000;
-/// Микросекунд в секунде
+/// Microseconds per second.
 pub const MICROS_PER_SECOND: i64 = 1_000_000;
-/// Наносекунд в секунде
+/// Nanoseconds per second.
 pub const NANOS_PER_SECOND: i64 = 1_000_000_000;
 
 // ============================================================================
-// НАЗВАНИЯ ДНЕЙ И МЕСЯЦЕВ
+// WEEKDAY AND MONTH NAMES
 // ============================================================================
 
-/// Краткие названия дней недели (ISO: 1 = пн, 7 = вс)
+/// Short weekday names (ISO: 1 = Mon, 7 = Sun).
 pub const WEEKDAY_RU_SHORT: [&str; 7] = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
-/// Полные названия дней недели (ISO: 1 = пн, 7 = вс)
+/// Full weekday names (ISO: 1 = Mon, 7 = Sun).
 pub const WEEKDAY_RU_LONG: [&str; 7] = [
     "понедельник",
     "вторник",
@@ -40,12 +40,12 @@ pub const WEEKDAY_RU_LONG: [&str; 7] = [
     "воскресенье",
 ];
 
-/// Краткие названия месяцев (1..12)
+/// Short month names (1..12).
 pub const MONTH_RU_SHORT: [&str; 12] = [
     "янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек",
 ];
 
-/// Полные названия месяцев (1..12)
+/// Full month names (1..12).
 pub const MONTH_RU_LONG: [&str; 12] = [
     "январь",
     "февраль",
@@ -62,7 +62,7 @@ pub const MONTH_RU_LONG: [&str; 12] = [
 ];
 
 // ============================================================================
-// ЭКСПОРТ КОНСТАНТ ДЛЯ БИБЛИОТЕКИ
+// LIBRARY CONSTANT EXPORTS
 // ============================================================================
 
 pub fn seconds_per_minute_const() -> LibConstantDef {

@@ -1,4 +1,4 @@
-//! Ошибки интегрированного загрузчика.
+//! Integrated loader errors.
 
 use std::io;
 use std::path::PathBuf;
@@ -6,47 +6,47 @@ use std::path::PathBuf;
 use crate::types::version::{Version, VersionSpec};
 
 // =============================================================================
-//                         ОШИБКИ
+//                         ERRORS
 // =============================================================================
 
-/// Ошибки загрузчика
+/// Loader errors.
 #[derive(Debug, Clone)]
 pub enum LoaderError {
-    /// Библиотека не найдена
+    /// Library not found
     NotFound {
         name: String,
         searched_paths: Vec<PathBuf>,
     },
-    /// Версия не найдена
+    /// Version not found
     VersionNotFound {
         name: String,
         requested: VersionSpec,
         available: Vec<Version>,
     },
-    /// Несовместимая версия
+    /// Incompatible version
     VersionMismatch {
         name: String,
         required: VersionSpec,
         found: Version,
     },
-    /// Ошибка чтения файла
+    /// File read error
     IoError(String),
-    /// Ошибка парсинга библиотеки
+    /// Library parsing error
     ParseError { path: PathBuf, message: String },
-    /// Ошибка парсинга манифеста
+    /// Manifest parsing error
     ManifestError { path: PathBuf, message: String },
-    /// Циклическая зависимость
+    /// Cyclic dependency
     CyclicDependency(Vec<String>),
-    /// Конфликт версий
+    /// Version conflict
     VersionConflict {
         name: String,
         required_by: Vec<(String, VersionSpec)>,
     },
-    /// Ошибка загрузки нативного модуля
+    /// Native module loading error
     NativeLoadError { path: PathBuf, message: String },
-    /// Окружение не инициализировано
+    /// Environment not initialized
     EnvironmentNotInitialized,
-    /// Блокировка занята
+    /// Lock is busy
     LockError(String),
 }
 

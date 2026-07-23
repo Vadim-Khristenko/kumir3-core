@@ -1,47 +1,47 @@
-//! Интегрированный загрузчик библиотек с поддержкой виртуальных окружений
+//! Integrated library loader with virtual environment support.
 //!
-//! Объединяет функциональность загрузки библиотек и управления окружениями.
+//! Combines library loading and environment management functionality.
 //!
-//! # Структура хранения
+//! # Storage structure
 //!
 //! ```text
 //! ~/.kumir/
-//! ├── registry/                    # Глобальный реестр библиотек
+//! ├── registry/                    # Global library registry
 //! │   ├── sockets-1.0.0/
-//! │   │   ├── manifest.toml        # Метаданные библиотеки
-//! │   │   ├── lib.kum              # Исходный код (Kumir-библиотека)
-//! │   │   └── native/              # Нативные модули (опционально)
+//! │   │   ├── manifest.toml        # Library metadata
+//! │   │   ├── lib.kum              # Source code (Kumir library)
+//! │   │   └── native/              # Native modules (optional)
 //! │   │       └── sockets.dll
 //! │   └── http-2.1.0/
 //! │       └── ...
-//! ├── cache/                       # Кэш скачанных пакетов
+//! ├── cache/                       # Downloaded packages cache
 //! │   └── downloads/
-//! └── config.toml                  # Глобальная конфигурация
+//! └── config.toml                  # Global configuration
 //!
 //! project/
-//! ├── kumir.toml                   # Конфигурация проекта
-//! ├── kumir.lock                   # Lock-файл с разрешёнными версиями
-//! ├── libs/                        # Локальные библиотеки проекта
+//! ├── kumir.toml                   # Project configuration
+//! ├── kumir.lock                   # Lock file with resolved versions
+//! ├── libs/                        # Project-local libraries
 //! │   └── mylib/
 //! │       └── lib.kum
 //! └── main.kum
 //! ```
 //!
-//! # Приоритет загрузки
+//! # Loading priority
 //!
-//! 1. Встроенные библиотеки (compiled-in)
-//! 2. Локальные библиотеки проекта (./libs/)
-//! 3. Lock-файл (kumir.lock) - точные версии
-//! 4. Глобальный реестр (~/.kumir/registry/)
-//! 5. Удалённые репозитории (в будущем)
+//! 1. Built-in libraries (compiled-in)
+//! 2. Project-local libraries (./libs/)
+//! 3. Lock file (kumir.lock) - exact versions
+//! 4. Global registry (~/.kumir/registry/)
+//! 5. Remote repositories (future)
 //!
-//! # Организация модуля
+//! # Module organization
 //!
-//! - [`error`] — тип ошибки загрузчика и алиас результата;
-//! - [`manifest`] — манифест библиотеки (`manifest.toml`) и его разбор;
-//! - [`discovery`] — поиск библиотек на диске и чтение файлов;
-//! - [`resolve`] — разрешение версий и загрузка с зависимостями;
-//! - [`activate`] — активация окружения проекта и lock-файл.
+//! - [`error`] — loader error type and result alias;
+//! - [`manifest`] — library manifest (`manifest.toml`) and parsing;
+//! - [`discovery`] — library discovery on disk and file reading;
+//! - [`resolve`] — version resolution and loading with dependencies;
+//! - [`activate`] — project environment activation and lock file.
 
 mod activate;
 mod discovery;
@@ -63,28 +63,28 @@ pub use error::{LoaderError, LoaderResult};
 pub use manifest::{LibraryManifest, ManifestDependency};
 
 // =============================================================================
-//                         ЗАГРУЖЕННАЯ БИБЛИОТЕКА
+//                         LOADED LIBRARY
 // =============================================================================
 
-/// Информация о загруженной библиотеке
+/// Information about a loaded library.
 #[derive(Debug, Clone)]
 pub struct LoadedLibrary {
-    /// Определение библиотеки
+    /// Library definition
     pub def: LibraryDef,
-    /// Версия
+    /// Version
     pub version: Version,
-    /// Источник загрузки
+    /// Loading source
     pub source: LibrarySource,
-    /// Путь к библиотеке (если есть)
+    /// Path to library (if any)
     pub path: Option<PathBuf>,
-    /// Исходный код (для Kumir-библиотек)
+    /// Source code (for Kumir libraries)
     pub source_code: Option<String>,
-    /// Манифест (если есть)
+    /// Manifest (if any)
     pub manifest: Option<LibraryManifest>,
 }
 
 impl LoadedLibrary {
-    /// Конвертирует в VersionedLibrary для окружения
+    /// Converts to VersionedLibrary for environment.
     pub fn into_versioned(self) -> VersionedLibrary {
         VersionedLibrary {
             def: self.def,
@@ -97,27 +97,27 @@ impl LoadedLibrary {
 }
 
 // =============================================================================
-//                    ИНТЕГРИРОВАННЫЙ ЗАГРУЗЧИК
+//                    INTEGRATED LOADER
 // =============================================================================
 
-/// Глобальный загрузчик
+/// Global loader.
 pub static LOADER: Lazy<RwLock<IntegratedLoader>> =
     Lazy::new(|| RwLock::new(IntegratedLoader::new()));
 
-/// Интегрированный загрузчик с поддержкой виртуальных окружений
+/// Integrated loader with virtual environment support.
 pub struct IntegratedLoader {
-    /// Менеджер окружений
+    /// Environment manager
     pub env_manager: EnvironmentManager,
-    /// Встроенные библиотеки
+    /// Built-in libraries
     builtins: HashMap<String, LibraryDef>,
-    /// Стек загрузки (для обнаружения циклов)
+    /// Loading stack (for cycle detection)
     loading_stack: Vec<String>,
-    /// Кэш загруженных библиотек (путь -> библиотека)
+    /// Loaded libraries cache (path -> library)
     file_cache: HashMap<PathBuf, LoadedLibrary>,
 }
 
 impl IntegratedLoader {
-    /// Создаёт новый загрузчик
+    /// Creates a new loader.
     pub fn new() -> Self {
         Self {
             env_manager: EnvironmentManager::new(),
@@ -128,12 +128,12 @@ impl IntegratedLoader {
     }
 
     // =========================================================================
-    //                         РЕГИСТРАЦИЯ ВСТРОЕННЫХ
+    //                         BUILTIN REGISTRATION
     // =========================================================================
 
-    /// Регистрирует встроенную библиотеку
+    /// Register a built-in library.
     pub fn register_builtin(&mut self, def: LibraryDef) {
-        // Сохраняем по всем именам
+        // Store by all names
         let name = def.name.to_string();
         self.builtins.insert(def.id.to_string(), def.clone());
         self.builtins.insert(name, def.clone());
@@ -141,11 +141,11 @@ impl IntegratedLoader {
             self.builtins.insert(alias.to_string(), def.clone());
         }
 
-        // Регистрируем в глобальном окружении
+        // Register in global environment
         self.env_manager.global_mut().register_builtin(def);
     }
 
-    /// Проверяет, является ли библиотека встроенной
+    /// Check if a library is built-in.
     pub fn is_builtin(&self, name: &str) -> bool {
         self.builtins.contains_key(name)
     }

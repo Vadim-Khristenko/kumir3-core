@@ -1,13 +1,12 @@
-//! Транспорт HTTP: соединение, TLS и разбор ответа.
+//! HTTP transport: connection, TLS, and response parsing.
 //!
-//! Выделен из [`super::http`], потому что «как достучаться до сервера» и
-//! «какие функции видит программа» — разные вопросы, и первый заметно сложнее.
+//! Separated from [`super::http`] because connection logic ("how to reach the server")
+//! and the library API ("what the program sees") are different concerns, and the former is notably more complex.
 //!
-//! Главное здесь — поддержка HTTPS. Раньше её не было, и на любой адрес
-//! `https://` библиотека отвечала отказом: в вебе, где обычный `http://`
-//! почти не встречается, это означало, что пользоваться ею нельзя.
-//! Шифрование даёт `rustls` с корневыми сертификатами `webpki-roots` —
-//! обе зависимости уже были в проекте и до сих пор ни разу не использовались.
+//! Core feature here is HTTPS support. Previously it was absent: any `https://` URL would be
+//! rejected, making the library unusable on modern web where plain `http://` is rare.
+//! Encryption is provided by `rustls` with root certificates from `webpki-roots`;
+//! both dependencies were already in the project, just unused until now.
 
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -16,21 +15,21 @@ use std::time::Duration;
 
 use once_cell::sync::Lazy;
 
-/// Сколько ждать ответа сервера.
+/// Read timeout for server responses.
 const READ_TIMEOUT: Duration = Duration::from_secs(30);
-/// Сколько ждать отправки запроса.
+/// Write timeout for sending requests.
 const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
-/// Предел переходов по перенаправлениям.
+/// Maximum number of redirects to follow.
 ///
-/// Цепочка длиннее почти всегда означает не «сервер так устроен», а петлю.
+/// Redirect chains longer than this almost always indicate a loop, not legitimate server behavior.
 const MAX_REDIRECTS: usize = 5;
-/// Предел размера ответа — 32 МиБ.
+/// Maximum response body size: 32 MiB.
 ///
-/// Без него ошибочный адрес (поток видео, огромный файл) съел бы всю память
-/// учебной машины молча.
+/// Without this limit, a bad URL (video stream, huge file) could silently consume
+/// all available memory on a student machine.
 const MAX_BODY: usize = 32 * 1024 * 1024;
 
-/// Разобранный адрес.
+/// Parsed URL components.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Url {
     pub host: String,
@@ -40,7 +39,7 @@ pub(crate) struct Url {
 }
 
 impl Url {
-    /// Собирает адрес обратно — нужно для сообщений и перенаправлений.
+    /// Reconstructs the origin (scheme + host + port). Used for messages and redirects.
     fn origin(&self) -> String {
         let scheme = if self.https { "https" } else { "http" };
         let default_port = if self.https { 443 } else { 80 };
@@ -52,9 +51,9 @@ impl Url {
     }
 }
 
-/// Разбирает адрес вида `https://узел:порт/путь`.
+/// Parses a URL of the form `https://host:port/path`.
 ///
-/// Схема необязательна: `example.org/page` понимается как `http://`.
+/// Scheme is optional: `example.org/page` defaults to `http://`.
 pub(crate) fn parse_url(url: &str) -> Result<Url, String> {
     let trimmed = url.trim();
     let (https, rest) = if let Some(rest) = trimmed.strip_prefix("https://") {
@@ -74,8 +73,8 @@ pub(crate) fn parse_url(url: &str) -> Result<Url, String> {
         None => (rest, "/"),
     };
 
-    // Порт отделяется последним двоеточием, но только если после него цифры:
-    // иначе адрес IPv6 распался бы по своим же двоеточиям.
+    // Port is separated by the last colon, but only if digits follow:
+    // otherwise an IPv6 address would be split by its own colons.
     let (host, port) = match authority.rsplit_once(':') {
         Some((h, p)) if !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()) => {
             let port = p
@@ -99,11 +98,11 @@ pub(crate) fn parse_url(url: &str) -> Result<Url, String> {
 }
 
 // ---------------------------------------------------------------------------
-//                                СОЕДИНЕНИЕ
+//                              CONNECTION
 // ---------------------------------------------------------------------------
 
-/// Настройки TLS готовятся один раз: разбор корневых сертификатов —
-/// заметная работа, повторять её на каждый запрос незачем.
+/// TLS config is initialized once: parsing root certificates is significant work,
+/// no need to repeat it for every request.
 static TLS_CONFIG: Lazy<Arc<rustls::ClientConfig>> = Lazy::new(|| {
     let roots = rustls::RootCertStore {
         roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
@@ -115,7 +114,7 @@ static TLS_CONFIG: Lazy<Arc<rustls::ClientConfig>> = Lazy::new(|| {
     )
 });
 
-/// Соединение — обычное или зашифрованное.
+/// A connection: either plain TCP or TLS-encrypted.
 enum Connection {
     Plain(TcpStream),
     Tls(Box<rustls::StreamOwned<rustls::ClientConnection, TcpStream>>),
@@ -169,10 +168,10 @@ fn connect(url: &Url) -> Result<Connection, String> {
 }
 
 // ---------------------------------------------------------------------------
-//                                  ОТВЕТ
+//                              RESPONSE
 // ---------------------------------------------------------------------------
 
-/// Ответ сервера.
+/// Server response.
 #[derive(Debug, Clone)]
 pub(crate) struct Response {
     pub status: u16,
@@ -182,7 +181,7 @@ pub(crate) struct Response {
 }
 
 impl Response {
-    /// Значение заголовка без учёта регистра имени.
+    /// Gets a header value case-insensitively by name.
     pub(crate) fn header(&self, name: &str) -> Option<&str> {
         self.headers
             .iter()
@@ -195,7 +194,7 @@ impl Response {
     }
 }
 
-/// Выполняет запрос, переходя по перенаправлениям.
+/// Executes a request, following redirects.
 pub(crate) fn request(
     method: &str,
     url: &str,
@@ -213,13 +212,13 @@ pub(crate) fn request(
         }
 
         let Some(location) = response.header("Location") else {
-            // Перенаправление без адреса — отвечать нечем; отдаём как есть.
+            // Redirect without a location header: nothing to do, return response as-is.
             return Ok(response);
         };
         target = resolve_redirect(&target, location)?;
 
-        // 303 и «переход после POST» по обычаю превращаются в GET: тело
-        // относилось к прежнему адресу, и посылать его повторно неверно.
+        // 303 and POST-to-redirect (302) are conventionally converted to GET:
+        // the body belonged to the previous URL and should not be resent.
         if response.status == 303 || (response.status == 302 && method != "GET") {
             method = "GET".to_string();
             body = None;
@@ -231,7 +230,7 @@ pub(crate) fn request(
     ))
 }
 
-/// Разрешает адрес перенаправления относительно текущего.
+/// Resolves a redirect location URL relative to the current URL.
 fn resolve_redirect(current: &Url, location: &str) -> Result<Url, String> {
     let location = location.trim();
     if location.starts_with("http://") || location.starts_with("https://") {
@@ -240,7 +239,7 @@ fn resolve_redirect(current: &Url, location: &str) -> Result<Url, String> {
     if let Some(path) = location.strip_prefix('/') {
         return parse_url(&format!("{}/{}", current.origin(), path));
     }
-    // Относительный путь считается от каталога текущего.
+    // Relative path is resolved from the current directory.
     let base = match current.path.rfind('/') {
         Some(idx) => &current.path[..idx],
         None => "",
@@ -260,7 +259,7 @@ fn request_once(
         "{method} {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n",
         url.path, url.host
     );
-    // Часть серверов отвечает отказом на запрос без User-Agent.
+    // Some servers reject requests without a User-Agent header.
     if !headers
         .iter()
         .any(|(k, _)| k.eq_ignore_ascii_case("User-Agent"))
@@ -308,8 +307,8 @@ fn read_all(connection: &mut Connection) -> Result<Vec<u8>, String> {
                     ));
                 }
             }
-            // Закрытие TLS-соединения без прощания — обычное дело у серверов;
-            // уже прочитанное при этом верно, поэтому это не ошибка.
+            // TLS connection closure without goodbye is normal server behavior;
+            // what we've already read is valid, so this is not an error.
             Err(ref e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => break,
@@ -319,7 +318,7 @@ fn read_all(connection: &mut Connection) -> Result<Vec<u8>, String> {
     Ok(collected)
 }
 
-/// Разбирает ответ на статус, заголовки и тело.
+/// Parses a response into status, headers, and body.
 pub(crate) fn parse_response(raw: &[u8]) -> Result<Response, String> {
     let text = String::from_utf8_lossy(raw);
     let (head, body) = match text.find("\r\n\r\n") {
@@ -360,19 +359,18 @@ pub(crate) fn parse_response(raw: &[u8]) -> Result<Response, String> {
     })
 }
 
-/// Склеивает тело, переданное кусками (`Transfer-Encoding: chunked`).
+/// Reassembles a chunked body (`Transfer-Encoding: chunked`).
 ///
-/// Без этого тело приходило вперемешку с длинами кусков в шестнадцатеричном
-/// виде, и таким ответом нельзя было пользоваться — а так отвечает
-/// большинство современных серверов.
+/// Without this, the body arrives interleaved with chunk sizes in hexadecimal,
+/// making it unusable — but that's how most modern servers respond.
 fn decode_chunked(body: &str) -> Result<String, String> {
     let mut rest = body;
     let mut out = String::new();
 
-    // Отсутствие разделителя означает оборванный ответ: цикл заканчивается,
-    // и наружу уходит то, что успели собрать.
+    // Missing separator indicates a truncated response: the loop ends
+    // and we return whatever we've collected so far.
     while let Some(line_end) = rest.find("\r\n") {
-        // Длину могут сопровождать расширения через `;` — они не нужны.
+        // Chunk size can have extensions after `;` which we ignore.
         let size_text = rest[..line_end].split(';').next().unwrap_or("").trim();
         let size = usize::from_str_radix(size_text, 16)
             .map_err(|_| format!("Неверная длина куска ответа: «{size_text}»"))?;
@@ -387,7 +385,7 @@ fn decode_chunked(body: &str) -> Result<String, String> {
             break;
         }
         out.push_str(&rest[start..end]);
-        // За куском идёт свой перевод строки.
+        // Each chunk is followed by its own CRLF.
         rest = rest.get(end + 2..).unwrap_or("");
     }
 
@@ -399,16 +397,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn razbor_adresa() {
+    fn parse_url_basic() {
         let url = parse_url("https://example.org/путь?a=1").unwrap();
         assert_eq!(url.host, "example.org");
-        assert_eq!(url.port, 443, "у https порт по умолчанию 443");
+        assert_eq!(url.port, 443, "https defaults to port 443");
         assert_eq!(url.path, "/путь?a=1");
         assert!(url.https);
 
         let url = parse_url("example.org").unwrap();
-        assert_eq!(url.port, 80, "без схемы — обычный http");
-        assert_eq!(url.path, "/", "путь по умолчанию — корень");
+        assert_eq!(url.port, 80, "no scheme defaults to http");
+        assert_eq!(url.path, "/", "default path is root");
         assert!(!url.https);
 
         let url = parse_url("http://localhost:8080/api").unwrap();
@@ -416,12 +414,12 @@ mod tests {
     }
 
     #[test]
-    fn pustoj_adres_soobshchaetsya() {
+    fn empty_url_rejected() {
         assert!(parse_url("").is_err());
         assert!(parse_url("http://").is_err());
     }
 
-    /// Собирает ответ из строк: в HTTP они разделяются именно CR+LF.
+    /// Assembles a response from lines using HTTP's CR+LF.
     fn raw_response(lines: &[&str], body: &str) -> Vec<u8> {
         let mut text = lines.join("\r\n");
         text.push_str("\r\n\r\n");
@@ -430,7 +428,7 @@ mod tests {
     }
 
     #[test]
-    fn razbor_otveta_s_zagolovkami() {
+    fn parse_response_with_headers() {
         let raw = raw_response(
             &[
                 "HTTP/1.1 404 Not Found",
@@ -448,8 +446,8 @@ mod tests {
     }
 
     #[test]
-    fn telo_iz_kuskov_skleivaetsya() {
-        // Длина каждого куска — в байтах, а русская буква занимает два.
+    fn chunked_body_reassembled() {
+        // Chunk size is in bytes; a Cyrillic character takes two bytes.
         let raw = raw_response(
             &["HTTP/1.1 200 OK", "Transfer-Encoding: chunked"],
             "6\r\nПри\r\n6\r\nвет\r\n0\r\n\r\n",
@@ -459,13 +457,13 @@ mod tests {
     }
 
     #[test]
-    fn rasshireniya_kuskov_ne_meshayut() {
+    fn chunk_extensions_ignored() {
         let body = "3;имя=значение\r\nabc\r\n0\r\n\r\n";
         assert_eq!(decode_chunked(body).unwrap(), "abc");
     }
 
     #[test]
-    fn perenapravlenie_razreshaetsya_otnositelno_tekushchego() {
+    fn redirect_resolved_relative_to_current() {
         let current = parse_url("https://example.org/a/b/c").unwrap();
 
         let absolute = resolve_redirect(&current, "https://other.org/x").unwrap();
@@ -478,11 +476,14 @@ mod tests {
         );
 
         let relative = resolve_redirect(&current, "d").unwrap();
-        assert_eq!(relative.path, "/a/b/d", "относительный путь — от каталога");
+        assert_eq!(
+            relative.path, "/a/b/d",
+            "relative path resolved from directory"
+        );
     }
 
     #[test]
-    fn nestandartnyj_port_sohranyaetsya_pri_perenapravlenii() {
+    fn nonstandard_port_preserved_in_redirect() {
         let current = parse_url("http://localhost:8080/a").unwrap();
         let next = resolve_redirect(&current, "/b").unwrap();
         assert_eq!(

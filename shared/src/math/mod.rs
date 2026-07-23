@@ -1,20 +1,20 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Арифметическое ядро Кумир 3.
+//! Arithmetic core of Kumir 3.
 //!
-//! Модуль разбит по зонам ответственности:
-//! * `error` — тип ошибки [`MathErr`];
-//! * `promote` — предикаты, конвертации и продвижение числовых типов;
-//! * `arith` — базовые операции `+ - * / div mod **`;
-//! * `strings` — строковые/агрегатные помощники этих операций;
-//! * `funcs` — корни, округление, тригонометрия, модуль.
+//! Module organization by responsibility:
+//! * `error` — error type [`MathErr`]
+//! * `promote` — predicates, conversions, and numeric type promotion
+//! * `arith` — basic operators: `+ - * / div mod **`
+//! * `strings` — string/aggregate helpers for these operators
+//! * `funcs` — roots, rounding, trigonometry, absolute value
 //!
-//! Все методы принадлежат единому типу [`MathOperators`]: inherent-`impl`
-//! разнесён по файлам одного модуля, публичные пути при этом не меняются.
+//! All methods belong to [`MathOperators`]; inherent implementations are split
+//! across files, but public paths remain unchanged.
 
 // =============================================================================
-//         MODULES
+//         SECTION: MODULES
 // =============================================================================
 
 mod arith;

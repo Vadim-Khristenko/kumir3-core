@@ -1,4 +1,4 @@
-//! Ввод/вывод.
+//! Input/output statement execution.
 
 use super::super::environment::Environment;
 use super::super::error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
@@ -8,9 +8,9 @@ use shared::types::{Expr, Number, Value};
 use std::io::{self, BufRead, Write};
 
 impl Executor {
-    // =========================================================================
-    //                    ВВОД/ВЫВОД
-    // =========================================================================
+    // =============================================================================
+    //                           INPUT/OUTPUT
+    // =============================================================================
 
     pub(crate) fn execute_input(
         vars: &[String],
@@ -26,7 +26,7 @@ impl Executor {
                 .map_err(|e| RuntimeError::io_error(format!("Ошибка ввода: {}", e)))?;
             let input = input.trim();
 
-            // Пытаемся определить тип автоматически
+            // Auto-detect type from input.
             let value = if let Ok(i) = input.parse::<i64>() {
                 Value::Number(Number::I64(i))
             } else if let Ok(f) = input.parse::<f64>() {
@@ -45,12 +45,11 @@ impl Executor {
         Ok(ControlFlow::None)
     }
 
-    /// Команда `вывод`: значения печатаются подряд, без разделителя.
+    /// Output statement: values are printed in sequence with no separator.
     ///
-    /// Пробелы ставит сама программа, внутри своих строк:
-    /// `вывод "Ответ: ", n` даёт `Ответ: 5`. Пока разделитель добавлялся
-    /// автоматически, этот — самый частый в языке — приём давал два пробела
-    /// подряд, а убрать лишний было нечем.
+    /// The program must insert spaces in its own strings:
+    /// `вывод "Answer: ", n` produces `Answer: 5`. When auto-separator was enabled,
+    /// this common pattern caused double spaces, and there was no way to suppress it.
     pub(crate) fn execute_output(
         exprs: &[Expr],
         env: &mut Environment,
@@ -64,7 +63,7 @@ impl Executor {
 
         env.println(&output);
 
-        // Также выводим в stdout если не в режиме тестирования
+        // Also print to stdout in debug mode.
         if env.is_debug_mode() {
             println!("{}", output);
         }

@@ -1,39 +1,38 @@
-//! Палитра интерфейса.
+//! Interface color palette.
 //!
-//! Цвета собраны в одном месте, чтобы панели не расходились между собой.
-//! Используются только цвета из палитры терминала (`Indexed`), а не 24-битные:
-//! так интерфейс подхватывает тему терминала пользователя и остаётся читаемым
-//! и на светлом фоне, и на тёмном.
+//! Colors centralized so panels stay visually consistent. Uses only terminal
+//! palette colors (`Indexed`), not 24-bit, so the interface adopts the user's
+//! terminal theme and remains readable on light and dark backgrounds.
 
 use ratatui::style::{Color, Modifier, Style};
 
-/// Основной акцент: рамка активной панели, заголовки.
+/// Main accent: active panel frame, titles.
 pub(crate) const ACCENT: Color = Color::Cyan;
-/// Спокойный акцент: рамки неактивных панелей, подписи.
+/// Muted accent: inactive panel frames, labels.
 pub(crate) const MUTED: Color = Color::DarkGray;
-/// Успешное завершение, значения.
+/// Success, values.
 pub(crate) const OK: Color = Color::Green;
-/// Ошибки.
+/// Errors.
 pub(crate) const ERROR: Color = Color::Red;
-/// Предупреждения и режим продолжения ввода.
+/// Warnings and input continuation mode.
 pub(crate) const WARN: Color = Color::Yellow;
 
-// --- Подсветка кода ---
+// --- Code highlighting ---
 
-/// Ключевое слово языка (`алг`, `нц`, `если`).
+/// Language keyword (`алг`, `нц`, `если`).
 pub(crate) const KEYWORD: Color = Color::Magenta;
-/// Имя типа (`цел`, `лит`, `таб`).
+/// Type name (`цел`, `лит`, `таб`).
 pub(crate) const TYPE: Color = Color::Blue;
-/// Встроенная функция (`длина`, `корень`).
+/// Builtin function (`длина`, `корень`).
 pub(crate) const BUILTIN: Color = Color::Cyan;
-/// Числовой литерал.
+/// Numeric literal.
 pub(crate) const NUMBER: Color = Color::LightYellow;
-/// Строковый и символьный литерал.
+/// String and character literal.
 pub(crate) const STRING: Color = Color::LightGreen;
-/// Комментарий.
+/// Comment.
 pub(crate) const COMMENT: Color = Color::DarkGray;
 
-/// Стиль рамки панели: активная выделяется цветом, а не только заголовком.
+/// Panel frame style: active one gets color, not just title.
 pub(crate) fn border(active: bool) -> Style {
     if active {
         Style::default().fg(ACCENT)
@@ -42,7 +41,7 @@ pub(crate) fn border(active: bool) -> Style {
     }
 }
 
-/// Стиль заголовка панели.
+/// Panel title style.
 pub(crate) fn title(active: bool) -> Style {
     if active {
         Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)
@@ -51,12 +50,12 @@ pub(crate) fn title(active: bool) -> Style {
     }
 }
 
-/// Стиль подписи клавиши в нижней строке.
+/// Key label style in the hint bar.
 pub(crate) fn key_hint() -> Style {
     Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)
 }
 
-/// Стиль пояснения рядом с подписью клавиши.
+/// Explanation text next to key label.
 pub(crate) fn key_label() -> Style {
     Style::default().fg(MUTED)
 }

@@ -1,4 +1,4 @@
-//! Циклы.
+//! Loop execution (for, while, do-while, foreach).
 
 use super::super::environment::Environment;
 use super::super::error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
@@ -7,9 +7,9 @@ use super::Executor;
 use shared::types::{Expr, Number, Stmt, Value};
 
 impl Executor {
-    // =========================================================================
-    //                    ЦИКЛЫ
-    // =========================================================================
+    // =============================================================================
+    //                            LOOPS
+    // =============================================================================
 
     pub(crate) fn execute_while(
         condition: &Expr,
@@ -67,7 +67,7 @@ impl Executor {
 
         let mut i = start_i;
         loop {
-            // Проверяем условие выхода
+            // Check exit condition.
             if step_i > 0 {
                 if i > end_i {
                     break;
@@ -76,10 +76,10 @@ impl Executor {
                 break;
             }
 
-            // Устанавливаем переменную цикла
+            // Set the loop variable.
             env.define_local(variable.to_string(), Value::Number(Number::I64(i)));
 
-            // Выполняем тело
+            // Execute body.
             match Self::execute_stmts(body, env)? {
                 ControlFlow::Break => break,
                 ControlFlow::Continue => {}
@@ -87,14 +87,14 @@ impl Executor {
                 ControlFlow::None => {}
             }
 
-            // Увеличиваем счётчик
+            // Increment counter.
             i += step_i;
         }
 
         Ok(ControlFlow::None)
     }
 
-    /// [KITE 2/4] Цикл по коллекции/диапазону: `нц для x в <итерируемое> … кц`.
+    /// Foreach loop: `нц для x в <iterable> … кц` [KITE 2/4].
     pub(crate) fn execute_for_each(
         variable: &str,
         iterable: &Expr,

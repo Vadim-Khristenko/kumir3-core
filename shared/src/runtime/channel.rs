@@ -1,45 +1,34 @@
-// ============================================================================
-//                    АСИНХРОННЫЕ КАНАЛЫ
-// ============================================================================
-//
-// Обёртки над tokio каналами для удобной коммуникации:
-// - MessageChannel: MPSC канал для сообщений между компонентами
-// - BroadcastChannel: Broadcast канал для широковещательных событий
-// - OneShotChannel: Одноразовый канал для ответа на запрос
-// - ValueChannel: Типизированный канал для Value
-//
-// ============================================================================
+//! Async channels for inter-component communication.
+//!
+//! Wrappers over tokio channels:
+//! - MessageChannel: MPSC channel for component messages
+//! - BroadcastChannel: broadcast channel for events
+//! - OneShotChannel: one-shot channel for request-response
+//! - ValueChannel: typed channel for Value
 
 use std::sync::Arc;
 use tokio::sync::{Mutex, broadcast, mpsc, oneshot};
 
 use crate::types::Value;
 
-// ============================================================================
-//                    СООБЩЕНИЯ
-// ============================================================================
+// =============================================================================
+//         SECTION: MESSAGE TYPES
+// =============================================================================
 
-/// Сообщение передаваемое через каналы.
+/// Message transmitted through channels.
 #[derive(Debug, Clone)]
 pub struct Message {
-    /// Тип/имя сообщения
     pub kind: String,
-    /// Полезная нагрузка
     pub payload: Value,
-    /// Метаданные (опционально)
     pub metadata: Option<MessageMetadata>,
 }
 
-/// Метаданные сообщения.
+/// Message metadata.
 #[derive(Debug, Clone)]
 pub struct MessageMetadata {
-    /// Источник сообщения
     pub source: Option<String>,
-    /// Идентификатор корреляции (для request-response)
     pub correlation_id: Option<u64>,
-    /// Временная метка
     pub timestamp: std::time::Instant,
-    /// Приоритет
     pub priority: u8,
 }
 

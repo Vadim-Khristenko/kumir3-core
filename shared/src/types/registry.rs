@@ -1,12 +1,12 @@
-//! Реестр типов (TypeRegistry) v2
+//! Type registry (TypeRegistry) v2.
 //!
-//! Единая система регистрации и управления типами для КуМир 3.
+//! Unified type registration and management system for Kumir 3.
 //!
-//! Ключевые принципы:
-//! - Единый TypeDef для всех типов (примитивы, КуМир-классы, нативные)
-//! - Методы хранятся как обычные алгоритмы с привязкой к типу
-//! - Простая модель наследования (образовательный язык!)
-//! - Поддержка ключевого слова `новый` для создания объектов
+//! Key principles:
+//! - Single TypeDef for all types (primitives, Kumir classes, natives)
+//! - Methods are stored as regular algorithms with type bindings
+//! - Simple inheritance model (educational language!)
+//! - Support for `new` keyword for object creation
 
 use std::any::Any;
 use std::collections::HashMap;
@@ -15,235 +15,235 @@ use std::sync::{Arc, RwLock};
 use super::value::Value;
 
 // =============================================================================
-//                           ИДЕНТИФИКАТОРЫ
+//                           IDENTIFIERS
 // =============================================================================
 
-/// Уникальный идентификатор типа.
+/// Unique type identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeId(pub u64);
 
 impl TypeId {
-    /// Зарезервированные ID для примитивных типов
-    pub const INT: TypeId = TypeId(1); // цел
-    pub const FLOAT: TypeId = TypeId(2); // вещ
-    pub const STRING: TypeId = TypeId(3); // лит
-    pub const BOOL: TypeId = TypeId(4); // лог
-    pub const CHAR: TypeId = TypeId(5); // сим
-    pub const ARRAY: TypeId = TypeId(6); // таб
-    pub const VOID: TypeId = TypeId(7); // пустота
+    /// Reserved IDs for primitive types
+    pub const INT: TypeId = TypeId(1);
+    pub const FLOAT: TypeId = TypeId(2);
+    pub const STRING: TypeId = TypeId(3);
+    pub const BOOL: TypeId = TypeId(4);
+    pub const CHAR: TypeId = TypeId(5);
+    pub const ARRAY: TypeId = TypeId(6);
+    pub const VOID: TypeId = TypeId(7);
 
-    /// Проверить, является ли тип примитивным
+    /// Check whether a type is primitive.
     pub fn is_primitive(&self) -> bool {
         self.0 <= 10
     }
 }
 
 // =============================================================================
-//                           ОПРЕДЕЛЕНИЕ ТИПА
+//                           TYPE DEFINITION
 // =============================================================================
 
-/// Определение типа — единая структура для всех видов типов.
+/// Type definition — unified structure for all types.
 ///
-/// В КуМир 3 все типы (примитивы, классы, нативные) описываются единообразно.
+/// In Kumir 3, all types (primitives, classes, natives) are described uniformly.
 #[derive(Debug, Clone)]
 pub struct TypeDef {
-    /// Уникальный идентификатор
+    /// Unique identifier
     pub id: TypeId,
 
-    /// Имя типа (для отображения и поиска)
+    /// Type name (for display and lookup)
     pub name: String,
 
-    /// Альтернативные имена (синонимы)
-    /// Например: ["HTTPСервер", "HttpServer", "HTTP_Сервер"]
+    /// Alternative names (synonyms).
+    /// Example: ["HTTPServer", "HttpServer", "HTTP_Server"]
     pub aliases: Vec<String>,
 
-    /// Модуль/библиотека, к которой принадлежит тип
-    /// Например: "HTTP", "Файлы", "Графика"
+    /// Module/library to which this type belongs.
+    /// Example: "HTTP", "Files", "Graphics"
     pub module: Option<String>,
 
-    /// Родительский тип (для наследования)
+    /// Parent type (for inheritance)
     pub parent: Option<TypeId>,
 
-    /// Реализуемые интерфейсы/трейты
+    /// Implemented interfaces/traits
     pub implements: Vec<TypeId>,
 
-    /// Поля типа
+    /// Fields of this type
     pub fields: Vec<FieldDef>,
 
-    /// Является ли тип нативным (реализован на Rust)
+    /// Whether this type is native (implemented in Rust)
     pub is_native: bool,
 
-    /// Можно ли создавать экземпляры этого типа
+    /// Whether instances of this type can be created
     pub is_instantiable: bool,
 
-    /// Описание типа (для документации)
+    /// Type description (for documentation)
     pub description: String,
 }
 
-/// Определение поля типа.
+/// Type field definition.
 #[derive(Debug, Clone)]
 pub struct FieldDef {
-    /// Имя поля
+    /// Field name
     pub name: String,
 
-    /// Тип поля (имя типа)
+    /// Field type (type name)
     pub type_name: String,
 
-    /// ID типа поля (заполняется при регистрации)
+    /// Field type ID (filled during registration)
     pub type_id: Option<TypeId>,
 
-    /// Значение по умолчанию (если есть)
+    /// Default value (if any)
     pub default: Option<Value>,
 
-    /// Только для чтения?
+    /// Read-only?
     pub readonly: bool,
 
-    /// Приватное поле?
+    /// Private field?
     pub private: bool,
 }
 
 // =============================================================================
-//                           ОПРЕДЕЛЕНИЕ МЕТОДА
+//                           METHOD DEFINITION
 // =============================================================================
 
-/// Определение метода типа.
+/// Method definition for a type.
 ///
-/// Методы хранятся отдельно от типа и привязываются по имени:
-/// `ИмяТипа.ИмяМетода` или `ИмяТипа::ИмяМетода`
+/// Methods are stored separately from the type and bound by name:
+/// `TypeName.MethodName` or `TypeName::MethodName`
 #[derive(Debug, Clone)]
 pub struct MethodDef {
-    /// Полное имя метода: "HTTPСервер.Запустить"
+    /// Full method name: "HTTPServer.Start"
     pub full_name: String,
 
-    /// Короткое имя: "Запустить"  
+    /// Short name: "Start"
     pub name: String,
 
-    /// ID типа, которому принадлежит метод
+    /// Type ID to which this method belongs
     pub owner_type: TypeId,
 
-    /// Параметры метода
+    /// Method parameters
     pub params: Vec<MethodParam>,
 
-    /// Возвращаемый тип (None = процедура)
+    /// Return type (None = procedure)
     pub return_type: Option<String>,
 
-    /// Статический метод? (вызывается через Тип.Метод, а не объект.метод)
+    /// Static method? (called via Type.Method, not object.method)
     pub is_static: bool,
 
-    /// Это конструктор/инициализатор?
+    /// Is this a constructor/initializer?
     pub is_constructor: bool,
 
-    /// Описание метода
+    /// Method description
     pub description: String,
 }
 
-/// Параметр метода.
+/// Method parameter.
 #[derive(Debug, Clone)]
 pub struct MethodParam {
-    /// Имя параметра
+    /// Parameter name
     pub name: String,
 
-    /// Тип параметра
+    /// Parameter type
     pub type_name: String,
 
-    /// Режим: арг, рез, аргрез
+    /// Passing mode
     pub mode: ParamMode,
 
-    /// Значение по умолчанию
+    /// Default value
     pub default: Option<Value>,
 }
 
-/// Режим передачи параметра.
+/// Parameter passing mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParamMode {
-    /// арг — входной параметр (по значению)
+    /// Input parameter (by value)
     In,
-    /// рез — выходной параметр
+    /// Output parameter
     Out,
-    /// аргрез — входной и выходной
+    /// Input/output parameter
     InOut,
 }
 
 // =============================================================================
-//                           ОБРАБОТЧИКИ (для нативных типов)
+//                           HANDLERS (for native types)
 // =============================================================================
 
-/// Фабрика для создания нативных объектов.
-/// Вызывается при `новый ТипИмя(аргументы)`
+/// Factory for creating native objects.
+/// Called when `new TypeName(args)`
 pub type NativeFactory =
     Arc<dyn Fn(Vec<Value>) -> Result<Arc<dyn Any + Send + Sync>, String> + Send + Sync>;
 
-/// Обработчик методов экземпляра.
-/// Вызывается при `объект.метод(аргументы)`
+/// Instance method handler.
+/// Called when `object.method(args)`
 pub type InstanceMethodHandler = Arc<
     dyn Fn(&Arc<dyn Any + Send + Sync>, &str, Vec<Value>) -> Result<Value, String> + Send + Sync,
 >;
 
-/// Обработчик статических методов.
-/// Вызывается при `ТипИмя.Метод(аргументы)`
+/// Static method handler.
+/// Called when `TypeName.Method(args)`
 pub type StaticMethodHandler = Arc<dyn Fn(&str, Vec<Value>) -> Result<Value, String> + Send + Sync>;
 
-/// Обработчик доступа к полям.
-/// Вызывается при `объект.поле`
+/// Field access handler.
+/// Called when `object.field`
 pub type FieldAccessHandler =
     Arc<dyn Fn(&Arc<dyn Any + Send + Sync>, &str) -> Result<Value, String> + Send + Sync>;
 
-/// Обработчик установки полей.
-/// Вызывается при `объект.поле := значение`
+/// Field set handler.
+/// Called when `object.field := value`
 pub type FieldSetHandler =
     Arc<dyn Fn(&Arc<dyn Any + Send + Sync>, &str, Value) -> Result<(), String> + Send + Sync>;
 
 // =============================================================================
-//                           РЕЕСТР ТИПОВ
+//                           TYPE REGISTRY
 // =============================================================================
 
-/// Реестр типов — центральное хранилище всех типов в программе.
+/// Type registry — central repository of all types in a program.
 ///
-/// Основные функции:
-/// - Регистрация и поиск типов
-/// - Создание экземпляров объектов
-/// - Вызов методов и доступ к полям
-/// - Проверка наследования
+/// Main responsibilities:
+/// - Register and lookup types
+/// - Create object instances
+/// - Call methods and access fields
+/// - Check inheritance relationships
 pub struct TypeRegistry {
-    /// Счётчик для генерации уникальных ID
+    /// Counter for generating unique IDs
     next_id: RwLock<u64>,
 
-    /// Типы по ID
+    /// Types by ID
     types: RwLock<HashMap<TypeId, TypeDef>>,
 
-    /// Типы по имени (включая aliases)
+    /// Types by name (including aliases)
     types_by_name: RwLock<HashMap<String, TypeId>>,
 
-    /// Методы по полному имени: "ТипИмя.МетодИмя" -> MethodDef
+    /// Methods by full name: "TypeName.MethodName" -> MethodDef
     methods: RwLock<HashMap<String, MethodDef>>,
 
-    /// Методы типа: TypeId -> Vec<MethodDef>
+    /// Methods by type: TypeId -> Vec<MethodDef>
     methods_by_type: RwLock<HashMap<TypeId, Vec<MethodDef>>>,
 
-    // --- Обработчики для нативных типов ---
-    /// Фабрики создания объектов
+    // --- Handlers for native types ---
+    /// Object creation factories
     factories: RwLock<HashMap<TypeId, NativeFactory>>,
 
-    /// Обработчики методов экземпляров
+    /// Instance method handlers
     instance_handlers: RwLock<HashMap<TypeId, InstanceMethodHandler>>,
 
-    /// Обработчики статических методов
+    /// Static method handlers
     static_handlers: RwLock<HashMap<TypeId, StaticMethodHandler>>,
 
-    /// Обработчики доступа к полям
+    /// Field access handlers
     #[allow(dead_code)]
     field_getters: RwLock<HashMap<TypeId, FieldAccessHandler>>,
 
-    /// Обработчики установки полей
+    /// Field set handlers
     #[allow(dead_code)]
     field_setters: RwLock<HashMap<TypeId, FieldSetHandler>>,
 }
 
 impl TypeRegistry {
-    /// Создать новый реестр с предзарегистрированными примитивами.
+    /// Create a new registry with pre-registered primitives.
     pub fn new() -> Self {
         let registry = Self {
-            next_id: RwLock::new(100), // 0-99 зарезервированы
+            next_id: RwLock::new(100), // 0-99 reserved
             types: RwLock::new(HashMap::new()),
             types_by_name: RwLock::new(HashMap::new()),
             methods: RwLock::new(HashMap::new()),
@@ -259,7 +259,7 @@ impl TypeRegistry {
         registry
     }
 
-    /// Зарегистрировать примитивные типы.
+    /// Register primitive types.
     fn register_primitives(&self) {
         let primitives = [
             (TypeId::INT, "цел", vec!["целое", "int", "integer"]),
@@ -296,7 +296,7 @@ impl TypeRegistry {
         }
     }
 
-    /// Сгенерировать новый уникальный TypeId.
+    /// Generate a new unique TypeId.
     fn next_type_id(&self) -> TypeId {
         let mut id = self.next_id.write().unwrap();
         let type_id = TypeId(*id);
@@ -305,10 +305,10 @@ impl TypeRegistry {
     }
 
     // =========================================================================
-    //                       РЕГИСТРАЦИЯ ТИПОВ
+    //                       TYPE REGISTRATION
     // =========================================================================
 
-    /// Зарегистрировать новый тип.
+    /// Register a new type.
     pub fn register_type(&self, mut type_def: TypeDef) -> TypeId {
         let type_id = self.next_type_id();
         type_def.id = type_id;
@@ -327,7 +327,7 @@ impl TypeRegistry {
         type_id
     }
 
-    /// Зарегистрировать нативный тип с обработчиками.
+    /// Register a native type with handlers.
     pub fn register_native_type(
         &self,
         type_def: TypeDef,
@@ -350,7 +350,7 @@ impl TypeRegistry {
         type_id
     }
 
-    /// Зарегистрировать метод типа.
+    /// Register a type method.
     pub fn register_method(&self, method: MethodDef) {
         let full_name = method.full_name.clone();
         let owner_type = method.owner_type;
@@ -369,20 +369,20 @@ impl TypeRegistry {
     }
 
     // =========================================================================
-    //                       ПОИСК ТИПОВ
+    //                       TYPE LOOKUP
     // =========================================================================
 
-    /// Получить TypeId по имени.
+    /// Get TypeId by name.
     pub fn get_type_id(&self, name: &str) -> Option<TypeId> {
         self.types_by_name.read().unwrap().get(name).copied()
     }
 
-    /// Получить определение типа по ID.
+    /// Get type definition by ID.
     pub fn get_type(&self, type_id: TypeId) -> Option<TypeDef> {
         self.types.read().unwrap().get(&type_id).cloned()
     }
 
-    /// Получить имя типа по ID.
+    /// Get type name by ID.
     pub fn get_type_name(&self, type_id: TypeId) -> Option<String> {
         self.types
             .read()
@@ -391,7 +391,7 @@ impl TypeRegistry {
             .map(|t| t.name.clone())
     }
 
-    /// Получить методы типа.
+    /// Get all methods of a type.
     pub fn get_methods(&self, type_id: TypeId) -> Vec<MethodDef> {
         self.methods_by_type
             .read()
@@ -401,26 +401,26 @@ impl TypeRegistry {
             .unwrap_or_default()
     }
 
-    /// Найти метод по полному имени.
+    /// Find method by full name.
     pub fn get_method(&self, full_name: &str) -> Option<MethodDef> {
         self.methods.read().unwrap().get(full_name).cloned()
     }
 
-    /// Найти статический метод типа.
+    /// Find static method of a type.
     pub fn find_static_method(&self, type_name: &str, method_name: &str) -> Option<MethodDef> {
         let full_name = format!("{}.{}", type_name, method_name);
         self.methods.read().unwrap().get(&full_name).cloned()
     }
 
     // =========================================================================
-    //                       СОЗДАНИЕ ОБЪЕКТОВ
+    //                       OBJECT CREATION
     // =========================================================================
 
-    /// Создать экземпляр нативного типа.
+    /// Create an instance of a native type.
     ///
-    /// Вызывается при `новый ТипИмя(аргументы)`
+    /// Called when `new TypeName(args)`
     pub fn create_instance(&self, type_id: TypeId, args: Vec<Value>) -> Result<Value, String> {
-        // Проверяем, можно ли создавать экземпляры
+        // Check if instances can be created
         let type_def = self
             .get_type(type_id)
             .ok_or_else(|| format!("Тип с ID {} не найден", type_id.0))?;
@@ -432,7 +432,7 @@ impl TypeRegistry {
             ));
         }
 
-        // Если нативный тип — используем фабрику
+        // For native types, use the factory
         if type_def.is_native {
             let factory = self
                 .factories
@@ -451,7 +451,7 @@ impl TypeRegistry {
             });
         }
 
-        // Для КуМир-классов создаём Object с полями
+        // For Kumir classes, create Object with fields
         let mut fields = std::collections::BTreeMap::new();
         for field in &type_def.fields {
             let default_value = field.default.clone().unwrap_or(Value::Undefined);
@@ -462,12 +462,12 @@ impl TypeRegistry {
     }
 
     // =========================================================================
-    //                       ВЫЗОВ МЕТОДОВ
+    //                       METHOD CALLING
     // =========================================================================
 
-    /// Вызвать статический метод типа.
+    /// Call a static method of a type.
     ///
-    /// Используется для `ТипИмя.Метод(аргументы)`
+    /// Used for `TypeName.Method(args)`
     pub fn call_static_method(
         &self,
         type_id: TypeId,
@@ -490,9 +490,9 @@ impl TypeRegistry {
         handler(method, args)
     }
 
-    /// Вызвать метод экземпляра.
+    /// Call an instance method.
     ///
-    /// Используется для `объект.метод(аргументы)`
+    /// Used for `object.method(args)`
     pub fn call_instance_method(
         &self,
         type_id: TypeId,
@@ -517,10 +517,10 @@ impl TypeRegistry {
     }
 
     // =========================================================================
-    //                       НАСЛЕДОВАНИЕ
+    //                       INHERITANCE
     // =========================================================================
 
-    /// Проверить, является ли один тип потомком другого.
+    /// Check if one type is a subtype of another.
     pub fn is_subtype(&self, child: TypeId, parent: TypeId) -> bool {
         if child == parent {
             return true;
@@ -543,7 +543,7 @@ impl TypeRegistry {
         false
     }
 
-    /// Получить цепочку наследования типа.
+    /// Get the inheritance chain of a type.
     pub fn get_inheritance_chain(&self, type_id: TypeId) -> Vec<TypeId> {
         let mut chain = vec![type_id];
         let types = self.types.read().unwrap();
@@ -562,15 +562,15 @@ impl TypeRegistry {
     }
 
     // =========================================================================
-    //                       УТИЛИТЫ
+    //                       UTILITIES
     // =========================================================================
 
-    /// Получить все зарегистрированные типы.
+    /// Get all registered types.
     pub fn all_types(&self) -> Vec<TypeDef> {
         self.types.read().unwrap().values().cloned().collect()
     }
 
-    /// Получить все типы модуля.
+    /// Get all types in a module.
     pub fn types_in_module(&self, module: &str) -> Vec<TypeDef> {
         self.types
             .read()
@@ -593,10 +593,10 @@ unsafe impl Send for TypeRegistry {}
 unsafe impl Sync for TypeRegistry {}
 
 // =============================================================================
-//                           БИЛДЕРЫ
+//                           BUILDERS
 // =============================================================================
 
-/// Билдер для удобного создания TypeDef.
+/// Builder for convenient TypeDef creation.
 pub struct TypeDefBuilder {
     type_def: TypeDef,
 }
@@ -605,7 +605,7 @@ impl TypeDefBuilder {
     pub fn new(name: &str) -> Self {
         Self {
             type_def: TypeDef {
-                id: TypeId(0), // будет заполнено при регистрации
+                id: TypeId(0), // will be filled during registration
                 name: name.to_string(),
                 aliases: vec![],
                 module: None,
@@ -661,7 +661,7 @@ impl TypeDefBuilder {
     }
 }
 
-/// Билдер для создания MethodDef.
+/// Builder for MethodDef creation.
 pub struct MethodDefBuilder {
     method: MethodDef,
 }

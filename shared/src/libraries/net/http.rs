@@ -1,7 +1,7 @@
-//! HTTP-клиент библиотеки «сеть».
+//! HTTP client for the "net" library.
 //!
-//! Здесь — только то, что видит программа на Кумире. Как устроено соединение,
-//! шифрование и разбор ответа — в [`super::transport`].
+//! This module contains only what a Kumir program sees. Connection logic,
+//! encryption, and response parsing live in [`super::transport`].
 
 use std::sync::Arc;
 
@@ -9,7 +9,7 @@ use super::transport::{self, Response};
 use crate::types::library::{LibFunctionDef, LibParamDef};
 use crate::types::value::{TypeKind, Value};
 
-/// Достаёт обязательный строковый аргумент.
+/// Extracts a required string argument.
 fn text_arg(args: &[Value], index: usize, name: &str) -> Result<String, String> {
     args.get(index)
         .and_then(|v| v.as_string())
@@ -17,7 +17,7 @@ fn text_arg(args: &[Value], index: usize, name: &str) -> Result<String, String> 
         .ok_or_else(|| format!("Ожидается строка в параметре «{name}»"))
 }
 
-/// Необязательный строковый аргумент; отсутствующий даёт пустую строку.
+/// Optional string argument; if missing, returns empty string.
 fn optional_text(args: &[Value], index: usize) -> String {
     args.get(index)
         .and_then(|v| v.as_string())
@@ -25,7 +25,7 @@ fn optional_text(args: &[Value], index: usize) -> String {
         .unwrap_or_default()
 }
 
-/// Разбирает заголовки, записанные строками `Имя: значение`.
+/// Parses headers from lines formatted as `Name: value`.
 fn parse_headers(text: &str) -> Vec<(String, String)> {
     text.lines()
         .filter_map(|line| line.split_once(':'))
@@ -33,12 +33,11 @@ fn parse_headers(text: &str) -> Vec<(String, String)> {
         .collect()
 }
 
-/// Превращает ответ в словарь, доступный программе.
+/// Converts a response into a dict accessible to the program.
 ///
-/// Именно словарь, а не строка: у ответа есть не только тело, но и код
-/// состояния с заголовками, а добраться до них было нельзя — функции отдавали
-/// одно лишь тело, поэтому отличить данные от страницы «не найдено» программа
-/// не могла.
+/// A dict, not a string: the response has not only a body, but also a status code
+/// and headers. Previously, these were inaccessible—functions returned only the body,
+/// so there was no way to distinguish valid data from a "not found" page.
 fn response_to_value(response: Response) -> Value {
     use std::collections::BTreeMap;
 
@@ -72,11 +71,11 @@ fn response_to_value(response: Response) -> Value {
     Value::Map(map)
 }
 
-/// Тело ответа с проверкой кода состояния.
+/// Response body with status code check.
 ///
-/// Функция, отдающая одну строку, обязана сообщать об ошибке сервера: молча
-/// вернуть страницу «404 не найдено» вместо данных — худший из ответов,
-/// потому что программа продолжит работать с мусором и не узнает об этом.
+/// A function returning a single string must report server errors: silently
+/// returning a "404 not found" page instead of data would be the worst outcome,
+/// since the program would continue working with garbage unaware.
 fn body_or_error(response: Response, url: &str) -> Result<Value, String> {
     if (200..300).contains(&response.status) {
         return Ok(Value::String(response.body));
@@ -217,7 +216,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn zagolovki_razbirayutsya_postrochno() {
+    fn headers_parsed_line_by_line() {
         let headers = parse_headers("Accept: text/html\nX-Ключ:  значение \nмусор без двоеточия");
         assert_eq!(
             headers,
@@ -229,7 +228,7 @@ mod tests {
     }
 
     #[test]
-    fn otvet_prevrashchaetsya_v_slovar_na_dvuh_yazykah() {
+    fn response_dict_bilingual() {
         let response = Response {
             status: 200,
             reason: "OK".to_string(),
@@ -261,10 +260,10 @@ mod tests {
         );
     }
 
-    /// Заголовки доступны по имени в нижнем регистре — иначе программе
-    /// пришлось бы угадывать, как его написал сервер.
+    /// Headers are accessible by lowercase name—otherwise the program would have to guess
+    /// how the server capitalized it.
     #[test]
-    fn imena_zagolovkov_privodyatsya_k_nizhnemu_registru() {
+    fn header_names_lowercased() {
         let response = Response {
             status: 200,
             reason: "OK".to_string(),
@@ -284,9 +283,9 @@ mod tests {
         );
     }
 
-    /// Ошибка сервера должна быть ошибкой, а не телом страницы «не найдено».
+    /// Server errors must be reported as errors, not as the body of a "not found" page.
     #[test]
-    fn oshibka_servera_ne_vydaetsya_za_dannye() {
+    fn server_error_not_silent() {
         let response = Response {
             status: 404,
             reason: "Not Found".to_string(),

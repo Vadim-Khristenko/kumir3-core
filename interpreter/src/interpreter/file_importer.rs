@@ -1,20 +1,9 @@
-//! Импорт .kum файлов
+//! Module import system for .kum files.
 //!
-//! Поддерживает:
-//! - `подключить "./соседний_файл.kum"` — относительный путь
-//! - `подключить "модуль"` — поиск в директории модулей
-//! - `использовать ./модуль` — альтернативный синтаксис
-//!
-//! Пример:
-//! ```kumir
-//! | main.kum
-//! подключить "./математика.kum" как мат
-//!
-//! алг Тест
-//! нач
-//!     вывод мат.квадрат(5)
-//! кон
-//! ```
+//! Supports:
+//! - Relative paths: `"./neighbor.kum"`
+//! - Library search: `"module"`
+//! - Aliases: `использовать ./module как m`
 
 use std::collections::HashMap;
 use std::fs;
@@ -25,42 +14,42 @@ use super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 use shared::parser::parse;
 use shared::types::{Algorithm, ClassDef, Program, Stmt, Value};
 
-// ============================================================================
-//                         МОДУЛЬ (ИМПОРТИРОВАННЫЙ ФАЙЛ)
-// ============================================================================
+// =============================================================================
+//                    IMPORTED MODULE (.kum FILE)
+// =============================================================================
 
-/// Импортированный модуль из .kum файла
+/// An imported module from a .kum file.
 #[derive(Debug, Clone)]
 pub struct ImportedModule {
-    /// Имя модуля (имя файла без расширения или alias)
+    /// Module name (filename without extension or alias).
     pub name: String,
 
-    /// Путь к файлу
+    /// Path to the file.
     pub path: PathBuf,
 
-    /// Экспортированные алгоритмы
+    /// Exported algorithms.
     pub algorithms: HashMap<String, Algorithm>,
 
-    /// Экспортированные классы
+    /// Exported classes.
     pub classes: HashMap<String, ClassDef>,
 
-    /// Экспортированные переменные (глобальные)
+    /// Exported variables (global).
     pub globals: HashMap<String, Value>,
 
-    /// Список явно экспортированных имён (если указано)
+    /// Explicit export list (if specified).
     pub exports: Option<Vec<String>>,
 }
 
 impl ImportedModule {
-    /// Проверяет, экспортирован ли элемент
+    /// Checks if a name is exported.
     pub fn is_exported(&self, name: &str) -> bool {
         match &self.exports {
             Some(exports) => exports.iter().any(|e| e == name),
-            None => true, // Если нет явного экспорта — всё публично
+            None => true, // If no explicit export list, everything is public.
         }
     }
 
-    /// Получает алгоритм по имени (с проверкой экспорта)
+    /// Gets an algorithm by name (with export check).
     pub fn get_algorithm(&self, name: &str) -> Option<&Algorithm> {
         if self.is_exported(name) {
             self.algorithms.get(name)
@@ -69,7 +58,7 @@ impl ImportedModule {
         }
     }
 
-    /// Получает класс по имени
+    /// Gets a class by name.
     pub fn get_class(&self, name: &str) -> Option<&ClassDef> {
         if self.is_exported(name) {
             self.classes.get(name)
@@ -78,14 +67,14 @@ impl ImportedModule {
         }
     }
 
-    /// Получает все публичные алгоритмы
+    /// Gets all public algorithms.
     pub fn public_algorithms(&self) -> impl Iterator<Item = (&String, &Algorithm)> {
         self.algorithms
             .iter()
             .filter(|(name, _)| self.is_exported(name))
     }
 
-    /// Получает все публичные классы
+    /// Gets all public classes.
     pub fn public_classes(&self) -> impl Iterator<Item = (&String, &ClassDef)> {
         self.classes
             .iter()
@@ -93,31 +82,31 @@ impl ImportedModule {
     }
 }
 
-// ============================================================================
-//                         МЕНЕДЖЕР ИМПОРТОВ ФАЙЛОВ
-// ============================================================================
+// =============================================================================
+//                      FILE IMPORT MANAGER
+// =============================================================================
 
-/// Менеджер импорта .kum файлов
+/// Manages imports of .kum files with caching and cycle detection.
 #[derive(Debug)]
 pub struct FileImporter {
-    /// Кеш загруженных модулей (путь -> модуль)
+    /// Cache of loaded modules (path -> module).
     loaded: HashMap<PathBuf, Arc<ImportedModule>>,
 
-    /// Алиасы модулей (alias -> путь)
+    /// Module aliases (alias -> path).
     aliases: HashMap<String, PathBuf>,
 
-    /// Текущая рабочая директория (для относительных путей)
+    /// Base directory for relative paths.
     base_dir: PathBuf,
 
-    /// Директории поиска модулей
+    /// Module search directories.
     search_paths: Vec<PathBuf>,
 
-    /// Стек импортов (для обнаружения циклов)
+    /// Import stack for cycle detection.
     import_stack: Vec<PathBuf>,
 }
 
 impl FileImporter {
-    /// Создаёт новый импортер
+    /// Creates a new importer.
     pub fn new() -> Self {
         let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         Self {
@@ -129,7 +118,7 @@ impl FileImporter {
         }
     }
 
-    /// Создаёт импортер с базовой директорией
+    /// Creates an importer with a base directory.
     pub fn with_base_dir(base_dir: impl Into<PathBuf>) -> Self {
         let base = base_dir.into();
         Self {
@@ -141,7 +130,7 @@ impl FileImporter {
         }
     }
 
-    /// Устанавливает базовую директорию
+    /// Sets the base directory.
     pub fn set_base_dir(&mut self, dir: impl Into<PathBuf>) {
         self.base_dir = dir.into();
         if !self.search_paths.contains(&self.base_dir) {
@@ -149,12 +138,12 @@ impl FileImporter {
         }
     }
 
-    /// Базовая директория для разрешения относительных путей.
+    /// Base directory for resolving relative paths.
     pub fn base_dir(&self) -> &std::path::Path {
         &self.base_dir
     }
 
-    /// Добавляет директорию поиска
+    /// Adds a module search directory.
     pub fn add_search_path(&mut self, path: impl Into<PathBuf>) {
         let p = path.into();
         if !self.search_paths.contains(&p) {
@@ -162,7 +151,7 @@ impl FileImporter {
         }
     }
 
-    /// Импортирует файл по пути
+    /// Imports a module from a path.
     pub fn import(
         &mut self,
         path: &str,
@@ -170,7 +159,7 @@ impl FileImporter {
     ) -> RuntimeResult<Arc<ImportedModule>> {
         let resolved = self.resolve_path(path)?;
 
-        // Проверяем циклический импорт
+        // Check for circular imports
         if self.import_stack.contains(&resolved) {
             return Err(RuntimeError::new(
                 format!("Циклический импорт: {}", resolved.display()),
@@ -178,25 +167,25 @@ impl FileImporter {
             ));
         }
 
-        // Проверяем кеш
+        // Check cache
         if let Some(module) = self.loaded.get(&resolved) {
-            // Если есть alias — регистрируем
+            // Register alias if provided
             if let Some(alias) = alias {
                 self.aliases.insert(alias.to_string(), resolved.clone());
             }
             return Ok(module.clone());
         }
 
-        // Загружаем файл
+        // Load module
         self.import_stack.push(resolved.clone());
         let module = self.load_module(&resolved, alias)?;
         self.import_stack.pop();
 
-        // Кешируем
+        // Cache
         let module = Arc::new(module);
         self.loaded.insert(resolved.clone(), module.clone());
 
-        // Регистрируем alias
+        // Register alias
         if let Some(alias) = alias {
             self.aliases.insert(alias.to_string(), resolved);
         }
@@ -204,20 +193,20 @@ impl FileImporter {
         Ok(module)
     }
 
-    /// Разрешает путь импорта
+    /// Resolves an import path.
     fn resolve_path(&self, path: &str) -> RuntimeResult<PathBuf> {
-        // Относительный путь: ./module или ../module
+        // Relative path: ./module or ../module
         if path.starts_with("./") || path.starts_with("../") {
             let resolved = self.base_dir.join(path);
             return self.ensure_kum_extension(resolved);
         }
 
-        // Абсолютный путь
+        // Absolute path
         if Path::new(path).is_absolute() {
             return self.ensure_kum_extension(PathBuf::from(path));
         }
 
-        // Поиск в директориях
+        // Search in directories
         for search_path in &self.search_paths {
             let candidate = search_path.join(path);
             if let Ok(resolved) = self.ensure_kum_extension(candidate.clone())
@@ -226,7 +215,7 @@ impl FileImporter {
                 return Ok(resolved);
             }
 
-            // Попробуем как директорию с index.kum
+            // Try as directory with index.kum
             let index = candidate.join("index.kum");
             if index.exists() {
                 return Ok(index);
@@ -239,30 +228,29 @@ impl FileImporter {
         ))
     }
 
-    /// Добавляет расширение .kum если нужно
+    /// Adds .kum extension if needed.
     fn ensure_kum_extension(&self, path: PathBuf) -> RuntimeResult<PathBuf> {
         if path.extension().is_some() {
             return Ok(path);
         }
 
-        // Пробуем с .kum
+        // Try with .kum
         let with_ext = path.with_extension("kum");
         if with_ext.exists() {
             return Ok(with_ext);
         }
 
-        // Пробуем без расширения (если файл существует)
+        // Try without extension (if file exists)
         if path.exists() {
             return Ok(path);
         }
 
-        // Возвращаем с .kum (для сообщения об ошибке)
+        // Return with .kum (for error messages)
         Ok(with_ext)
     }
 
-    /// Загружает модуль из файла
+    /// Loads a module from a file.
     fn load_module(&self, path: &PathBuf, alias: Option<&str>) -> RuntimeResult<ImportedModule> {
-        // Читаем файл
         let source = fs::read_to_string(path).map_err(|e| {
             RuntimeError::new(
                 format!("Не удалось прочитать файл '{}': {}", path.display(), e),
@@ -270,7 +258,6 @@ impl FileImporter {
             )
         })?;
 
-        // Парсим
         let program = parse(&source).map_err(|e| {
             RuntimeError::new(
                 format!("Ошибка парсинга '{}': {:?}", path.display(), e),
@@ -278,7 +265,6 @@ impl FileImporter {
             )
         })?;
 
-        // Определяем имя модуля
         let name = alias.map(String::from).unwrap_or_else(|| {
             path.file_stem()
                 .and_then(|s| s.to_str())
@@ -286,27 +272,23 @@ impl FileImporter {
                 .to_string()
         });
 
-        // Собираем алгоритмы
         let mut algorithms = HashMap::new();
         for alg in &program.algorithms {
             algorithms.insert(alg.name.to_string(), alg.clone());
         }
 
-        // Добавляем overloaded алгоритмы
+        // Add overloaded algorithms; take the first overload as canonical
         for ov in &program.overloaded_algorithms {
-            // Берём первую реализацию как основную
             if let Some(first) = ov.overloads.first() {
                 algorithms.insert(ov.name.to_string(), first.clone());
             }
         }
 
-        // Собираем классы
         let mut classes = HashMap::new();
         for class in &program.classes {
             classes.insert(class.name.to_string(), class.clone());
         }
 
-        // Собираем экспорты
         let exports = self.extract_exports(&program);
 
         Ok(ImportedModule {
@@ -314,14 +296,13 @@ impl FileImporter {
             path: path.clone(),
             algorithms,
             classes,
-            globals: HashMap::new(), // TODO: выполнить глобальные инициализации
+            globals: HashMap::new(),
             exports,
         })
     }
 
-    /// Извлекает список экспортов из программы
+    /// Extracts the export list from a program.
     fn extract_exports(&self, program: &Program) -> Option<Vec<String>> {
-        // Ищем Stmt::Export в глобальных инструкциях
         for stmt in &program.globals {
             if let Stmt::Export { names } = stmt {
                 return Some(names.clone());
@@ -330,7 +311,7 @@ impl FileImporter {
         None
     }
 
-    /// Получает загруженный модуль по alias
+    /// Gets a loaded module by alias.
     pub fn get_module(&self, alias: &str) -> Option<Arc<ImportedModule>> {
         self.aliases
             .get(alias)
@@ -338,29 +319,29 @@ impl FileImporter {
             .cloned()
     }
 
-    /// Получает алгоритм из модуля
+    /// Gets an algorithm from a module.
     pub fn get_algorithm(&self, module_alias: &str, alg_name: &str) -> Option<Algorithm> {
         self.get_module(module_alias)
             .and_then(|m| m.get_algorithm(alg_name).cloned())
     }
 
-    /// Получает класс из модуля
+    /// Gets a class from a module.
     pub fn get_class(&self, module_alias: &str, class_name: &str) -> Option<ClassDef> {
         self.get_module(module_alias)
             .and_then(|m| m.get_class(class_name).cloned())
     }
 
-    /// Проверяет, загружен ли модуль
+    /// Checks if a module is loaded.
     pub fn is_loaded(&self, alias: &str) -> bool {
         self.aliases.contains_key(alias)
     }
 
-    /// Возвращает список всех загруженных модулей
+    /// Returns all loaded modules.
     pub fn loaded_modules(&self) -> impl Iterator<Item = &Arc<ImportedModule>> {
         self.loaded.values()
     }
 
-    /// Проверяет, является ли путь файлом .kum
+    /// Checks if a path is a .kum file or file-like reference.
     pub fn is_kum_file(path: &str) -> bool {
         path.ends_with(".kum")
             || path.starts_with("./")
@@ -376,9 +357,9 @@ impl Default for FileImporter {
     }
 }
 
-// ============================================================================
-//                         ТЕСТЫ
-// ============================================================================
+// =============================================================================
+//                            TESTS
+// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -395,13 +376,12 @@ mod tests {
         assert!(FileImporter::is_kum_file("./module.kum"));
         assert!(FileImporter::is_kum_file("../parent/module.kum"));
         assert!(FileImporter::is_kum_file("path/to/module"));
-        assert!(!FileImporter::is_kum_file("time")); // библиотека
-        assert!(!FileImporter::is_kum_file("files")); // библиотека
+        assert!(!FileImporter::is_kum_file("time"));
+        assert!(!FileImporter::is_kum_file("files"));
     }
 
     #[test]
     fn test_module_export_check() {
-        // Тестируем логику экспорта без файловой системы
         let module = ImportedModule {
             name: "тест".to_string(),
             path: PathBuf::from("test.kum"),
@@ -417,7 +397,7 @@ mod tests {
 
     #[test]
     fn test_module_no_exports_all_public() {
-        // Если нет явного экспорта - всё публично
+        // Without an explicit export list, everything is public.
         let module = ImportedModule {
             name: "тест".to_string(),
             path: PathBuf::from("test.kum"),

@@ -1,4 +1,4 @@
-//! Функции чтения/записи файлов
+//! File read/write functions.
 
 use std::sync::Arc;
 

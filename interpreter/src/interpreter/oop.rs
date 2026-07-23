@@ -1,27 +1,29 @@
+//! Object-oriented programming validation and library function calls.
+
 use super::Interpreter;
 use super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 use shared::types::Value;
 
 impl Interpreter {
-    // =========================================================================
-    //                    ООП
-    // =========================================================================
+    // =============================================================================
+    //                            OOP VALIDATION
+    // =============================================================================
 
-    /// [KITE 11] Проверяет ООП-инварианты по всем загруженным классам:
-    /// нельзя переопределять `финал`-методы; неабстрактный класс обязан
-    /// реализовать все унаследованные абстрактные методы.
+    /// [KITE 11] Validates OOP invariants across all loaded classes:
+    /// final methods cannot be overridden; non-abstract classes must implement
+    /// all inherited abstract methods.
     pub(crate) fn validate_classes(&self) -> RuntimeResult<()> {
         use std::collections::{HashMap, HashSet};
         type ClassDef = shared::types::ClassDef;
 
-        // Снимок всех классов (без удержания заимствования env во время проверок).
+        // Snapshot of all classes (without holding env borrow during checks).
         let map: HashMap<String, ClassDef> = self
             .env
             .all_classes()
             .map(|(n, c)| (n.clone(), c.clone()))
             .collect();
 
-        // Цепочка предков (имена) от родителя вверх.
+        // Ancestor chain (names) from parent upward.
         let ancestors = |start: &str| -> Vec<String> {
             let mut chain = Vec::new();
             let mut cur = map
@@ -29,8 +31,8 @@ impl Interpreter {
                 .and_then(|c| c.parent.as_ref().map(|p| p.to_string()));
             while let Some(name) = cur {
                 if chain.contains(&name) {
-                    break;
-                } // защита от циклов
+                    break; // cycle protection
+                }
                 chain.push(name.clone());
                 cur = map
                     .get(&name)
@@ -42,7 +44,7 @@ impl Interpreter {
         for class in map.values() {
             let chain = ancestors(&class.name);
 
-            // 1) Запрет переопределения `финал`-методов предков.
+            // 1) Forbid overriding final methods from ancestors.
             for m in &class.methods {
                 for anc in &chain {
                     if let Some(am) = map.get(anc).and_then(|c| {
@@ -62,9 +64,9 @@ impl Interpreter {
                 }
             }
 
-            // 2) Неабстрактный класс обязан реализовать абстрактные методы иерархии.
+            // 2) Non-abstract class must implement all abstract methods in hierarchy.
             if !class.is_abstract {
-                // Имена абстрактных методов в классе и предках.
+                // Names of abstract methods in class and ancestors.
                 let mut abstract_names: HashSet<String> = HashSet::new();
                 for scope in std::iter::once(class.name.to_string()).chain(chain.iter().cloned()) {
                     if let Some(c) = map.get(&scope) {
@@ -75,7 +77,7 @@ impl Interpreter {
                         }
                     }
                 }
-                // Эффективная реализация (первая сверху вниз) должна быть конкретной.
+                // The effective implementation (first top-down) must be concrete.
                 for name in &abstract_names {
                     let mut implemented = false;
                     for scope in
@@ -87,7 +89,7 @@ impl Interpreter {
                                 .find(|x| x.algorithm.name.as_ref() == name.as_str())
                         }) {
                             implemented = !m.is_abstract;
-                            break; // первый найденный определяет поведение
+                            break; // first match determines behavior
                         }
                     }
                     if !implemented {
@@ -106,7 +108,7 @@ impl Interpreter {
         Ok(())
     }
 
-    /// Вызывает функцию библиотеки.
+    /// Calls a library function.
     pub fn call_library_function(
         &self,
         name: &str,
@@ -123,7 +125,7 @@ impl Interpreter {
             .call_function(name, args)
     }
 
-    /// Проверяет, является ли имя функцией библиотеки.
+    /// Checks if a name is a library function.
     pub fn is_library_function(&self, name: &str) -> bool {
         self.libraries
             .read()

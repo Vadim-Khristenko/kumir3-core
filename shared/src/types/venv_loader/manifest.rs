@@ -1,4 +1,4 @@
-//! Манифест библиотеки (`manifest.toml`) и его разбор.
+//! Library manifest (`manifest.toml`) and parsing.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -10,49 +10,49 @@ use crate::types::version::{Version, VersionSpec};
 use super::error::{LoaderError, LoaderResult};
 
 // =============================================================================
-//                         МАНИФЕСТ БИБЛИОТЕКИ
+//                         LIBRARY MANIFEST
 // =============================================================================
 
-/// Манифест библиотеки (manifest.toml)
+/// Library manifest (manifest.toml).
 #[derive(Debug, Clone)]
 pub struct LibraryManifest {
-    /// Идентификатор библиотеки
+    /// Library identifier
     pub id: String,
-    /// Отображаемое имя
+    /// Display name
     pub name: String,
-    /// Алиасы (альтернативные имена)
+    /// Aliases (alternative names)
     pub aliases: Vec<String>,
-    /// Описание
+    /// Description
     pub description: String,
-    /// Версия
+    /// Version
     pub version: Version,
-    /// Автор
+    /// Author
     pub author: String,
-    /// Минимальная версия Kumir
+    /// Minimum Kumir version
     pub kumir_version: String,
-    /// Зависимости
+    /// Dependencies
     pub dependencies: Vec<ManifestDependency>,
-    /// Точка входа (главный файл)
+    /// Entry point (main file)
     pub entry_point: String,
-    /// Нативные модули
+    /// Native modules
     pub native_modules: Vec<String>,
-    /// Стабильная ли библиотека
+    /// Is this a stable library
     pub stable: bool,
 }
 
-/// Зависимость в манифесте
+/// Manifest dependency.
 #[derive(Debug, Clone)]
 pub struct ManifestDependency {
-    /// Имя библиотеки
+    /// Library name
     pub name: String,
-    /// Спецификация версии
+    /// Version specification
     pub version: VersionSpec,
-    /// Опциональная зависимость
+    /// Optional dependency
     pub optional: bool,
 }
 
 impl LibraryManifest {
-    /// Парсит манифест из TOML строки
+    /// Parse manifest from TOML string.
     pub fn parse(content: &str) -> LoaderResult<Self> {
         let value: Value =
             content

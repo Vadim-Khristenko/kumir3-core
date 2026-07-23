@@ -1,10 +1,10 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Числовые предикаты, конвертации и продвижение типов (type promotion).
+//! Numeric predicates, conversions, and type promotion helpers.
 
 // =============================================================================
-//         IMPORTS
+//         SECTION: IMPORTS
 // =============================================================================
 
 use super::MathErr;
@@ -14,7 +14,7 @@ use crate::f128::F128 as tF128;
 use crate::types::Number;
 
 // =============================================================================
-//         CORE LOGIC
+//         SECTION: CORE LOGIC
 // =============================================================================
 
 impl MathOperators {

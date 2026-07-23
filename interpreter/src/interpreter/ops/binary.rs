@@ -1,20 +1,3 @@
-//! Бинарные операции над значениями (нелизивый хвост `eval_binary_op`).
-//!
-//! Разделение ответственности:
-//! * **движок типов** (`shared::typesys`) — авторитет по *типизации*: определена
-//!   ли операция для пары типов операндов и какого типа её результат;
-//! * **`MathOperators`** (`shared::math`) — вычислительное ядро: как именно
-//!   считать результат.
-//!
-//! Движок спрашивается ПЕРЕД вычислением, поэтому заведомо бестиповые операции
-//! (`1 / "строка"`, `5 < "x"`) отбраковываются сразу и с точным сообщением,
-//! называющим оператор и оба типа по-русски.
-//!
-//! Вердикт движка — ОКОНЧАТЕЛЬНЫЙ: у него есть правила для всех операций,
-//! которые определяет ядро, включая строковые и табличные (`таб + таб`,
-//! `лит * цел`, `лит / лит`, …) и тотальное равенство. Списка-исключения
-//! («ядро умеет больше, чем движок») больше нет.
-
 use shared::math::MathOperators;
 use shared::types::{Token, Value};
 use shared::typesys::{TypeError, TypeOp, default_engine};
@@ -23,12 +6,12 @@ use super::TypeOps;
 use crate::interpreter::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
 impl TypeOps {
-    /// Применяет бинарный оператор к уже вычисленным операндам.
+    /// Applies binary operator to already-evaluated operands.
     ///
-    /// Ленивые логические операции (`и`/`или`) обрабатываются на уровне
-    /// вычислителя выражений; сюда попадают только строгие операции.
+    /// Lazy logical operations (`and`/`or`) are handled at the expression evaluator level;
+    /// only strict operations reach here.
     pub fn binary(op: &Token, left: Value, right: Value) -> RuntimeResult<Value> {
-        // [typesys-seam: подключён] типовой вердикт движка — до вычисления.
+        // [typesys-seam: подключён] Engine type verdict—before computation.
         if let Some(type_op) = Self::type_op(op)
             && let Err(err) =
                 default_engine().result_of_binop(type_op, &left.type_kind(), &right.type_kind())
@@ -39,14 +22,14 @@ impl TypeOps {
         Self::compute(op, left, right)
     }
 
-    /// Сопоставляет токен оператора с оператором движка типов.
+    /// Maps operator token to type engine operator.
     ///
-    /// `None` — оператор движку неизвестен (тогда типовой вердикт не
-    /// запрашивается и работает прежняя диагностика «неизвестный оператор»).
+    /// `None`—operator unknown to engine (then type verdict is not queried and
+    /// earlier "unknown operator" diagnostic applies).
     ///
-    /// Вещественное `/` и целочисленное `див` — РАЗНЫЕ операторы движка
-    /// ([`TypeOp::Div`] и [`TypeOp::IntDiv`]): у них разные требования к
-    /// операндам и разный тип результата (KITE 13 §§ 3.4–3.5).
+    /// Float `/` and integer `div` are DIFFERENT engine operators
+    /// ([`TypeOp::Div`] and [`TypeOp::IntDiv`]): they have different operand requirements
+    /// and different result type (KITE 13 §§ 3.4–3.5).
     fn type_op(op: &Token) -> Option<TypeOp> {
         Some(match op {
             Token::Plus => TypeOp::Add,
@@ -66,19 +49,19 @@ impl TypeOps {
         })
     }
 
-    /// Превращает типовую ошибку движка в диагностику времени выполнения.
+    /// Converts engine type error to runtime diagnostics.
     ///
-    /// Движок сам называет оператор так, как он записан в программе
-    /// ([`TypeOp::symbol`]), включая `див`.
+    /// Engine itself names the operator as written in the program
+    /// ([`TypeOp::symbol`]), including `div`.
     fn describe(err: TypeError) -> RuntimeError {
         RuntimeError::new(err.to_string(), RuntimeErrorKind::TypeMismatch)
     }
 
-    /// Вычислительное ядро: как считать результат уже разрешённой операции.
+    /// Computation kernel: how to compute result of already-approved operation.
     ///
-    /// Ошибка ядра ([`shared::math::MathErr`]) несёт свой вид, поэтому
-    /// `RuntimeError::from` расставляет `DivisionByZero`/`Overflow`/
-    /// `TypeMismatch` (KITE-0014 § 3.2), а не схлопывает всё в `Other`.
+    /// Kernel error ([`shared::math::MathErr`]) carries its own kind, so
+    /// `RuntimeError::from` assigns `DivisionByZero`/`Overflow`/
+    /// `TypeMismatch` (KITE-0014 § 3.2), not collapsing everything to `Other`.
     fn compute(op: &Token, left: Value, right: Value) -> RuntimeResult<Value> {
         match op {
             // Арифметические операции

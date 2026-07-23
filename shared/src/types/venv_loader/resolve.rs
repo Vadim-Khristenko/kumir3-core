@@ -1,4 +1,4 @@
-//! Разрешение библиотек по имени/версии и загрузка со всеми зависимостями.
+//! Library resolution by name/version and loading with all dependencies.
 
 use crate::types::environment::LibrarySource;
 use crate::types::version::{Version, VersionSpec};
@@ -8,21 +8,21 @@ use super::{IntegratedLoader, LoadedLibrary};
 
 impl IntegratedLoader {
     // =========================================================================
-    //                         ЗАГРУЗКА БИБЛИОТЕК
+    //                         LIBRARY LOADING
     // =========================================================================
 
-    /// Загружает библиотеку по имени
+    /// Load a library by name.
     pub fn load(&mut self, name: &str) -> LoaderResult<LoadedLibrary> {
         self.load_with_spec(name, &VersionSpec::any())
     }
 
-    /// Загружает библиотеку с проверкой версии
+    /// Load a library with version verification.
     pub fn load_with_spec(
         &mut self,
         name: &str,
         spec: &VersionSpec,
     ) -> LoaderResult<LoadedLibrary> {
-        // Проверяем на цикл
+        // Check for cycles
         if self.loading_stack.contains(&name.to_string()) {
             let mut chain = self.loading_stack.clone();
             chain.push(name.to_string());
@@ -36,14 +36,14 @@ impl IntegratedLoader {
         result
     }
 
-    /// Загружает конкретную версию
+    /// Load a specific version.
     pub fn load_version(&mut self, name: &str, version: &Version) -> LoaderResult<LoadedLibrary> {
         self.load_with_spec(name, &VersionSpec::exact(version.clone()))
     }
 
-    /// Внутренняя реализация загрузки
+    /// Internal implementation of loading.
     fn load_impl(&mut self, name: &str, spec: &VersionSpec) -> LoaderResult<LoadedLibrary> {
-        // 1. Проверяем в активном окружении
+        // 1. Check in active environment
         if let Some(lib) = self.env_manager.find_library_matching(name, spec) {
             return Ok(LoadedLibrary {
                 def: lib.def.clone(),
@@ -55,7 +55,7 @@ impl IntegratedLoader {
             });
         }
 
-        // 2. Встроенные библиотеки
+        // 2. Built-in libraries
         if let Some(def) = self.builtins.get(name) {
             let version = Version::new(def.version.major, def.version.minor, def.version.patch);
 
@@ -71,18 +71,18 @@ impl IntegratedLoader {
             }
         }
 
-        // 3. Локальные библиотеки проекта
+        // 3. Project-local libraries
         let paths = self.env_manager.active().paths.clone();
         if let Some(lib) = self.try_load_local(&paths.local_libs, name, spec)? {
             return Ok(lib);
         }
 
-        // 4. Глобальный реестр
+        // 4. Global registry
         if let Some(lib) = self.try_load_from_registry(&paths.global_cache, name, spec)? {
             return Ok(lib);
         }
 
-        // 5. Не найдено
+        // 5. Not found
         let searched_paths = vec![paths.local_libs, paths.global_cache];
 
         Err(LoaderError::NotFound {
@@ -92,10 +92,10 @@ impl IntegratedLoader {
     }
 
     // =========================================================================
-    //                    ЗАГРУЗКА С ЗАВИСИМОСТЯМИ
+    //                    LOADING WITH DEPENDENCIES
     // =========================================================================
 
-    /// Загружает библиотеку со всеми зависимостями
+    /// Load a library with all dependencies.
     pub fn load_with_dependencies(&mut self, name: &str) -> LoaderResult<Vec<LoadedLibrary>> {
         self.load_with_dependencies_spec(name, &VersionSpec::any())
     }

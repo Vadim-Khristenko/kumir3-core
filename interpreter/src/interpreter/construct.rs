@@ -1,12 +1,9 @@
-// =============================================================================
-//                  МОДУЛЬ: СОЗДАНИЕ ИНТЕРПРЕТАТОРА
-// =============================================================================
-// Конструкторы `Interpreter`: базовый, с async-runtime и с готовой средой.
-// Все они одинаково связывают среду с менеджером библиотек и импортёром файлов.
+//! Constructors for the interpreter with optional async runtime.
+
 use super::{Environment, FileImporter, Interpreter, KumirRuntime, LibraryManager};
 
 impl Interpreter {
-    /// Создаёт новый интерпретатор.
+    /// Creates a new interpreter.
     pub fn new() -> Self {
         let libraries = std::sync::Arc::new(std::sync::RwLock::new(LibraryManager::new()));
         let file_importer = std::sync::Arc::new(std::sync::RwLock::new(FileImporter::new()));
@@ -23,7 +20,7 @@ impl Interpreter {
         }
     }
 
-    /// Создаёт интерпретатор с runtime для async операций.
+    /// Creates an interpreter with a runtime for async operations.
     pub fn with_runtime() -> Self {
         let libraries = std::sync::Arc::new(std::sync::RwLock::new(LibraryManager::new()));
         let file_importer = std::sync::Arc::new(std::sync::RwLock::new(FileImporter::new()));
@@ -40,7 +37,7 @@ impl Interpreter {
         }
     }
 
-    /// Создаёт интерпретатор с существующей средой.
+    /// Creates an interpreter with an existing environment.
     pub fn with_environment(mut env: Environment) -> Self {
         let libraries = std::sync::Arc::new(std::sync::RwLock::new(LibraryManager::new()));
         let file_importer = std::sync::Arc::new(std::sync::RwLock::new(FileImporter::new()));

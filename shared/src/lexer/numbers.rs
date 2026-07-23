@@ -1,45 +1,41 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
+//! Number literal scanning (integer, float, hex, binary, octal).
+
 use super::{Lexer, LexerError, LexerErrorKind, LexerResult, Position, Span, SpannedToken};
 use crate::types::Token;
 
 impl<'a> Lexer<'a> {
-    // =========================================================================
-    //         NUMBER LITERALS
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: NUMBER LITERALS
+    // =============================================================================
 
     /// Scans a number literal.
     pub(super) fn scan_number(&mut self, start: Position) -> LexerResult<Option<SpannedToken>> {
         let num_start = self.pos;
 
-        // Check for radix prefix (0x, 0b, 0o)
         if self.peek() == Some('0') {
             self.advance();
             match self.peek() {
                 Some('x') | Some('X') => return self.scan_hex_number(start, num_start),
                 Some('b') | Some('B') => return self.scan_binary_number(start, num_start),
                 Some('o') | Some('O') => return self.scan_octal_number(start, num_start),
-                _ => {
-                    // Just a leading zero, continue with decimal
-                }
+                _ => {}
             }
         }
 
-        // Decimal integer part
         self.advance_while(|c| c.is_ascii_digit() || c == '_');
 
         let mut is_float = false;
 
-        // Decimal point
         if self.peek() == Some('.') && self.peek_at(1).map(|c| c.is_ascii_digit()).unwrap_or(false)
         {
             is_float = true;
-            self.advance(); // dot
+            self.advance();
             self.advance_while(|c| c.is_ascii_digit() || c == '_');
         }
 
-        // Exponent
         if matches!(self.peek(), Some('e') | Some('E')) {
             is_float = true;
             self.advance();

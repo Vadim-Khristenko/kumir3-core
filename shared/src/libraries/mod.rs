@@ -1,16 +1,16 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Стандартные библиотеки КуМир 3
+//! Standard libraries for Kumir 3.
 //!
-//! Модуль предоставляет встроенные библиотеки:
-//! - **time** (Время) — дата, время, таймеры, форматирование
-//! - **syscall** (Системные вызовы) — ОС, окружение, процессы, пути
-//! - **files** (Файлы) — чтение/запись, директории, метаданные
-//! - **net** (Сеть) — TCP/UDP, HTTP, DNS, Base64, JSON
+//! Provides built-in libraries:
+//! - **time** — date, time, timers, formatting
+//! - **syscall** — OS, environment, processes, paths
+//! - **files** — reading/writing, directories, metadata
+//! - **net** — TCP/UDP, HTTP, DNS, Base64, JSON
 //!
-//! А также систему пользовательских библиотек:
-//! - **user_library** — загрузка библиотек из .kum файлов
+//! Also the user library system:
+//! - **user_library** — loading libraries from .kum files
 
 pub mod files;
 pub mod net;

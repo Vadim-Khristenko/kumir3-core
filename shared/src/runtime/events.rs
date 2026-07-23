@@ -1,14 +1,10 @@
-// ============================================================================
-//                    СИСТЕМА СОБЫТИЙ
-// ============================================================================
-//
-// Event-driven архитектура для реактивного программирования:
-// - Event: типизированное событие
-// - EventBus: шина событий с подписками
-// - EventEmitter: генератор событий
-// - Subscription: управление подпиской
-//
-// ============================================================================
+//! Event-driven architecture for reactive programming.
+//!
+//! Components:
+//! - Event: typed event with data
+//! - EventBus: event bus with subscriptions
+//! - EventEmitter: event producer
+//! - Subscription: subscription lifecycle management
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -19,11 +15,11 @@ use tokio::sync::{RwLock, broadcast};
 
 use crate::types::Value;
 
-// ============================================================================
-//                    СОБЫТИЕ
-// ============================================================================
+// =============================================================================
+//         SECTION: SUBSCRIPTION IDENTIFIERS
+// =============================================================================
 
-/// Идентификатор подписки.
+/// Unique subscription identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SubscriptionId(pub u64);
 
@@ -40,14 +36,11 @@ impl Default for SubscriptionId {
     }
 }
 
-/// Базовое событие.
+/// Basic event.
 #[derive(Debug, Clone)]
 pub struct Event {
-    /// Тип/имя события
     pub name: String,
-    /// Данные события
     pub data: Value,
-    /// Временная метка
     pub timestamp: std::time::Instant,
     /// Источник события
     pub source: Option<String>,

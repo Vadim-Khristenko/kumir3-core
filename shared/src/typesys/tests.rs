@@ -13,7 +13,9 @@ fn ts() -> TypeSystem {
     TypeSystem::new()
 }
 
-// --- assignability -----------------------------------------------------------
+// ---------------------------------------------------------------------------
+//                              ASSIGNABILITY
+// ---------------------------------------------------------------------------
 
 #[test]
 fn identity_is_exact() {
@@ -80,7 +82,9 @@ fn is_subtype_helper() {
     assert!(!s.is_subtype(&TK::Int64, &TK::Int16));
 }
 
-// --- unification -------------------------------------------------------------
+// ---------------------------------------------------------------------------
+//                              UNIFICATION
+// ---------------------------------------------------------------------------
 
 #[test]
 fn unify_numeric_picks_wider() {
@@ -97,7 +101,9 @@ fn unify_arrays_recurses() {
     assert_eq!(s.unify(&a, &b), Some(TK::Array(Box::new(TK::Int64))));
 }
 
-// --- operators ---------------------------------------------------------------
+// ---------------------------------------------------------------------------
+//                              OPERATORS
+// ---------------------------------------------------------------------------
 
 #[test]
 fn binop_arithmetic_and_concat() {
@@ -112,8 +118,7 @@ fn binop_arithmetic_and_concat() {
             .unwrap(),
         TK::Float64
     );
-    // `лит + лит` concatenates; `лит + <что-угодно-ещё>` is NOT defined
-    // (the runtime only joins two strings).
+    // String concatenation: `лит + лит` works; any other combination is undefined.
     assert_eq!(
         s.result_of_binop(TypeOp::Add, &TK::String, &TK::String)
             .unwrap(),
@@ -152,7 +157,9 @@ fn binop_comparison_and_logic() {
     );
 }
 
-// --- division: `/` (real) vs `див` (integer) ---------------------------------
+// ---------------------------------------------------------------------------
+//                    DIVISION: `/` (REAL) VS `див` (INTEGER)
+// ---------------------------------------------------------------------------
 
 #[test]
 fn binop_real_division_is_always_real() {
@@ -189,7 +196,7 @@ fn binop_integer_division_is_integer_only() {
             .unwrap(),
         TK::Int64
     );
-    // A real operand is rejected — `див` never touches вещ.
+    // Float operands are rejected — `див` (integer division) only works on integers.
     assert!(
         s.result_of_binop(TypeOp::IntDiv, &TK::Float64, &TK::Int64)
             .is_err()
@@ -210,7 +217,9 @@ fn binop_div_and_intdiv_are_named_apart() {
     assert_eq!(TypeOp::IntDiv.symbol(), "див");
 }
 
-// --- remainder ---------------------------------------------------------------
+// ---------------------------------------------------------------------------
+//                              REMAINDER
+// ---------------------------------------------------------------------------
 
 #[test]
 fn binop_mod_is_integer_only() {
@@ -220,7 +229,7 @@ fn binop_mod_is_integer_only() {
             .unwrap(),
         TK::Int64
     );
-    // `вещ мод вещ` must be rejected (KITE 13 § 3.6).
+    // Remainder operator forbids float operands per KITE 13 § 3.6.
     assert!(
         s.result_of_binop(TypeOp::Mod, &TK::Float64, &TK::Float64)
             .is_err()
@@ -231,12 +240,14 @@ fn binop_mod_is_integer_only() {
     );
 }
 
-// --- equality is total, ordering is not --------------------------------------
+// ---------------------------------------------------------------------------
+//                    EQUALITY (TOTAL) VS ORDERING (PARTIAL)
+// ---------------------------------------------------------------------------
 
 #[test]
 fn binop_equality_is_total() {
     let s = ts();
-    // `5 = "x"` is plain `нет`, not a type error.
+    // Equality on unrelated types returns `нет` (false), never a type error.
     for (a, b) in [
         (TK::Int64, TK::String),
         (TK::Bool, TK::Int64),
@@ -252,7 +263,7 @@ fn binop_equality_is_total() {
 #[test]
 fn binop_ordering_needs_an_ordered_type() {
     let s = ts();
-    // Ordered: numbers, strings, characters (KITE 13 § 3.8).
+    // Ordered types (per KITE 13 § 3.8): numbers, strings, characters.
     assert_eq!(
         s.result_of_binop(TypeOp::Lt, &TK::String, &TK::String)
             .unwrap(),
@@ -267,7 +278,7 @@ fn binop_ordering_needs_an_ordered_type() {
             .unwrap(),
         TK::Bool
     );
-    // Not ordered: `да < нет`, table < table, and mixed ordered types.
+    // Unordered types: booleans, tables, and cross-type comparisons forbidden.
     assert!(s.result_of_binop(TypeOp::Lt, &TK::Bool, &TK::Bool).is_err());
     let arr = TK::Array(Box::new(TK::Int64));
     assert!(s.result_of_binop(TypeOp::Lt, &arr, &arr).is_err());
@@ -281,7 +292,9 @@ fn binop_ordering_needs_an_ordered_type() {
     );
 }
 
-// --- operators over tables and strings ---------------------------------------
+// ---------------------------------------------------------------------------
+//                    OPERATORS OVER TABLES AND STRINGS
+// ---------------------------------------------------------------------------
 
 #[test]
 fn binop_table_concat_and_difference() {
@@ -296,26 +309,26 @@ fn binop_table_concat_and_difference() {
         s.result_of_binop(TypeOp::Sub, &a_i64, &a_i16).unwrap(),
         a_i64
     );
-    // Unrelated element types still concatenate — the result is `таб любой`.
+    // Arrays of unrelated types concatenate to array of `любой` (any type).
     let a_str = TK::Array(Box::new(TK::String));
     assert_eq!(
         s.result_of_binop(TypeOp::Add, &a_i64, &a_str).unwrap(),
         TK::Array(Box::new(TK::Any))
     );
-    // ... but a table and a non-table have no `+`.
+    // Array plus non-array is undefined.
     assert!(s.result_of_binop(TypeOp::Add, &a_i64, &TK::Int64).is_err());
 }
 
 #[test]
 fn binop_string_operators() {
     let s = ts();
-    // `лит - лит` — substring removal.
+    // String subtraction: removes all occurrences of the right string from left.
     assert_eq!(
         s.result_of_binop(TypeOp::Sub, &TK::String, &TK::String)
             .unwrap(),
         TK::String
     );
-    // `лит * цел` / `цел * лит` — repetition.
+    // String multiplication: repeats string integer count times.
     assert_eq!(
         s.result_of_binop(TypeOp::Mul, &TK::String, &TK::Int64)
             .unwrap(),
@@ -326,18 +339,18 @@ fn binop_string_operators() {
             .unwrap(),
         TK::String
     );
-    // Repetition needs a whole number of copies.
+    // String multiplication requires an integer (no fractional repetitions).
     assert!(
         s.result_of_binop(TypeOp::Mul, &TK::String, &TK::Float64)
             .is_err()
     );
-    // `лит / цел` — chunking into pieces.
+    // String division by integer: splits string into chunks of given size.
     assert_eq!(
         s.result_of_binop(TypeOp::Div, &TK::String, &TK::Int64)
             .unwrap(),
         TK::Array(Box::new(TK::String))
     );
-    // `лит / лит` — splitting: (pieces, number of splits).
+    // String division by string: splits at separator, returns (pieces, split_count).
     assert_eq!(
         s.result_of_binop(TypeOp::Div, &TK::String, &TK::String)
             .unwrap(),
@@ -346,7 +359,7 @@ fn binop_string_operators() {
             Box::new(TK::Int64)
         )
     );
-    // Nothing else is defined for strings.
+    // All other operations on strings are undefined.
     assert!(
         s.result_of_binop(TypeOp::Pow, &TK::String, &TK::Int64)
             .is_err()
@@ -357,7 +370,9 @@ fn binop_string_operators() {
     );
 }
 
-// --- coercion planning -------------------------------------------------------
+// ---------------------------------------------------------------------------
+//                              COERCION PLANNING
+// ---------------------------------------------------------------------------
 
 #[test]
 fn coercion_plan() {
@@ -372,7 +387,9 @@ fn coercion_plan() {
     assert_eq!(s.coercion(&TK::Int64, &TK::String), Coercion::Forbidden);
 }
 
-// --- default values ----------------------------------------------------------
+// ---------------------------------------------------------------------------
+//                              DEFAULT VALUES
+// ---------------------------------------------------------------------------
 
 #[test]
 fn default_values() {
@@ -401,7 +418,9 @@ fn default_values() {
     );
 }
 
-// --- nominal -----------------------------------------------------------------
+// ---------------------------------------------------------------------------
+//                              NOMINAL TYPING
+// ---------------------------------------------------------------------------
 
 #[test]
 fn nominal_subtyping_via_registry() {
@@ -415,7 +434,9 @@ fn nominal_subtyping_via_registry() {
     assert!(!s.is_assignable(&cat_t, &animal_t));
 }
 
-// --- extensibility -----------------------------------------------------------
+// ---------------------------------------------------------------------------
+//                              EXTENSIBILITY
+// ---------------------------------------------------------------------------
 
 #[test]
 fn extensibility_register_custom_rule() {
@@ -440,7 +461,9 @@ fn extensibility_register_custom_rule() {
     assert_eq!(s.conformance(&TK::Bool, &TK::Int64), Conformance::Coercible);
 }
 
-// --- new type: range --------------------------------------------------------
+// ---------------------------------------------------------------------------
+//                          NEW TYPE: RANGE
+// ---------------------------------------------------------------------------
 
 #[test]
 fn range_covariance_and_unify() {
@@ -452,11 +475,13 @@ fn range_covariance_and_unify() {
     assert_eq!(s.unify(&r16, &r64), Some(TK::range(TK::Int64)));
     assert_eq!(TK::range(TK::Int64).russian_name(), "диапазон цел");
     assert!(TK::range(TK::Int64).is_collection());
-    // range has no natural default value
+    // Ranges have no natural default value.
     assert_eq!(s.default_value(&r64), None);
 }
 
-// --- extended coverage -------------------------------------------------------
+// ---------------------------------------------------------------------------
+//                          EXTENDED COVERAGE
+// ---------------------------------------------------------------------------
 
 #[test]
 fn result_type_covariance() {

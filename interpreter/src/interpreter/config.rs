@@ -1,41 +1,38 @@
-// =============================================================================
-//                  МОДУЛЬ: НАСТРОЙКА ИНТЕРПРЕТАТОРА
-// =============================================================================
-// Пути поиска модулей, режим отладки и строгий режим [W0].
+//! Configuration of module search paths, debug mode, and strict mode.
+
 use super::Interpreter;
 
 impl Interpreter {
-    /// Устанавливает базовую директорию для импортов.
+    /// Sets the base directory for imports.
     pub fn set_base_dir(&mut self, dir: impl Into<std::path::PathBuf>) {
         if let Ok(mut importer) = self.file_importer.write() {
             importer.set_base_dir(dir);
         }
     }
 
-    /// Добавляет директорию поиска модулей.
+    /// Adds a module search directory.
     pub fn add_module_path(&mut self, path: impl Into<std::path::PathBuf>) {
         if let Ok(mut importer) = self.file_importer.write() {
             importer.add_search_path(path);
         }
     }
 
-    /// Включает/выключает режим отладки.
+    /// Enables or disables debug mode.
     pub fn set_debug_mode(&mut self, enabled: bool) {
         self.debug_mode = enabled;
         self.env.set_debug_mode(enabled);
     }
 
-    /// [W0] Включает/выключает строгий режим.
+    /// [W0] Enables or disables strict mode.
     ///
-    /// В строгом режиме присваивание ранее необъявленной переменной
-    /// (например, опечатка `хyz := 5`) становится ошибкой выполнения вместо
-    /// молчаливого создания переменной. По умолчанию выключен — поведение и
-    /// вывод существующих программ не меняются.
+    /// In strict mode, assignment to a previously undeclared variable (e.g., a typo
+    /// `xyz := 5`) becomes a runtime error instead of silently creating the variable.
+    /// Disabled by default — existing program behavior and output are unchanged.
     pub fn set_strict(&mut self, enabled: bool) {
         self.env.set_strict(enabled);
     }
 
-    /// [W0] Проверяет, включён ли строгий режим.
+    /// [W0] Checks whether strict mode is enabled.
     pub fn is_strict(&self) -> bool {
         self.env.is_strict()
     }

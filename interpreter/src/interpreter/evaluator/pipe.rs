@@ -7,19 +7,18 @@ use shared::types::{Expr, LambdaValue, Value};
 use super::super::environment::Environment;
 use super::super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
-/// Имя параметра синтетической лямбды-композиции (не пересекается с именами
-/// исходного кода: идентификаторы Кумира не начинаются с `__`).
+/// Synthetic lambda composition parameter name (does not conflict with source code:
+/// Kumir identifiers do not start with `__`).
 const COMPOSE_ARG: &str = "__аргумент_композиции";
-/// Имена захваченных лямбд-операндов композиции.
+/// Names of captured composition operand lambdas.
 const COMPOSE_LHS: &str = "__композиция_слева";
 const COMPOSE_RHS: &str = "__композиция_справа";
 
-/// Как вызывать операнд композиции: по имени алгоритма/встроенной функции
-/// или по захваченному значению-лямбде.
+/// How to call a composition operand: by name or as captured lambda value.
 enum Callable {
-    /// Имя, разрешаемое обычным вызовом (алгоритм, перегрузка, builtin).
+    /// Name resolved via normal call (algorithm, overload, builtin).
     Named(String),
-    /// Значение-лямбда, которое нужно захватить под служебным именем.
+    /// Lambda value to be captured under a service name.
     Captured(Value),
 }
 
@@ -49,12 +48,12 @@ impl ExprEvaluator {
         }
     }
 
-    /// [KITE-0013] Композиция функций `f >> g`.
+    /// [KITE-0013] Function composition `f >> g`.
     ///
-    /// Результат — значение-лямбда одного аргумента, эквивалентное
-    /// `лямбда(x) -> g(f(x))`: сначала применяется левый операнд, затем правый.
-    /// Оба операнда обязаны быть функциями (именем алгоритма/встроенной функции
-    /// либо значением-лямбдой); иначе — ясная ошибка выполнения.
+    /// Result is a single-argument lambda value equivalent to
+    /// `lambda(x) -> g(f(x))`: left operand is applied first, then right.
+    /// Both operands must be functions (algorithm/builtin name or lambda value);
+    /// otherwise—clear runtime error.
     pub(crate) fn eval_compose(
         left: &Expr,
         right: &Expr,
@@ -67,7 +66,7 @@ impl ExprEvaluator {
         let lhs_name = Self::bind_composable(lhs, COMPOSE_LHS, &mut captures);
         let rhs_name = Self::bind_composable(rhs, COMPOSE_RHS, &mut captures);
 
-        // Тело: rhs(lhs(x)).
+        // Body: rhs(lhs(x)).
         let inner = Expr::Call(lhs_name, vec![Expr::Variable(COMPOSE_ARG.to_string())]);
         let body = Expr::Call(rhs_name, vec![inner]);
 
@@ -80,29 +79,29 @@ impl ExprEvaluator {
         })))
     }
 
-    /// Приводит операнд `>>` к вызываемой форме или сообщает ясную ошибку.
+    /// Converts `>>` operand to callable form or reports clear error.
     fn resolve_composable(expr: &Expr, env: &mut Environment) -> RuntimeResult<Callable> {
         if let Expr::Variable(name) = expr {
-            // Переменная со значением-лямбдой — захватываем значение.
+            // Variable with lambda value—capture it.
             if let Ok(value) = env.get_variable(name) {
                 return match value {
                     Value::Lambda(_) => Ok(Callable::Captured(value.clone())),
                     other => Err(Self::compose_error(other)),
                 };
             }
-            // Иначе это должно быть имя алгоритма или встроенной функции.
+            // Otherwise, must be algorithm or builtin name.
             return Ok(Callable::Named(name.clone()));
         }
 
-        // Произвольное выражение: должно вычисляться в лямбду
-        // (в том числе вложенная композиция `f >> g >> h`).
+        // Arbitrary expression: must evaluate to lambda
+        // (including nested composition `f >> g >> h`).
         match Self::evaluate(expr, env)? {
             value @ Value::Lambda(_) => Ok(Callable::Captured(value)),
             other => Err(Self::compose_error(&other)),
         }
     }
 
-    /// Регистрирует операнд в захватах (если нужно) и возвращает имя для вызова.
+    /// Registers operand in captures (if needed) and returns name for call.
     fn bind_composable(
         callable: Callable,
         slot: &str,
@@ -117,7 +116,7 @@ impl ExprEvaluator {
         }
     }
 
-    /// Единая формулировка ошибки для неподходящего операнда `>>`.
+    /// Unified error message for unsuitable `>>` operand.
     fn compose_error(value: &Value) -> RuntimeError {
         RuntimeError::new(
             format!(

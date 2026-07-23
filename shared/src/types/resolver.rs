@@ -1,10 +1,10 @@
-//! Резолвер зависимостей для Kumir 3
+//! Dependency resolver for Kumir 3.
 //!
-//! Отвечает за:
-//! - Разрешение версий зависимостей
-//! - Построение графа зависимостей
-//! - Обнаружение конфликтов
-//! - Создание плана установки
+//! Responsible for:
+//! - Resolving dependency versions
+//! - Building the dependency graph
+//! - Detecting conflicts
+//! - Creating installation plan
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -14,60 +14,60 @@ use super::library::LibraryDef;
 use super::version::{Version, VersionSpec};
 
 // ============================================================================
-//                         ГРАФ ЗАВИСИМОСТЕЙ
+//                         DEPENDENCY GRAPH
 // ============================================================================
 
-/// Узел в графе зависимостей
+/// Node in the dependency graph.
 #[derive(Debug, Clone)]
 pub struct DependencyNode {
-    /// Имя библиотеки
+    /// Library name
     pub name: String,
-    /// Разрешённая версия
+    /// Resolved version
     pub version: Option<Version>,
-    /// Запрошенная спецификация
+    /// Requested specification
     pub requested: VersionSpec,
-    /// Зависимости этого узла
+    /// Dependencies of this node
     pub dependencies: Vec<String>,
-    /// Кто запросил эту зависимость
+    /// Which packages requested this dependency
     pub requested_by: Vec<String>,
-    /// Источник
+    /// Source
     pub source: Option<LibrarySource>,
-    /// Статус разрешения
+    /// Resolution status
     pub status: ResolutionStatus,
 }
 
-/// Статус разрешения зависимости
+/// Dependency resolution status.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResolutionStatus {
-    /// Ожидает разрешения
+    /// Awaiting resolution
     Pending,
-    /// Успешно разрешено
+    /// Successfully resolved
     Resolved,
-    /// Конфликт версий
+    /// Version conflict
     Conflict(Vec<VersionConflict>),
-    /// Не найдено
+    /// Not found
     NotFound,
-    /// Циклическая зависимость
+    /// Cyclic dependency
     Cyclic,
 }
 
-/// Конфликт версий
+/// Version conflict.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VersionConflict {
-    /// Кто запросил
+    /// Package that made the request
     pub requester: String,
-    /// Что запросил
+    /// What was requested
     pub requested: VersionSpec,
-    /// С чем конфликтует
+    /// Version it conflicts with
     pub conflicts_with: Version,
 }
 
-/// Граф зависимостей
+/// Dependency graph.
 #[derive(Debug, Default)]
 pub struct DependencyGraph {
-    /// Узлы графа
+    /// Graph nodes
     nodes: HashMap<String, DependencyNode>,
-    /// Корневые зависимости
+    /// Root dependencies
     roots: HashSet<String>,
 }
 
@@ -76,7 +76,7 @@ impl DependencyGraph {
         Self::default()
     }
 
-    /// Добавляет корневую зависимость
+    /// Add a root dependency.
     pub fn add_root(&mut self, spec: &DependencySpec) {
         self.roots.insert(spec.name.clone());
         self.add_dependency(spec, "root");

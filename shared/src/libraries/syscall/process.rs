@@ -1,4 +1,4 @@
-//! Функции выполнения команд и процессов
+//! Command and process execution functions.
 
 use std::collections::BTreeMap;
 use std::process::Command;

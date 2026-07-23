@@ -7,44 +7,44 @@ use super::super::environment::Environment;
 use super::super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
 impl ExprEvaluator {
-    // =========================================================================
-    //                    ВЫЗОВ АЛГОРИТМОВ
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: ALGORITHM CALLS
+    // =============================================================================
 
     pub(crate) fn eval_call(
         name: &str,
         args: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
-        // [KITE-0015] Квалифицированный вызов `Модуль::член(...)`: парсер склеивает
-        // имя через `::`, а импорт/`модуль` регистрируют член как `Модуль.член`.
-        // Разрешаем его тем же путём, что и точечную форму.
+        // [KITE-0015] Qualified call `Module::member(...)`: the parser joins the name
+        // via `::`, and import/`module` register the member as `Module.member`.
+        // Resolve it the same way as the dotted form.
         if let Some((module, member)) = name.rsplit_once("::") {
             return Self::eval_qualified_call(module, member, name, args, env);
         }
         Self::eval_plain_call(name, args, env)
     }
 
-    /// Вызов по простому (неквалифицированному) имени.
+    /// Call by simple (unqualified) name: builtins → lambdas → library → algorithms.
     pub(crate) fn eval_plain_call(
         name: &str,
         args: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
-        // Сначала пробуем встроенные функции
+        // Try builtins first.
         if let Some(result) = Builtins::try_call(name, args, env)? {
             return Ok(result);
         }
 
-        // Пробуем вызвать значение-лямбду, хранящееся в переменной
+        // Try lambda value stored in a variable.
         if let Ok(Value::Lambda(lambda)) = env.get_variable(name).cloned() {
             return Self::call_lambda(lambda.as_ref(), args, env);
         }
 
-        // Функция подключённой библиотеки (`использовать время` → `текущий_год()`).
-        // Ищется после алгоритмов-значений, но до пользовательских алгоритмов:
-        // программа вправе определить свой алгоритм с тем же именем и закрыть им
-        // библиотечный, как это делают перегрузки.
+        // Library function (`use time` → `current_year()`).
+        // Searched after value algorithms but before user algorithms:
+        // a program may define its own algorithm with the same name and hide
+        // the library one, as overloads do.
         if !env.has_algorithm(name)
             && env.is_library_function(name)
             && let Some(result) = Self::call_library(name, args, env)?
@@ -52,9 +52,9 @@ impl ExprEvaluator {
             return Ok(result);
         }
 
-        // Проверяем перегруженные алгоритмы
+        // Check overloaded algorithms.
         if let Some(overloaded) = env.get_overloaded_algorithm(name).cloned() {
-            // Выбираем подходящую перегрузку (упрощённо - по количеству аргументов)
+            // Select matching overload by argument count.
             for alg in &overloaded.overloads {
                 if alg.params.len() == args.len() {
                     return Self::call_algorithm(alg, args, env);
@@ -67,13 +67,13 @@ impl ExprEvaluator {
             ));
         }
 
-        // Получаем алгоритм
+        // Get algorithm.
         let algorithm = match env.get_algorithm(name) {
             Ok(alg) => alg.clone(),
             Err(err) => return Err(Self::explain_unknown_call(name, err)),
         };
 
-        // Проверяем количество аргументов
+        // Check argument count.
         let required_params = algorithm
             .params
             .iter()
@@ -91,11 +91,11 @@ impl ExprEvaluator {
         Self::call_algorithm(&algorithm, args, env)
     }
 
-    /// Дополняет ошибку «алгоритм не определён» подсказкой про библиотеку.
+    /// Enhances "algorithm not defined" error with library suggestion.
     ///
-    /// Самая частая причина этой ошибки — забытое `использовать`: функция
-    /// существует, но её библиотека не подключена. Голое «алгоритм не
-    /// определён» в таком случае уводит искать опечатку там, где её нет.
+    /// The most common cause of this error is a forgotten `use`: the function
+    /// exists but its library is not imported. A bare "algorithm not defined"
+    /// then misleads to search for a typo where there is none.
     fn explain_unknown_call(name: &str, err: RuntimeError) -> RuntimeError {
         let Some(library) = shared::libraries::registry::library_providing_function(name) else {
             return err;
@@ -110,10 +110,10 @@ impl ExprEvaluator {
         )
     }
 
-    /// Вызывает функцию подключённой библиотеки.
+    /// Calls a library function.
     ///
-    /// Обработчики библиотек принимают готовые значения, поэтому аргументы
-    /// вычисляются здесь; ленивость им не нужна — это обычные функции.
+    /// Library handlers receive ready values, so arguments are evaluated here;
+    /// laziness is not needed—these are regular functions.
     fn call_library(
         name: &str,
         args: &[Expr],
@@ -131,8 +131,8 @@ impl ExprEvaluator {
         args: &[Expr],
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
-        // [KITE 4] Аргументы вычисляются в кадре ВЫЗЫВАЮЩЕГО, до создания кадра
-        // callee (при лексической видимости callee не видит локали вызывающего).
+        // [KITE 4] Arguments are evaluated in the CALLER frame, before creating the callee
+        // frame (with lexical scoping, callee does not see caller's locals).
         let mut bound: Vec<(String, Value)> = Vec::with_capacity(algorithm.params.len());
         for (i, param) in algorithm.params.iter().enumerate() {
             let value = if i < args.len() {
@@ -149,47 +149,47 @@ impl ExprEvaluator {
             bound.push((param.name.to_string(), value));
         }
 
-        // Создаём новый кадр и привязываем параметры.
+        // Create new frame and bind parameters.
         env.push_frame(algorithm.name.as_ref())?;
         for (name, value) in bound {
             env.define_local(name, value);
         }
 
-        // Выполняем тело алгоритма
+        // Execute algorithm body.
         let result = super::super::executor::Executor::execute_stmts(
             algorithm.body.as_deref().unwrap_or(&[]),
             env,
         );
 
-        // Получаем возвращаемое значение
+        // Get return value.
         let return_value = env.get_result_value().cloned();
 
-        // Удаляем кадр
+        // Pop frame.
         env.pop_frame();
 
-        // Обрабатываем результат
+        // Handle result.
         match result {
             Ok(super::super::error::ControlFlow::Return(value)) => Ok(value.unwrap_or(Value::Null)),
             Ok(_) => Ok(return_value.unwrap_or(Value::Null)),
-            // [KITE-0002] Сигнал оператора `?`: ранний возврат этого значения.
+            // [KITE-0002] `?` operator signal: early return of this value.
             Err(e) if e.is_propagation() => Ok(*e.propagate.expect("propagation carries a value")),
             Err(e) => Err(e),
         }
     }
 
-    /// Вызывает пользовательский алгоритм с уже вычисленными аргументами.
+    /// Calls a user algorithm with already-evaluated arguments.
     pub(crate) fn call_user_algorithm(
         name: &str,
         args: &[Value],
         env: &mut Environment,
     ) -> RuntimeResult<Value> {
-        // Получаем алгоритм
+        // Get algorithm.
         let algorithm = match env.get_algorithm(name) {
             Ok(alg) => alg.clone(),
             Err(err) => return Err(Self::explain_unknown_call(name, err)),
         };
 
-        // Проверяем количество аргументов
+        // Check argument count.
         let required_params = algorithm
             .params
             .iter()
@@ -204,10 +204,10 @@ impl ExprEvaluator {
             ));
         }
 
-        // Создаём новый кадр
+        // Create new frame.
         env.push_frame(algorithm.name.as_ref())?;
 
-        // Привязываем параметры
+        // Bind parameters.
         for (i, param) in algorithm.params.iter().enumerate() {
             let value = if i < args.len() {
                 args[i].clone()
@@ -223,29 +223,29 @@ impl ExprEvaluator {
             env.define_local(param.name.to_string(), value);
         }
 
-        // Выполняем тело алгоритма
+        // Execute algorithm body.
         let result = super::super::executor::Executor::execute_stmts(
             algorithm.body.as_deref().unwrap_or(&[]),
             env,
         );
 
-        // Получаем возвращаемое значение
+        // Get return value.
         let return_value = env.get_result_value().cloned();
 
-        // Удаляем кадр
+        // Pop frame.
         env.pop_frame();
 
-        // Обрабатываем результат
+        // Handle result.
         match result {
             Ok(super::super::error::ControlFlow::Return(value)) => Ok(value.unwrap_or(Value::Null)),
             Ok(_) => Ok(return_value.unwrap_or(Value::Null)),
-            // [KITE-0002] Сигнал оператора `?`: ранний возврат этого значения.
+            // [KITE-0002] `?` operator signal: early return of this value.
             Err(e) if e.is_propagation() => Ok(*e.propagate.expect("propagation carries a value")),
             Err(e) => Err(e),
         }
     }
 
-    /// Вызывает лямбда-значение с заданными аргументами.
+    /// Calls a lambda value with given arguments.
     pub(crate) fn call_lambda(
         lambda: &LambdaValue,
         args: &[Expr],
@@ -259,32 +259,32 @@ impl ExprEvaluator {
             ));
         }
 
-        // Аргументы вычисляются в среде вызывающего.
+        // Arguments are evaluated in the caller's frame.
         let mut arg_values: Vec<Value> = Vec::with_capacity(args.len());
         for arg in args {
             arg_values.push(Self::evaluate(arg, env)?);
         }
 
-        // Новый кадр для лямбды.
+        // New frame for lambda.
         env.push_frame("lambda")?;
 
-        // Захваченные переменные.
+        // Captured variables.
         for (name, value) in &lambda.captures {
             env.define_local(name.clone(), value.clone());
         }
 
-        // Параметры.
+        // Parameters.
         for (i, param) in lambda.params.iter().enumerate() {
             env.define_local(param.clone(), arg_values[i].clone());
         }
 
-        // Выполняем тело лямбды.
+        // Execute lambda body.
         let result = Self::evaluate(&lambda.body, env);
 
-        // Удаляем кадр независимо от результата.
+        // Pop frame regardless of result.
         env.pop_frame();
 
-        // [KITE-0002] Сигнал оператора `?` внутри тела лямбды — ранний возврат.
+        // [KITE-0002] `?` operator signal inside lambda body—early return.
         match result {
             Err(e) if e.is_propagation() => Ok(*e.propagate.expect("propagation carries a value")),
             other => other,

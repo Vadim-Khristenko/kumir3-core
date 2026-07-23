@@ -1,191 +1,191 @@
-//! Математические константы Кумир
+//! Mathematical constants for Kumir 3.
 //!
-//! Содержит все математические константы, доступные в языке.
+//! All mathematical constants available in the language and associated with types.
 
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
-// ============================================================================
-//                    МАТЕМАТИЧЕСКИЕ КОНСТАНТЫ
-// ============================================================================
+// =============================================================================
+//         SECTION: MATHEMATICAL CONSTANTS
+// =============================================================================
 
-/// Математические константы, доступные в Кумире.
+/// Mathematical constants accessible in Kumir programs.
 pub mod math_constants {
-    // ========================================================================
-    //                    ФУНДАМЕНТАЛЬНЫЕ КОНСТАНТЫ
-    // ========================================================================
+    // =========================================================================
+    //                    FUNDAMENTAL CONSTANTS
+    // =========================================================================
 
-    /// Число Пи (π) - отношение длины окружности к диаметру
+    /// Pi (π) — ratio of circle circumference to diameter.
     pub const PI: f64 = std::f64::consts::PI;
 
-    /// Тау (τ = 2π) - полный оборот в радианах
+    /// Tau (τ = 2π) — full circle rotation in radians.
     pub const TAU: f64 = std::f64::consts::TAU;
 
-    /// Число Эйлера (e) - основание натурального логарифма
+    /// Euler's number (e) — base of natural logarithm.
     pub const E: f64 = std::f64::consts::E;
 
-    /// Золотое сечение (φ = (1 + √5) / 2)
+    /// Golden ratio (φ = (1 + √5) / 2).
     pub const PHI: f64 = 1.618033988749895;
 
-    /// Серебряное сечение (δₛ = 1 + √2)
+    /// Silver ratio (δₛ = 1 + √2).
     pub const SILVER_RATIO: f64 = 2.414213562373095;
 
-    /// Пластическое число (ρ ≈ 1.3247)
+    /// Plastic constant (ρ ≈ 1.3247).
     pub const PLASTIC: f64 = 1.324717957244746;
 
-    // ========================================================================
-    //                    КОРНИ И ЛОГАРИФМЫ
-    // ========================================================================
+    // =========================================================================
+    //                    ROOTS AND LOGARITHMS
+    // =========================================================================
 
-    /// Квадратный корень из 2 (√2) - диагональ единичного квадрата
+    /// Square root of 2 (√2) — diagonal of unit square.
     pub const SQRT2: f64 = std::f64::consts::SQRT_2;
 
-    /// Квадратный корень из 3 (√3)
+    /// Square root of 3 (√3).
     pub const SQRT3: f64 = 1.7320508075688772;
 
-    /// Квадратный корень из 5 (√5)
+    /// Square root of 5 (√5).
     pub const SQRT5: f64 = 2.23606797749979;
 
-    /// 1 / √2 = √2 / 2
+    /// 1 / √2 = √2 / 2.
     pub const FRAC_1_SQRT_2: f64 = std::f64::consts::FRAC_1_SQRT_2;
 
-    /// Кубический корень из 2 (∛2)
+    /// Cube root of 2 (∛2).
     pub const CBRT2: f64 = 1.2599210498948732;
 
-    /// Кубический корень из 3 (∛3)
+    /// Cube root of 3 (∛3).
     pub const CBRT3: f64 = 1.4422495703074083;
 
-    /// Натуральный логарифм 2
+    /// Natural logarithm of 2 (ln 2).
     pub const LN2: f64 = std::f64::consts::LN_2;
 
-    /// Натуральный логарифм 10
+    /// Natural logarithm of 10 (ln 10).
     pub const LN10: f64 = std::f64::consts::LN_10;
 
-    /// Десятичный логарифм e (log₁₀(e))
+    /// Common logarithm of e (log₁₀(e)).
     pub const LOG10_E: f64 = std::f64::consts::LOG10_E;
 
-    /// Двоичный логарифм e (log₂(e))
+    /// Binary logarithm of e (log₂(e)).
     pub const LOG2_E: f64 = std::f64::consts::LOG2_E;
 
-    /// Десятичный логарифм 2 (log₁₀(2))
+    /// Common logarithm of 2 (log₁₀(2)).
     pub const LOG10_2: f64 = std::f64::consts::LOG10_2;
 
-    // ========================================================================
-    //                    ДРОБИ ПИ
-    // ========================================================================
+    // =========================================================================
+    //                    FRACTIONS OF PI
+    // =========================================================================
 
-    /// π / 2 (90°)
+    /// π / 2 (90 degrees).
     pub const FRAC_PI_2: f64 = std::f64::consts::FRAC_PI_2;
 
-    /// π / 3 (60°)
+    /// π / 3 (60 degrees).
     pub const FRAC_PI_3: f64 = std::f64::consts::FRAC_PI_3;
 
-    /// π / 4 (45°)
+    /// π / 4 (45 degrees).
     pub const FRAC_PI_4: f64 = std::f64::consts::FRAC_PI_4;
 
-    /// π / 6 (30°)
+    /// π / 6 (30 degrees).
     pub const FRAC_PI_6: f64 = std::f64::consts::FRAC_PI_6;
 
-    /// π / 8 (22.5°)
+    /// π / 8 (22.5 degrees).
     pub const FRAC_PI_8: f64 = std::f64::consts::FRAC_PI_8;
 
-    /// 1 / π
+    /// 1 / π.
     pub const FRAC_1_PI: f64 = std::f64::consts::FRAC_1_PI;
 
-    /// 2 / π
+    /// 2 / π.
     pub const FRAC_2_PI: f64 = std::f64::consts::FRAC_2_PI;
 
-    /// 2 / √π
+    /// 2 / √π.
     pub const FRAC_2_SQRT_PI: f64 = std::f64::consts::FRAC_2_SQRT_PI;
 
-    // ========================================================================
-    //                    КОНВЕРТАЦИЯ УГЛОВ
-    // ========================================================================
+    // =========================================================================
+    //                    ANGLE CONVERSION
+    // =========================================================================
 
-    /// Градусы в радианы (π / 180)
+    /// Degrees to radians conversion factor (π / 180).
     pub const DEG_TO_RAD: f64 = std::f64::consts::PI / 180.0;
 
-    /// Радианы в градусы (180 / π)
+    /// Radians to degrees conversion factor (180 / π).
     pub const RAD_TO_DEG: f64 = 180.0 / std::f64::consts::PI;
 
-    // ========================================================================
-    //                    МАТЕМАТИЧЕСКИЕ КОНСТАНТЫ
-    // ========================================================================
+    // =========================================================================
+    //                    MATHEMATICAL CONSTANTS (SPECIAL)
+    // =========================================================================
 
-    /// Постоянная Эйлера-Маскерони (γ ≈ 0.5772)
+    /// Euler–Mascheroni constant (γ ≈ 0.5772).
     pub const EULER_MASCHERONI: f64 = 0.5772156649015329;
 
-    /// Постоянная Апери (ζ(3) ≈ 1.202) - дзета-функция Римана от 3
+    /// Apéry's constant (ζ(3) ≈ 1.202) — Riemann zeta function at 3.
     pub const APERY: f64 = 1.2020569031595943;
 
-    /// Постоянная Каталана (G ≈ 0.9159)
+    /// Catalan's constant (G ≈ 0.9159).
     pub const CATALAN: f64 = 0.915_965_594_177_219;
 
-    /// Постоянная Хинчина (K ≈ 2.6854)
+    /// Khinchin's constant (K ≈ 2.6854).
     pub const KHINCHIN: f64 = 2.6854520010653064;
 
-    /// Постоянная Глейшера-Кинкелина (A ≈ 1.2824)
+    /// Glaisher–Kinkelin constant (A ≈ 1.2824).
     pub const GLAISHER: f64 = 1.2824271291006226;
 
-    /// Омега-константа (Ω) - решение x·eˣ = 1
+    /// Omega constant (Ω) — solution to x·eˣ = 1.
     pub const OMEGA: f64 = 0.5671432904097838;
 
-    /// Постоянная Конвея (λ ≈ 1.3035)
+    /// Conway's constant (λ ≈ 1.3035).
     pub const CONWAY: f64 = 1.3035772690342963;
 
-    /// Постоянная Фейгенбаума (δ ≈ 4.6692) - универсальность хаоса
+    /// Feigenbaum constant (δ ≈ 4.6692) — universal chaos scaling.
     pub const FEIGENBAUM_DELTA: f64 = 4.669_201_609_102_99;
 
-    /// Вторая постоянная Фейгенбаума (α ≈ 2.5029)
+    /// Second Feigenbaum constant (α ≈ 2.5029).
     pub const FEIGENBAUM_ALPHA: f64 = 2.502907875095892;
 
-    /// Постоянная Мейсселя-Мертенса (M ≈ 0.2615)
+    /// Meissel–Mertens constant (M ≈ 0.2615).
     pub const MEISSEL_MERTENS: f64 = 0.2614972128476428;
 
-    /// Постоянная близнецов простых чисел (C₂ ≈ 0.6601)
+    /// Twin prime constant (C₂ ≈ 0.6601).
     pub const TWIN_PRIME: f64 = 0.6601618158468696;
 
-    // ========================================================================
-    //                    ФИЗИЧЕСКИЕ КОНСТАНТЫ (БЕЗРАЗМЕРНЫЕ)
-    // ========================================================================
+    // =========================================================================
+    //                    PHYSICAL CONSTANTS (DIMENSIONLESS)
+    // =========================================================================
 
-    /// Постоянная тонкой структуры (α ≈ 1/137)
+    /// Fine structure constant (α ≈ 1/137).
     pub const FINE_STRUCTURE: f64 = 0.0072973525693;
 
-    // ========================================================================
-    //                    ПРЕДЕЛЫ ТИПОВ
-    // ========================================================================
+    // =========================================================================
+    //                    TYPE LIMITS
+    // =========================================================================
 
-    /// Максимальное целое (i64)
+    /// Maximum 64-bit signed integer.
     pub const MAX_INT: i64 = i64::MAX;
 
-    /// Минимальное целое (i64)
+    /// Minimum 64-bit signed integer.
     pub const MIN_INT: i64 = i64::MIN;
 
-    /// Максимальное вещественное (f64)
+    /// Maximum representable 64-bit float.
     pub const MAX_REAL: f64 = f64::MAX;
 
-    /// Минимальное положительное вещественное (f64)
+    /// Smallest positive 64-bit float.
     pub const MIN_REAL: f64 = f64::MIN_POSITIVE;
 
-    /// Машинный эпсилон (f64) - минимальная разница между 1.0 и следующим числом
+    /// Machine epsilon for 64-bit float — smallest relative difference from 1.0.
     pub const EPSILON: f64 = f64::EPSILON;
 
-    /// Бесконечность
+    /// Positive infinity.
     pub const INFINITY: f64 = f64::INFINITY;
 
-    /// Минус бесконечность
+    /// Negative infinity.
     pub const NEG_INFINITY: f64 = f64::NEG_INFINITY;
 
-    /// Не число (NaN)
+    /// Not-a-number (NaN).
     pub const NAN: f64 = f64::NAN;
 }
 
-/// Встроенные константы Кумира (доступные как переменные).
+/// Built-in Kumir constants accessible as variables.
 pub static BUILTIN_CONSTANTS: Lazy<HashMap<&'static str, f64>> = Lazy::new(|| {
     let mut m = HashMap::new();
 
-    // Фундаментальные
+    // Fundamental constants
     m.insert("ПИ", math_constants::PI);
     m.insert("пи", math_constants::PI);
     m.insert("pi", math_constants::PI);
@@ -212,7 +212,7 @@ pub static BUILTIN_CONSTANTS: Lazy<HashMap<&'static str, f64>> = Lazy::new(|| {
     m.insert("ЗОЛОТОЕ", math_constants::PHI);
     m.insert("золотое_сечение", math_constants::PHI);
 
-    // Корни
+    // Roots
     m.insert("КОРЕНЬ2", math_constants::SQRT2);
     m.insert("корень2", math_constants::SQRT2);
     m.insert("sqrt2", math_constants::SQRT2);
@@ -231,7 +231,7 @@ pub static BUILTIN_CONSTANTS: Lazy<HashMap<&'static str, f64>> = Lazy::new(|| {
     m.insert("SQRT5", math_constants::SQRT5);
     m.insert("√5", math_constants::SQRT5);
 
-    // Логарифмы
+    // Logarithms
     m.insert("LN2", math_constants::LN2);
     m.insert("ln2", math_constants::LN2);
     m.insert("ЛН2", math_constants::LN2);
@@ -240,7 +240,7 @@ pub static BUILTIN_CONSTANTS: Lazy<HashMap<&'static str, f64>> = Lazy::new(|| {
     m.insert("ln10", math_constants::LN10);
     m.insert("ЛН10", math_constants::LN10);
 
-    // Дроби пи
+    // Fractions of pi
     m.insert("ПИ_2", math_constants::FRAC_PI_2);
     m.insert("пи_2", math_constants::FRAC_PI_2);
     m.insert("PI_2", math_constants::FRAC_PI_2);
@@ -250,7 +250,7 @@ pub static BUILTIN_CONSTANTS: Lazy<HashMap<&'static str, f64>> = Lazy::new(|| {
     m.insert("пи_4", math_constants::FRAC_PI_4);
     m.insert("PI_4", math_constants::FRAC_PI_4);
 
-    // Конвертация углов
+    // Angle conversions
     m.insert("ГРАД_РАД", math_constants::DEG_TO_RAD);
     m.insert("град_рад", math_constants::DEG_TO_RAD);
     m.insert("DEG_RAD", math_constants::DEG_TO_RAD);
@@ -259,7 +259,7 @@ pub static BUILTIN_CONSTANTS: Lazy<HashMap<&'static str, f64>> = Lazy::new(|| {
     m.insert("рад_град", math_constants::RAD_TO_DEG);
     m.insert("RAD_DEG", math_constants::RAD_TO_DEG);
 
-    // Математические постоянные
+    // Special constants
     m.insert("ГАММА", math_constants::EULER_MASCHERONI);
     m.insert("гамма", math_constants::EULER_MASCHERONI);
     m.insert("gamma", math_constants::EULER_MASCHERONI);
@@ -285,7 +285,7 @@ pub static BUILTIN_CONSTANTS: Lazy<HashMap<&'static str, f64>> = Lazy::new(|| {
     m.insert("фейгенбаум", math_constants::FEIGENBAUM_DELTA);
     m.insert("feigenbaum", math_constants::FEIGENBAUM_DELTA);
 
-    // Спецзначения
+    // Special values
     m.insert("БЕСК", math_constants::INFINITY);
     m.insert("беск", math_constants::INFINITY);
     m.insert("inf", math_constants::INFINITY);
@@ -309,7 +309,7 @@ pub static BUILTIN_CONSTANTS: Lazy<HashMap<&'static str, f64>> = Lazy::new(|| {
     m
 });
 
-/// Целочисленные константы
+/// Integer-valued built-in constants.
 pub static BUILTIN_INT_CONSTANTS: Lazy<HashMap<&'static str, i64>> = Lazy::new(|| {
     let mut m = HashMap::new();
 
@@ -326,27 +326,27 @@ pub static BUILTIN_INT_CONSTANTS: Lazy<HashMap<&'static str, i64>> = Lazy::new(|
     m
 });
 
-/// Проверяет, является ли строка встроенной константой.
+/// Checks if a string is a built-in constant name.
 #[inline]
 pub fn is_builtin_constant(s: &str) -> bool {
     BUILTIN_CONSTANTS.contains_key(s) || BUILTIN_INT_CONSTANTS.contains_key(s)
 }
 
-/// Возвращает значение встроенной константы (f64).
+/// Returns the value of a built-in floating-point constant.
 #[inline]
 pub fn get_builtin_constant(s: &str) -> Option<f64> {
     BUILTIN_CONSTANTS.get(s).copied()
 }
 
-/// Возвращает значение целочисленной константы.
+/// Returns the value of a built-in integer constant.
 #[inline]
 pub fn get_builtin_int_constant(s: &str) -> Option<i64> {
     BUILTIN_INT_CONSTANTS.get(s).copied()
 }
 
-// ============================================================================
-//                    ТЕСТЫ
-// ============================================================================
+// =============================================================================
+//         SECTION: TESTS
+// =============================================================================
 
 #[cfg(test)]
 mod tests {

@@ -1,3 +1,5 @@
+//! Import handling for libraries and .kum modules.
+
 use super::Interpreter;
 use super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 use super::file_importer::{FileImporter, ImportedModule};
@@ -5,23 +7,23 @@ use super::library_bridge;
 use shared::types::Stmt;
 
 impl Interpreter {
-    // =========================================================================
-    //                    БИБЛИОТЕКИ И ИМПОРТЫ
-    // =========================================================================
+    // =============================================================================
+    //                       IMPORT HANDLING
+    // =============================================================================
 
-    /// Обрабатывает инструкцию импорта.
+    /// Processes an import statement.
     ///
-    /// Поддерживает:
-    /// - Стандартные библиотеки: `использовать время`
-    /// - Файловые импорты: `подключить "./модуль.kum"`
+    /// Supports:
+    /// - Standard libraries: `использовать время`
+    /// - File imports: `подключить "./module.kum"`
+    /// - Project libraries: directories with `kumir.toml`
     pub(crate) fn process_import(&mut self, stmt: &Stmt) -> RuntimeResult<()> {
         if let Stmt::Import { path, alias, .. } = stmt {
-            // Проверяем, это файл .kum, директория с библиотекой, или встроенная библиотека
             let path_obj = std::path::Path::new(path);
 
             if let Some(main_file) = self.resolve_dir_library_main(path) {
-                // [KITE 5] Библиотека-проект (директория с kumir.toml):
-                // импортируем её главный файл как модуль — алгоритмы становятся вызываемыми.
+                // [KITE 5] Project library (directory with kumir.toml): import its main file
+                // as a module so algorithms become callable.
                 let main_str = main_file.to_string_lossy().to_string();
                 let module = {
                     let mut importer = self.file_importer.write().map_err(|_| {
@@ -40,7 +42,7 @@ impl Interpreter {
                     );
                 }
             } else if FileImporter::is_kum_file(path) {
-                // Файловый импорт (как в Python)
+                // File import (like Python)
                 let module = {
                     let mut importer = self.file_importer.write().map_err(|_| {
                         RuntimeError::new(
@@ -59,7 +61,7 @@ impl Interpreter {
                     );
                 }
             } else if path_obj.is_dir() || path.contains('/') || path.contains('\\') {
-                // Пользовательская библиотека (директория или путь к файлу)
+                // User library (directory or file path)
                 self.libraries
                     .write()
                     .map_err(|_| {
@@ -76,7 +78,7 @@ impl Interpreter {
                     );
                 }
             } else if let Some(lib_name) = library_bridge::resolve_import_path(path) {
-                // Стандартная библиотека
+                // Standard library
                 self.libraries
                     .write()
                     .map_err(|_| {
@@ -90,7 +92,6 @@ impl Interpreter {
                     eprintln!("[DEBUG] Импортирована библиотека: {}", lib_name);
                 }
             } else {
-                // Неизвестный импорт
                 return Err(RuntimeError::new(
                     format!("Модуль или библиотека '{}' не найдены", path),
                     RuntimeErrorKind::Other,
@@ -100,8 +101,8 @@ impl Interpreter {
         Ok(())
     }
 
-    /// [KITE 5] Регистрирует публичные алгоритмы и классы импортированного модуля
-    /// в среде (с префиксом модуля/алиаса; без префикса — если алиаса нет).
+    /// [KITE 5] Registers public algorithms and classes from an imported module into
+    /// the environment (with module/alias prefix; without prefix if no alias).
     fn register_imported_module(
         &mut self,
         module: std::sync::Arc<ImportedModule>,
@@ -126,9 +127,9 @@ impl Interpreter {
         }
     }
 
-    /// [KITE 5] Если `path` указывает на директорию-проект с `kumir.toml`,
-    /// возвращает путь к её главному `.kum` файлу. Директория ищется как есть
-    /// и относительно базовой директории (каталога скрипта).
+    /// [KITE 5] If `path` points to a project directory with `kumir.toml`, returns
+    /// the path to its main `.kum` file. The directory is searched as-is and relative
+    /// to the base directory (script directory).
     fn resolve_dir_library_main(&self, path: &str) -> Option<std::path::PathBuf> {
         use shared::types::KumirConfig;
         let base = self.file_importer.read().ok()?.base_dir().to_path_buf();
@@ -137,14 +138,14 @@ impl Interpreter {
             if dir.is_dir() {
                 let toml = dir.join("kumir.toml");
                 if toml.exists() {
-                    // 1) Главный файл из конфига.
+                    // 1) Main file from config.
                     if let Ok(cfg) = KumirConfig::load(&toml) {
                         let main = cfg.main_file_path();
                         if main.exists() {
                             return Some(main);
                         }
                     }
-                    // 2) Запасные общепринятые расположения главного файла.
+                    // 2) Fallback conventional locations.
                     for rel in ["src/lib.kum", "lib.kum", "src/main.kum", "main.kum"] {
                         let cand = dir.join(rel);
                         if cand.exists() {
@@ -157,7 +158,7 @@ impl Interpreter {
         None
     }
 
-    /// Импортирует .kum файл.
+    /// Imports a .kum file.
     pub fn import_file(
         &mut self,
         path: &str,
@@ -172,7 +173,7 @@ impl Interpreter {
         importer.import(path, alias)
     }
 
-    /// Импортирует библиотеку программно.
+    /// Imports a library programmatically.
     pub fn import_library(&mut self, name: &str) -> RuntimeResult<()> {
         self.libraries
             .write()
@@ -185,7 +186,7 @@ impl Interpreter {
             .import(name, None)
     }
 
-    /// Импортирует библиотеку с алиасом.
+    /// Imports a library with an alias.
     pub fn import_library_as(&mut self, name: &str, alias: &str) -> RuntimeResult<()> {
         self.libraries
             .write()

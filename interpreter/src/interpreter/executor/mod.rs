@@ -1,7 +1,7 @@
-//! Исполнитель инструкций для интерпретатора Кумир 3
+//! Statement executor for the Kumir 3 interpreter.
 //!
-//! Реализует выполнение всех типов инструкций: присваивание, условия,
-//! циклы, ввод/вывод, обработка исключений и т.д.
+//! Implements execution of all statement types: assignment, conditionals,
+//! loops, I/O, error handling, etc.
 
 use shared::types::{Stmt, Value};
 
@@ -17,11 +17,11 @@ mod r#match;
 mod rust_block;
 mod statements;
 
-/// Исполнитель инструкций.
+/// Statement executor.
 pub struct Executor;
 
 impl Executor {
-    /// Выполняет список инструкций.
+    /// Executes a sequence of statements.
     pub fn execute_stmts(stmts: &[Stmt], env: &mut Environment) -> RuntimeResult<ControlFlow> {
         for stmt in stmts {
             let flow = Self::execute(stmt, env)?;
@@ -33,10 +33,10 @@ impl Executor {
         Ok(ControlFlow::None)
     }
 
-    /// Выполняет одну инструкцию.
+    /// Executes a single statement.
     pub fn execute(stmt: &Stmt, env: &mut Environment) -> RuntimeResult<ControlFlow> {
         match stmt {
-            // ===== ПРИСВАИВАНИЕ =====
+            // Assignment
             Stmt::Assignment(name, expr) => {
                 let value = ExprEvaluator::evaluate(expr, env)?;
                 env.set_variable(name, value)?;
@@ -47,14 +47,14 @@ impl Executor {
                 Self::execute_array_assignment(name, indices, expr, env)
             }
 
-            // ===== УСЛОВИЯ =====
+            // Conditionals
             Stmt::If {
                 condition,
                 then_branch,
                 else_branch,
             } => Self::execute_if(condition, then_branch, else_branch.as_deref(), env),
 
-            // ===== ЦИКЛЫ =====
+            // Loops
             Stmt::LoopWhile { condition, body } => Self::execute_while(condition, body, env),
 
             Stmt::LoopForEach {
@@ -76,12 +76,12 @@ impl Executor {
 
             Stmt::LoopDoWhile { body, condition } => Self::execute_do_while(body, condition, env),
 
-            // ===== ВВОД/ВЫВОД =====
+            // I/O
             Stmt::Input(vars) => Self::execute_input(vars, env),
 
             Stmt::Output(exprs) => Self::execute_output(exprs, env),
 
-            // ===== УПРАВЛЕНИЕ ПОТОКОМ =====
+            // Control flow
             Stmt::Assert(expr) => Self::execute_assert(expr, env),
 
             Stmt::ExprStmt(expr) => {
@@ -108,7 +108,7 @@ impl Executor {
 
             Stmt::Pause => Self::execute_pause(env),
 
-            // ===== ОБЪЯВЛЕНИЕ ПЕРЕМЕННЫХ =====
+            // Variable declarations
             Stmt::AutoVarDecl { name, init, .. } => {
                 let value = ExprEvaluator::evaluate(init, env)?;
                 env.define_local(name.clone(), value);
@@ -122,7 +122,7 @@ impl Executor {
                 ..
             } => Self::execute_var_decl(type_kind, names, init.as_ref(), env),
 
-            // ===== МОДУЛИ И ИМПОРТ =====
+            // Modules and imports
             Stmt::Import { path, alias, items } => {
                 Self::execute_import(path, alias.as_deref(), items.as_deref(), env)
             }
@@ -136,12 +136,12 @@ impl Executor {
 
             Stmt::Export { names } => Self::execute_export(names, env),
 
-            // ===== ПЕРЕЧИСЛЕНИЯ =====
+            // Enumerations
             Stmt::EnumDecl { name, variants, .. } => Self::execute_enum_decl(name, variants, env),
 
             Stmt::Match { expr, arms, .. } => Self::execute_match(expr, arms, env),
 
-            // ===== УКАЗАТЕЛИ =====
+            // Pointers
             Stmt::PointerNew { name, value, .. } => {
                 let val = ExprEvaluator::evaluate(value, env)?;
                 env.define_local(name.clone(), Value::Pointer(Box::new(val)));
@@ -153,7 +153,7 @@ impl Executor {
                 Ok(ControlFlow::None)
             }
 
-            // ===== ОБРАБОТКА ОШИБОК =====
+            // Error handling
             Stmt::TryCatch {
                 try_block,
                 catch_var,
@@ -174,28 +174,28 @@ impl Executor {
                 Err(RuntimeError::user_exception(message))
             }
 
-            // ===== RUST-ВСТАВКИ =====
+            // Rust blocks
             Stmt::RustBlock {
                 code,
                 captured_vars,
                 ..
             } => Self::execute_rust_block(code, captured_vars, env),
 
-            // ===== АСИНХРОННОЕ ПРОГРАММИРОВАНИЕ =====
+            // Async operations
             Stmt::Await(expr) => {
-                // В синхронном режиме просто вычисляем выражение
+                // In sync mode, just evaluate the expression.
                 ExprEvaluator::evaluate(expr, env)?;
                 Ok(ControlFlow::None)
             }
 
-            // ===== КЛАССЫ И ООП =====
+            // Classes and OOP
             Stmt::ClassDecl(class_def) => {
                 env.define_class(class_def.clone());
                 Ok(ControlFlow::None)
             }
 
             Stmt::StructDecl(class_def) => {
-                // Структура — это ClassDef с kind=Struct, определяем как класс
+                // Struct is a ClassDef with kind=Struct, defined as a class.
                 env.define_class(class_def.clone());
                 Ok(ControlFlow::None)
             }
@@ -221,13 +221,13 @@ impl Executor {
                 value,
             } => Self::execute_field_assignment(object, field, value, env),
 
-            // ===== МЕТА / ОТЛАДКА =====
+            // Meta / debugging
             Stmt::TypeAlias { .. } => {
-                // Псевдонимы типов — чисто compile-time конструкция.
+                // Type aliases are compile-time only.
                 Ok(ControlFlow::None)
             }
 
-            // Все остальные инструкции (не реализованы)
+            // Unimplemented statements
             _ => Err(RuntimeError::not_implemented("данная инструкция")),
         }
     }

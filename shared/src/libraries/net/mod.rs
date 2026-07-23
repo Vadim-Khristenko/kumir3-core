@@ -1,14 +1,14 @@
-//! Сетевая библиотека для КуМир 3
+//! Network library for Kumir 3.
 //!
-//! Упрощённая синхронная сетевая библиотека на основе std::net.
-//! Предоставляет:
-//! - TCP сокеты (клиент/сервер)
-//! - UDP сокеты
-//! - HTTP и HTTPS-запросы с переходом по перенаправлениям
-//! - Утилиты: URL-кодирование, Base64, DNS, JSON
+//! A simplified synchronous networking library based on std::net.
+//! Provides:
+//! - TCP sockets (client/server)
+//! - UDP sockets
+//! - HTTP and HTTPS requests with redirect following
+//! - Utilities: URL encoding, Base64, DNS, JSON
 //!
-//! Шифрование даёт rustls с корневыми сертификатами webpki-roots; всё
-//! остальное — на std.
+//! Encryption is provided by rustls with webpki-roots certificates;
+//! everything else uses std.
 
 mod http;
 mod tcp;
@@ -27,7 +27,7 @@ pub use tcp::*;
 pub use udp::*;
 pub use utils::*;
 
-/// Создаёт библиотеку net
+/// Creates the net library.
 pub fn create_net_library() -> LibraryDef {
     let mut lib = LibraryDef::new("net", "Сеть");
     lib.aliases = vec![

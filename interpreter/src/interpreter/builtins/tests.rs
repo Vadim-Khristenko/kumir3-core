@@ -23,13 +23,14 @@ use crate::interpreter::{RuntimeErrorKind, eval, run_and_get_output};
 /// `UndefinedAlgorithm` (and not a parse error): argument-type or arity errors
 /// are fine, they prove the dispatcher recognised the name.
 fn is_dispatched(name: &str) -> bool {
-    // Try a few arities; any non-"unknown" outcome means the name is known.
+    // Try a few arities; any non-unknown result means the name is known.
     for args in ["", "1", "1, 2", "1, 2, 3"] {
         let src = format!("{name}({args})");
         match eval(&src) {
             Ok(_) => return true,
             Err(e) => {
                 let unknown = matches!(e.kind, RuntimeErrorKind::UndefinedAlgorithm)
+                    || e.to_string().contains("parse error")
                     || e.to_string().contains("Ошибка разбора");
                 if !unknown {
                     return true;
@@ -42,7 +43,7 @@ fn is_dispatched(name: &str) -> bool {
 
 #[test]
 fn is_dispatched_probe_is_not_vacuous() {
-    // Guards the invariant test below: the probe must actually be able to fail.
+    // Verify the probe works: it must detect missing names.
     assert!(!is_dispatched("несуществующая_функция_ъъъ"));
     assert!(is_dispatched("sin"));
 }
@@ -116,8 +117,8 @@ fn implemented_russian_names_are_registered() {
     ] {
         assert!(is_builtin_function(name), "{name} must be registered");
     }
-    // Category `Other` names are registered but is_builtin_function == false
-    // by design; check they are at least present in the name list.
+    // Some names are registered but is_builtin_function returns false by design;
+    // verify they are at least in the builtin table.
     let all = get_all_builtin_names();
     for name in ["первый", "сумма", "среднее", "последний", "массив", "целое"]
     {
@@ -179,7 +180,7 @@ fn builtin_russian_math_aliases() {
     approx("мин(3, 1, 2)", 1.0);
     approx("макс(3, 1, 2)", 3.0);
     approx("округл(2.6)", 3.0);
-    // случ() must at least dispatch and produce a number in [0, 1).
+    // Random number in [0, 1)
     let v = eval("случ()").unwrap();
     let f = v.as_float().unwrap();
     assert!((0.0..1.0).contains(&f), "случ() out of range: {f}");

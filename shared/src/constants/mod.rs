@@ -1,11 +1,7 @@
-//! Константы языка Кумир
+//! Language constants and utilities for Kumir 3.
 //!
-//! Этот модуль организует все константы языка:
-//! - Ключевые слова (keywords)
-//! - Операторы (operators)
-//! - Математические константы (math)
-//! - Встроенные функции (builtins)
-//! - Утилиты для работы с идентификаторами (ident)
+//! Centralizes keywords, operators, mathematical constants, built-in functions,
+//! and identifier utilities.
 
 pub mod builtins;
 pub mod ident;
@@ -13,7 +9,7 @@ pub mod keywords;
 pub mod math;
 pub mod operators;
 
-// Реэкспорт для удобства
+// Re-export for convenience
 pub use builtins::*;
 pub use ident::*;
 pub use keywords::*;

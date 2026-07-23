@@ -7,11 +7,11 @@ use super::super::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 use super::super::ops::TypeOps;
 
 impl ExprEvaluator {
-    // =========================================================================
-    //                    ДОСТУП К МАССИВАМ
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: ARRAY ACCESS
+    // =============================================================================
 
-    /// Индексирование по имени переменной: `а[и]`.
+    /// Indexing by variable name: `a[i]`.
     pub(crate) fn eval_array_access(
         name: &str,
         indices: &[Expr],
@@ -21,11 +21,11 @@ impl ExprEvaluator {
         Self::index_value(array, indices, env)
     }
 
-    /// Индексирование произвольного значения.
+    /// Indexing arbitrary values.
     ///
-    /// Отделено от [`Self::eval_array_access`], потому что индексировать можно
-    /// не только переменную: `разобрать_iso(д)["год"]` и `[1, 2, 3][0]` —
-    /// такие же обращения по индексу, и вести себя обязаны одинаково.
+    /// Separated from [`Self::eval_array_access`] because indexing is not limited
+    /// to variables: `parse_iso(d)["year"]` and `[1, 2, 3][0]` are also indexing
+    /// operations and must behave identically.
     pub(crate) fn index_value(
         container: Value,
         indices: &[Expr],

@@ -1,3 +1,5 @@
+//! Info screen — shows Kumir 3 interpreter details.
+
 use crate::terminal::{init_terminal, restore_terminal};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::prelude::*;
@@ -53,7 +55,7 @@ fn draw_info(frame: &mut Frame) {
         ])
         .split(inner);
 
-    // Заголовок
+    // Title
     let title = Paragraph::new(vec![
         Line::from("╔══════════════════════════════════════════════════════════╗")
             .style(Style::default().fg(Color::Cyan)),
@@ -64,14 +66,14 @@ fn draw_info(frame: &mut Frame) {
     ]);
     frame.render_widget(title, chunks[0]);
 
-    // Версия
+    // Version
     let version = Paragraph::new(vec![Line::from(vec![
         Span::styled("  Версия: ", Style::default().fg(Color::White).bold()),
         Span::styled(env!("CARGO_PKG_VERSION"), Style::default().fg(Color::Green)),
     ])]);
     frame.render_widget(version, chunks[1]);
 
-    // Возможности
+    // Features
     let features = Paragraph::new(vec![
         Line::from(Span::styled(
             "  Возможности:",
@@ -112,7 +114,7 @@ fn draw_info(frame: &mut Frame) {
     ]);
     frame.render_widget(features, chunks[2]);
 
-    // Использование
+    // Usage
     let usage = Paragraph::new(vec![
         Line::from(Span::styled(
             "  Использование:",
@@ -153,7 +155,7 @@ fn draw_info(frame: &mut Frame) {
     ]);
     frame.render_widget(usage, chunks[3]);
 
-    // Подсказка
+    // Hint
     let hint = Paragraph::new(Line::from(Span::styled(
         "  Нажмите Enter или Q для выхода",
         Style::default().fg(Color::DarkGray),

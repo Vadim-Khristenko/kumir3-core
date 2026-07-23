@@ -1,14 +1,14 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Главный модуль компилятора Kumir 3
+//! Main Kumir 3 compiler module.
 //!
-//! Координирует процесс компиляции:
-//! 1. Лексический анализ (shared::lexer)
-//! 2. Синтаксический анализ (shared::parser)
-//! 3. Преобразование AST → IR
-//! 4. Оптимизация IR
-//! 5. Генерация кода через выбранный backend
+//! Coordinates the compilation process:
+//! 1. Lexical analysis (shared::lexer)
+//! 2. Syntax analysis (shared::parser)
+//! 3. AST → IR transformation
+//! 4. IR optimization
+//! 5. Code generation via chosen backend
 
 use std::path::Path;
 
@@ -22,26 +22,26 @@ use crate::backend::{Backend, RustBackend};
 use crate::optimizer::IrOptimizer;
 
 // =============================================================================
-//                           КОМПИЛЯТОР
+//                           COMPILER
 // =============================================================================
 
-/// Компилятор Kumir 3.
+/// Kumir 3 compiler.
 pub struct Compiler {
-    /// Режим отладки
+    /// Debug mode
     pub(crate) debug: bool,
 
-    /// Уровень оптимизации (0-3)
+    /// Optimization level (0-3)
     pub(crate) opt_level: u8,
 
-    /// Последний скомпилированный IR модуль
+    /// Last compiled IR module
     last_ir: Option<IrModule>,
 
-    /// Последний сгенерированный Rust код
+    /// Last generated Rust code
     last_rust: Option<String>,
 }
 
 impl Compiler {
-    /// Создаёт новый компилятор.
+    /// Creates a new compiler.
     pub fn new() -> Self {
         Self {
             debug: false,
@@ -51,30 +51,30 @@ impl Compiler {
         }
     }
 
-    /// Устанавливает режим отладки.
+    /// Sets debug mode.
     pub fn set_debug(&mut self, debug: bool) {
         self.debug = debug;
     }
 
-    /// Устанавливает уровень оптимизации.
+    /// Sets optimization level.
     pub fn set_opt_level(&mut self, level: u8) {
         self.opt_level = level.min(3);
     }
 
     // =========================================================================
-    //                    ПРОВЕРКА СИНТАКСИСА
+    //                    SYNTAX CHECK
     // =========================================================================
 
-    /// Проверяет синтаксис программы без компиляции.
+    /// Checks syntax without compilation.
     pub fn check(&self, source: &str) -> Result<(), String> {
-        // Лексический анализ
+        // Lexical analysis
         let tokens = tokenize(source).map_err(|e| format!("Ошибка лексера: {:?}", e))?;
 
         if self.debug {
             eprintln!("[DEBUG] Токенов: {}", tokens.len());
         }
 
-        // Синтаксический анализ
+        // Syntax analysis
         let _program = parse(source).map_err(|e| format!("Ошибка парсера: {:?}", e))?;
 
         if self.debug {
@@ -85,33 +85,33 @@ impl Compiler {
     }
 
     // =========================================================================
-    //                    КОМПИЛЯЦИЯ В РАЗНЫЕ ФОРМАТЫ
+    //                    COMPILATION TO VARIOUS FORMATS
     // =========================================================================
 
-    /// Компилирует в нативный исполняемый файл.
+    /// Compiles to native executable.
     pub fn compile_to_exe(&mut self, source: &str, output: &Path) -> Result<(), String> {
-        // Парсим исходный код
+        // Parse source code
         let program = self.parse(source)?;
 
-        // Преобразуем в IR
+        // Transform to IR
         let ir_module = self.ast_to_ir(&program)?;
         self.last_ir = Some(ir_module.clone());
 
-        // Оптимизируем IR
+        // Optimize IR
         let optimized = self.optimize_ir(ir_module)?;
 
-        // Генерируем Rust код
+        // Generate Rust code
         let rust_backend = RustBackend::new();
         let rust_code = rust_backend.generate(&optimized)?;
         self.last_rust = Some(rust_code.clone());
 
-        // Компилируем Rust код в исполняемый файл
+        // Compile Rust code to executable
         rust_backend.compile_to_exe(&rust_code, output)?;
 
         Ok(())
     }
 
-    /// Компилирует в WebAssembly модуль.
+    /// Compiles to WebAssembly module.
     pub fn compile_to_wasm(&mut self, source: &str, _output: &Path) -> Result<(), String> {
         let program = self.parse(source)?;
         let ir_module = self.ast_to_ir(&program)?;
@@ -123,12 +123,12 @@ impl Compiler {
         Err("WASM backend пока не реализован".to_string())
     }
 
-    /// Компилирует в IR (промежуточное представление).
+    /// Compiles to IR (intermediate representation).
     pub fn compile_to_ir(&mut self, source: &str, output: &Path) -> Result<(), String> {
         let program = self.parse(source)?;
         let ir_module = self.ast_to_ir(&program)?;
 
-        // Сохраняем IR в файл
+        // Write IR to file
         let ir_text = format!("{:#?}", ir_module);
         std::fs::write(output, ir_text).map_err(|e| format!("Не удалось записать IR: {}", e))?;
 
@@ -136,7 +136,7 @@ impl Compiler {
         Ok(())
     }
 
-    /// Компилирует в Rust исходный код.
+    /// Compiles to Rust source code.
     pub fn compile_to_rust(&mut self, source: &str, output: &Path) -> Result<(), String> {
         let program = self.parse(source)?;
         let ir_module = self.ast_to_ir(&program)?;

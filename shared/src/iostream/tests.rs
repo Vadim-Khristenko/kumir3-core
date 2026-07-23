@@ -1,3 +1,5 @@
+//! IO stream unit tests.
+
 use crate::iostream::{FileStream, IOStream, StreamError};
 use std::fs;
 use std::path::Path;

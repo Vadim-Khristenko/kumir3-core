@@ -1,14 +1,10 @@
-// ============================================================================
-//                    МЕНЕДЖЕР ХЭНДЛОВ
-// ============================================================================
-//
-// Управление ресурсами через хэндлы:
-// - Handle: универсальный хэндл ресурса
-// - HandleManager: реестр и управление жизненным циклом
-// - Timer: асинхронные таймеры
-// - Connection: абстракция сетевых соединений
-//
-// ============================================================================
+//! Handle-based resource management.
+//!
+//! Manages resource lifecycle through handles:
+//! - Handle: universal resource handle
+//! - HandleManager: registry and lifecycle management
+//! - Timer: async timers
+//! - Connection: network connection abstraction
 
 use std::any::Any;
 use std::collections::HashMap;
@@ -19,11 +15,11 @@ use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, oneshot};
 use tokio::time::{interval, timeout};
 
-// ============================================================================
-//                    ИДЕНТИФИКАТОРЫ
-// ============================================================================
+// =============================================================================
+//         SECTION: HANDLE IDENTIFIERS
+// =============================================================================
 
-/// Уникальный идентификатор хэндла.
+/// Unique handle identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HandleId(pub u64);
 

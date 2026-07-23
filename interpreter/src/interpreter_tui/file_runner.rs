@@ -1,3 +1,5 @@
+//! File execution runner — compiles and runs a .kum file with TUI display.
+
 use crate::interpreter::Interpreter;
 use crate::terminal::{init_terminal, restore_terminal};
 use crate::ui::OutputLine;

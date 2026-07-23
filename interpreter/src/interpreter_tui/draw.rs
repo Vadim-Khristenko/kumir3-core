@@ -1,12 +1,11 @@
-//! Отрисовка экрана консоли.
+//! Console display rendering.
 //!
-//! Раскладка: полоса заголовка, рабочая область, строка ввода, полоса клавиш.
-//! Рабочая область — вывод и, если панель не скрыта, колонка справа, где
-//! переменные и алгоритмы показаны одновременно, а не по очереди: чтобы
-//! увидеть и то и другое, переключаться не нужно.
+//! Layout: header bar, main area, input line, key hints bar. The main area
+//! contains output and (if not hidden) a right panel showing variables and
+//! algorithms together, not alternating: no need to switch to see both.
 //!
-//! Рамки скруглённые и приглушённые, а внимание уводится на содержимое —
-//! в консоли смотрят на вывод, а не на её обрамление.
+//! Borders are rounded and muted; focus goes to content — in the console you
+//! watch the output, not the frame.
 
 use ratatui::prelude::*;
 use ratatui::widgets::{
@@ -19,17 +18,17 @@ use super::repl::{Panel, ReplApp};
 use super::syntax;
 use super::theme;
 
-/// Ширина боковой колонки. Хватает имени переменной и короткого значения.
+/// Side panel width. Enough for variable name and short value.
 const PANEL_WIDTH: u16 = 32;
-/// Ниже этой ширины боковая колонка съедала бы вывод — она прячется сама.
+/// Below this width, the side panel would eat the output — it hides itself.
 const MIN_WIDTH_FOR_PANEL: u16 = 76;
 
 pub(crate) fn draw(frame: &mut Frame, app: &ReplApp) {
     let rows = Layout::vertical([
-        Constraint::Length(1), // полоса заголовка
-        Constraint::Min(3),    // вывод и панель
-        Constraint::Length(3), // ввод
-        Constraint::Length(1), // полоса клавиш
+        Constraint::Length(1), // header bar
+        Constraint::Min(3),    // output and panel
+        Constraint::Length(3), // input
+        Constraint::Length(1), // key hints bar
     ])
     .split(frame.area());
 
@@ -55,7 +54,7 @@ pub(crate) fn draw(frame: &mut Frame, app: &ReplApp) {
     }
 }
 
-/// Скруглённая рамка с внутренним отступом и заголовком.
+/// Rounded border with padding and title.
 fn panel_block(title: &str, active: bool) -> Block<'_> {
     Block::default()
         .title(Span::styled(format!(" {title} "), theme::title(active)))
@@ -66,7 +65,7 @@ fn panel_block(title: &str, active: bool) -> Block<'_> {
 }
 
 // ---------------------------------------------------------------------------
-//                            ПОЛОСА ЗАГОЛОВКА
+//                            HEADER BAR
 // ---------------------------------------------------------------------------
 
 fn header(frame: &mut Frame, area: Rect, app: &ReplApp) {
@@ -87,8 +86,7 @@ fn header(frame: &mut Frame, area: Rect, app: &ReplApp) {
         ));
     }
 
-    // Справа — то, что меняется по ходу работы: сколько всего определено и
-    // ждём ли закрытия конструкции.
+    // Right side: changing info — what is defined and whether we await closing.
     let mut right = Vec::new();
     if app.depth() > 0 {
         right.push(Span::styled(
@@ -120,7 +118,7 @@ fn width_of(spans: &[Span]) -> u16 {
 }
 
 // ---------------------------------------------------------------------------
-//                                 ВЫВОД
+//                                 OUTPUT
 // ---------------------------------------------------------------------------
 
 fn output(frame: &mut Frame, area: Rect, app: &ReplApp) {
@@ -142,8 +140,7 @@ fn output(frame: &mut Frame, area: Rect, app: &ReplApp) {
 
     let visible = inner.height as usize;
     let total = lines.len();
-    // Показывается хвост: прокрутка отсчитывается от конца, поэтому новые
-    // строки появляются сразу и «догонять» их не нужно.
+    // Show tail: scrolling counts from the end, so new lines appear immediately.
     let end = total.saturating_sub(app.scroll_back());
     let start = end.saturating_sub(visible);
 
@@ -170,7 +167,7 @@ fn output(frame: &mut Frame, area: Rect, app: &ReplApp) {
     }
 }
 
-/// Пустой экран — не пустой: он показывает, с чего начать.
+/// Empty screen is not empty: it shows where to start.
 fn welcome<'a>() -> Paragraph<'a> {
     let dim = Style::default().fg(theme::MUTED);
     let code = Style::default().fg(theme::KEYWORD);

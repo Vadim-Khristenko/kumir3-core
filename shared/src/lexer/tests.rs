@@ -1,3 +1,5 @@
+//! Lexer unit tests.
+
 use crate::lexer::{SpannedToken, tokenize};
 use crate::types::Token;
 
@@ -13,9 +15,9 @@ fn spanned(source: &str) -> Vec<SpannedToken> {
     tokenize(source).unwrap()
 }
 
-// ============================================================================
-//                    БАЗОВЫЕ ТЕСТЫ
-// ============================================================================
+// =============================================================================
+//         SECTION: BASIC TESTS
+// =============================================================================
 
 #[test]
 fn test_empty_and_whitespace() {
@@ -33,9 +35,9 @@ fn test_newlines_preserved() {
     );
 }
 
-// ============================================================================
-//                    ИДЕНТИФИКАТОРЫ И КЛЮЧЕВЫЕ СЛОВА
-// ============================================================================
+// =============================================================================
+//         SECTION: IDENTIFIERS AND KEYWORDS
+// =============================================================================
 
 #[test]
 fn test_keywords_and_identifiers_unicode() {
@@ -50,7 +52,6 @@ fn test_keywords_and_identifiers_unicode() {
 
 #[test]
 fn test_all_keywords() {
-    // Структура алгоритма
     assert_eq!(tokens_only("алг")[0], Token::Alg);
     assert_eq!(tokens_only("нач")[0], Token::Begin);
     assert_eq!(tokens_only("кон")[0], Token::End);
@@ -60,7 +61,6 @@ fn test_all_keywords() {
     assert_eq!(tokens_only("рез")[0], Token::Res);
     assert_eq!(tokens_only("аргрез")[0], Token::ArgRes);
 
-    // Типы
     assert_eq!(tokens_only("цел")[0], Token::IntType);
     assert_eq!(tokens_only("вещ")[0], Token::FloatType);
     assert_eq!(tokens_only("лог")[0], Token::BoolType);
@@ -68,19 +68,16 @@ fn test_all_keywords() {
     assert_eq!(tokens_only("лит")[0], Token::StringType);
     assert_eq!(tokens_only("таб")[0], Token::ArrayType);
 
-    // Kumir 3 типы
     assert_eq!(tokens_only("указатель")[0], Token::PointerType);
     assert_eq!(tokens_only("перечисление")[0], Token::EnumType);
     assert_eq!(tokens_only("авто")[0], Token::AutoType);
 
-    // Логические
     assert_eq!(tokens_only("и")[0], Token::And);
     assert_eq!(tokens_only("или")[0], Token::Or);
     assert_eq!(tokens_only("не")[0], Token::Not);
     assert_eq!(tokens_only("да")[0], Token::True);
     assert_eq!(tokens_only("нет")[0], Token::False);
 
-    // Управление потоком
     assert_eq!(tokens_only("если")[0], Token::If);
     assert_eq!(tokens_only("то")[0], Token::Then);
     assert_eq!(tokens_only("иначе")[0], Token::Else);
@@ -93,12 +90,10 @@ fn test_all_keywords() {
     assert_eq!(tokens_only("шаг")[0], Token::Step);
     assert_eq!(tokens_only("пока")[0], Token::While);
 
-    // Ввод/вывод
     assert_eq!(tokens_only("ввод")[0], Token::Input);
     assert_eq!(tokens_only("вывод")[0], Token::Output);
     assert_eq!(tokens_only("утв")[0], Token::Assert);
 
-    // Kumir 3 расширения
     assert_eq!(tokens_only("подключить")[0], Token::Import);
     assert_eq!(tokens_only("модуль")[0], Token::Module);
     assert_eq!(tokens_only("лямбда")[0], Token::Lambda);
@@ -109,7 +104,6 @@ fn test_all_keywords() {
     assert_eq!(tokens_only("бросить")[0], Token::Throw);
     assert_eq!(tokens_only("наконец")[0], Token::Finally);
 
-    // Kumir 3: None, Optional, NotImplemented
     assert_eq!(tokens_only("Пусто")[0], Token::None);
     assert_eq!(tokens_only("пусто")[0], Token::None);
     assert_eq!(tokens_only("None")[0], Token::None);
@@ -126,32 +120,28 @@ fn test_all_keywords() {
 
 #[test]
 fn test_identifier_with_combining_chars() {
-    // буква e + combining acute accent = é (в разложенной форме)
     let id = "e\u{0301}foo";
     let t = tokens_only(id);
     assert_eq!(t[0], Token::Ident(id.to_string()));
 
-    // Кириллица + combining
-    let id2 = "и\u{0306}мя"; // й в разложенной форме + мя
+    let id2 = "и\u{0306}мя";
     let t2 = tokens_only(id2);
     assert_eq!(t2[0], Token::Ident(id2.to_string()));
 }
 
 #[test]
 fn test_identifier_boundaries() {
-    // Идентификатор не может начинаться с цифры
     let t = tokens_only("123abc");
     assert_eq!(t[0], Token::IntLiteral(123));
     assert_eq!(t[1], Token::Ident("abc".to_string()));
 
-    // Подчёркивание в начале допустимо
     let t2 = tokens_only("_private");
     assert_eq!(t2[0], Token::Ident("_private".to_string()));
 }
 
-// ============================================================================
-//                    ЧИСЛА
-// ============================================================================
+// =============================================================================
+//         SECTION: NUMBER LITERALS
+// =============================================================================
 
 #[test]
 fn test_numbers_and_hex_and_large() {
@@ -167,7 +157,6 @@ fn test_numbers_and_hex_and_large() {
         ]
     );
 
-    // Шестнадцатеричные
     assert_eq!(tokens_only("0x10")[0], Token::IntLiteral(16));
     assert_eq!(tokens_only("0XFF")[0], Token::IntLiteral(255));
     assert_eq!(tokens_only("0xABCDEF")[0], Token::IntLiteral(0xABCDEF));
@@ -175,11 +164,9 @@ fn test_numbers_and_hex_and_large() {
 
 #[test]
 fn test_number_errors() {
-    // слишком большое целое должно вернуть ошибку
     let r = tokenize("9999999999999999999999999999");
     assert!(r.is_err());
 
-    // Некорректная экспонента
     let r2 = tokenize("1e");
     assert!(r2.is_err());
 

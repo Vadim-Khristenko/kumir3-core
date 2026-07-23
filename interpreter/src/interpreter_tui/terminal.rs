@@ -1,3 +1,5 @@
+//! Terminal initialization and restoration.
+
 use crossterm::{
     ExecutableCommand,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},

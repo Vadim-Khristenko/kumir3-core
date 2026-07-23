@@ -1,11 +1,9 @@
-// =============================================================================
-//        МОДУЛЬ: ФУНКЦИИ ВЫСШЕГО ПОРЯДКА НАД ТАБЛИЦАМИ
-// =============================================================================
-// Функции этого модуля принимают другую функцию параметром. Остальные
-// встроенные функции получают уже вычисленные значения; здесь так нельзя:
-// имя алгоритма (`отобразить(a, удвоить)`) переменной не является и при
-// вычислении дало бы «переменная не определена». Поэтому аргумент-функция
-// остаётся выражением до самого вызова, а вычисляются только данные.
+//! Higher-order functions over collections.
+//!
+//! Functions here take other functions as parameters. Unlike other builtins,
+//! function arguments remain unevaluated expressions: algorithm names like
+//! `удвоить` are not variables and would fail if evaluated. Only data arguments
+//! are evaluated; the function argument is passed as an expression to the caller.
 
 use shared::types::{Expr, Number, Value};
 
@@ -15,10 +13,10 @@ use super::super::evaluator::ExprEvaluator;
 use super::Builtins;
 
 impl Builtins {
-    /// Пытается вызвать функцию высшего порядка.
+    /// Attempts to dispatch a higher-order function call.
     ///
-    /// Проверяется ДО остальных категорий: те начинают с вычисления всех
-    /// аргументов, что для аргумента-функции неверно.
+    /// Must be checked before other categories because they evaluate all arguments,
+    /// which is invalid for function parameters.
     pub(crate) fn try_call_functional(
         name: &str,
         args: &[Expr],
@@ -47,20 +45,19 @@ impl Builtins {
         }
     }
 
-    // -------------------------------------------------------------------------
-    //                       ВЫЗОВ АРГУМЕНТА-ФУНКЦИИ
-    // -------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    //                      FUNCTION ARGUMENT INVOCATION
+    // ---------------------------------------------------------------------------
 
-    /// Применяет аргумент-функцию к уже вычисленным значениям.
+    /// Invokes a function argument with pre-evaluated values.
     ///
-    /// Голое имя (`удвоить`) отдаётся обычному разбору вызова: он сам решает,
-    /// переменная это с лямбдой, пользовательский алгоритм или встроенная
-    /// функция. Любое другое выражение (`лямбда(x) -> x*2`, результат
-    /// композиции `f >> g`) вычисляется и обязано дать лямбду.
+    /// A bare name (`удвоить`) is delegated to the normal call dispatcher, which
+    /// decides if it is a lambda variable, user algorithm, or builtin.
+    /// Any other expression (lambda literal, composition result) is evaluated and
+    /// must produce a lambda.
     ///
-    /// Значения оборачиваются в [`Expr::Literal`], поэтому переиспользуется вся
-    /// существующая машинерия вызова — включая проверку числа параметров и
-    /// оператор `?` внутри тела.
+    /// Values are wrapped in `Expr::Literal`, so existing call machinery is reused
+    /// (parameter arity checks, `?` operator in function body, etc.).
     fn apply(
         callee: &Expr,
         arg_values: Vec<Value>,
@@ -85,7 +82,7 @@ impl Builtins {
         }
     }
 
-    /// Разбирает вызов вида `функция(таблица, функция)`.
+    /// Parses calls of the form `функция(table, function)`.
     fn split_table_and_callee<'a>(
         name: &str,
         args: &'a [Expr],
@@ -98,7 +95,7 @@ impl Builtins {
         Ok((table, &args[1]))
     }
 
-    /// Вычисляет аргумент, который обязан быть таблицей.
+    /// Evaluates an argument and requires it to be an array.
     fn eval_table(name: &str, expr: &Expr, env: &mut Environment) -> RuntimeResult<Vec<Value>> {
         match ExprEvaluator::evaluate(expr, env)? {
             Value::Array(items) => Ok(items),
@@ -112,10 +109,10 @@ impl Builtins {
         }
     }
 
-    /// Приводит результат функции-условия к логическому значению.
+    /// Coerces a filter/predicate result to a boolean.
     ///
-    /// Требуется именно `лог`: истинность прочих типов (§ KITE 13 3.20) здесь
-    /// молча скрыла бы опечатку вроде `отобрать(a, лямбда(x) -> x)`.
+    /// Requires exactly `лог` (boolean): silent coercion of other types (per [KITE 13 § 3.20])
+    /// would hide typos like `отобрать(a, лямбда(x) -> x)`.
     fn expect_bool(name: &str, value: Value) -> RuntimeResult<bool> {
         match value {
             Value::Boolean(b) => Ok(b),
@@ -129,11 +126,11 @@ impl Builtins {
         }
     }
 
-    // -------------------------------------------------------------------------
-    //                             РЕАЛИЗАЦИИ
-    // -------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    //                           IMPLEMENTATIONS
+    // ---------------------------------------------------------------------------
 
-    /// `отобразить(таблица, функция)` — таблица результатов функции.
+    /// Map: `отобразить(table, func)` returns the array of function results.
     fn hof_map(name: &str, args: &[Expr], env: &mut Environment) -> RuntimeResult<Value> {
         let (items, callee) = Self::split_table_and_callee(name, args, env)?;
         let mut out = Vec::with_capacity(items.len());
@@ -143,7 +140,7 @@ impl Builtins {
         Ok(Value::Array(out))
     }
 
-    /// `отобрать(таблица, условие)` — элементы, для которых условие истинно.
+    /// Filter: `отобрать(table, pred)` returns elements where predicate is true.
     fn hof_filter(name: &str, args: &[Expr], env: &mut Environment) -> RuntimeResult<Value> {
         let (items, callee) = Self::split_table_and_callee(name, args, env)?;
         let mut out = Vec::new();
@@ -156,10 +153,10 @@ impl Builtins {
         Ok(Value::Array(out))
     }
 
-    /// `свернуть(таблица, начальное, функция)` — свёртка слева направо.
+    /// Fold: `свернуть(table, init, func)` performs left-associative reduction.
     ///
-    /// Функция получает накопленное значение и очередной элемент. Начальное
-    /// значение обязательно: без него свёртка пустой таблицы не определена.
+    /// The function receives the accumulator and current element in order.
+    /// An initial value is mandatory: fold of an empty array is undefined without it.
     fn hof_fold(name: &str, args: &[Expr], env: &mut Environment) -> RuntimeResult<Value> {
         if args.len() != 3 {
             return Err(RuntimeError::argument_count(name, 3, args.len()));
@@ -173,10 +170,9 @@ impl Builtins {
         Ok(acc)
     }
 
-    /// `любой_из` / `все_из` — кванторы существования и всеобщности.
+    /// Quantifiers: `любой_из` (any) and `все_из` (all).
     ///
-    /// Обход прекращается на первом решающем элементе: у `любой_из` — на
-    /// истинном, у `все_из` — на ложном.
+    /// Traversal short-circuits on the first decisive element: true for `any`, false for `all`.
     fn hof_quantifier(
         name: &str,
         args: &[Expr],
@@ -193,14 +189,14 @@ impl Builtins {
                 _ => {}
             }
         }
-        // Пустая таблица: «любой» ложно, «все» истинно — как в математике.
+        // Empty array: `any` → false, `all` → true (mathematical convention).
         Ok(Value::Boolean(matches!(kind, Quantifier::All)))
     }
 
-    /// `найти_первый(таблица, условие)` — необязательное значение.
+    /// Find: `найти_первый(table, pred)` returns an optional value.
     ///
-    /// Возвращает `некоторое(элемент)` либо `ничего`, а не сам элемент: иначе
-    /// «не найдено» было бы неотличимо от найденного `пусто`.
+    /// Returns `некоторое(element)` or `ничего`, not the element itself:
+    /// this way "not found" is distinguishable from finding `пусто`.
     fn hof_find_first(name: &str, args: &[Expr], env: &mut Environment) -> RuntimeResult<Value> {
         let (items, callee) = Self::split_table_and_callee(name, args, env)?;
         for item in items {
@@ -212,7 +208,7 @@ impl Builtins {
         Ok(Value::Option(Box::new(None)))
     }
 
-    /// `количество(таблица, условие)` — сколько элементов удовлетворяют условию.
+    /// Count: `количество(table, pred)` counts elements satisfying the predicate.
     fn hof_count(name: &str, args: &[Expr], env: &mut Environment) -> RuntimeResult<Value> {
         let (items, callee) = Self::split_table_and_callee(name, args, env)?;
         let mut n: i64 = 0;
@@ -225,12 +221,11 @@ impl Builtins {
         Ok(Value::Number(Number::I64(n)))
     }
 
-    /// `сортировать_по(таблица, ключ)` — сортировка по вычисляемому ключу.
+    /// Sort by key: `сортировать_по(table, key_func)` sorts by a computed key.
     ///
-    /// Ключи вычисляются по одному разу на элемент, до сортировки: вызывать
-    /// функцию из компаратора значило бы звать её порядка `n·log n` раз.
-    /// Порядок устойчивый — элементы с равными ключами сохраняют исходный
-    /// порядок следования.
+    /// Keys are computed once per element before sorting: calling the function
+    /// from the comparator would invoke it O(n log n) times instead of O(n).
+    /// Sort is stable: elements with equal keys preserve their original order.
     fn hof_sort_by(name: &str, args: &[Expr], env: &mut Environment) -> RuntimeResult<Value> {
         let (items, callee) = Self::split_table_and_callee(name, args, env)?;
 
@@ -240,9 +235,8 @@ impl Builtins {
             keyed.push((key, item));
         }
 
-        // Сравнение ключей — те же правила, что и у оператора `<`
-        // (KITE 13 § 3.8): несравнимая пара ключей должна быть ошибкой, а не
-        // произвольным порядком.
+        // Key comparison uses the same rules as the `<` operator ([KITE 13 § 3.8]):
+        // incomparable keys are an error, not an arbitrary ordering.
         let mut failure = None;
         keyed.sort_by(|(a, _), (b, _)| {
             match super::super::ops::TypeOps::compare(a, b, |o| o == std::cmp::Ordering::Less) {
@@ -271,7 +265,7 @@ impl Builtins {
     }
 }
 
-/// Какой квантор вычисляет [`Builtins::hof_quantifier`].
+/// Which quantifier `hof_quantifier` implements.
 #[derive(Clone, Copy)]
 enum Quantifier {
     Any,

@@ -1,21 +1,21 @@
-//! Встроенные функции Кумир.
+//! Kumir built-in functions.
 //!
-//! Источник истины — таблица `BUILTINS` в `shared/build.rs`; здесь — сгенерированный
-//! индекс с категориями и тонкие обёртки.
+//! Single source of truth: `BUILTINS` table in `shared/build.rs`. This module
+//! provides the generated index with categories and thin wrappers.
 
-/// Категория встроенной функции. Math/String/Io считаются `is_builtin_function`.
+/// Category of a built-in function. Math, String, Io count as `is_builtin_function`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuiltinCategory {
     Math,
     String,
     Io,
-    /// Конверсии/коллекции/прочее: входят в перечень имён, но не в is_builtin_function.
+    /// Conversions, collections, and other utilities: in the name list but not `is_builtin_function`.
     Other,
 }
 
 include!(concat!(env!("OUT_DIR"), "/builtins_gen.rs"));
 
-/// Проверяет, является ли строка встроенной функцией (Math/String/Io).
+/// Checks if a string is a built-in function (Math, String, or Io category).
 #[inline]
 pub fn is_builtin_function(s: &str) -> bool {
     matches!(
@@ -24,13 +24,13 @@ pub fn is_builtin_function(s: &str) -> bool {
     )
 }
 
-/// Категория встроенной функции, если известна.
+/// The category of a built-in name, if known.
 #[inline]
 pub fn builtin_category(s: &str) -> Option<BuiltinCategory> {
     BUILTIN_INDEX.get(s).copied()
 }
 
-/// Все имена встроенных функций (всех категорий).
+/// All built-in function names, across all categories.
 #[inline]
 pub fn get_all_builtin_names() -> Vec<&'static str> {
     ALL_BUILTIN_NAMES.to_vec()

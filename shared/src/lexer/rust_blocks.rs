@@ -1,6 +1,8 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
+//! Scanning of Rust code blocks embedded in Kumir source.
+
 use super::{
     Lexer, LexerError, LexerErrorKind, LexerResult, LexerState, Position, Span, SpannedToken,
 };
@@ -8,11 +10,11 @@ use crate::constants::is_ident_continue;
 use crate::types::Token;
 
 impl<'a> Lexer<'a> {
-    // =========================================================================
-    //         RUST BLOCKS
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: RUST BLOCKS
+    // =============================================================================
 
-    /// Scans Rust block content (РастВставкаНЦ ... РастВставкаКЦ).
+    /// Scans Rust code block (РастВставкаНЦ ... РастВставкаКЦ).
     pub(super) fn scan_rust_block(&mut self, start: Position) -> LexerResult<Option<SpannedToken>> {
         let content_start = self.pos;
 
@@ -28,7 +30,6 @@ impl<'a> Lexer<'a> {
             if self.remaining().starts_with("РастВставкаКЦ") {
                 let content = self.slice(content_start, self.pos).to_string();
 
-                // Skip the end marker
                 for _ in "РастВставкаКЦ".chars() {
                     self.advance();
                 }
@@ -52,7 +53,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Scans alternative Rust block (ржавчина нач ... кон).
+    /// Scans alternative Rust code block (ржавчина нач ... кон).
     pub(super) fn scan_rust_alt_block(
         &mut self,
         start: Position,
@@ -68,7 +69,6 @@ impl<'a> Lexer<'a> {
                 ));
             }
 
-            // Check for "кон" as a word boundary
             let remaining = self.remaining();
             if let Some(after) = remaining.strip_prefix("кон") {
                 let is_end = after.is_empty()
@@ -81,7 +81,6 @@ impl<'a> Lexer<'a> {
                 if is_end {
                     let content = self.slice(content_start, self.pos).to_string();
 
-                    // Skip "кон"
                     for _ in "кон".chars() {
                         self.advance();
                     }

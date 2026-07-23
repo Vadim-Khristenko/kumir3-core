@@ -1,9 +1,9 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
-//! Система пользовательских библиотек
+//! User library system.
 //!
-//! Позволяет пользователям создавать свои библиотеки на языке Kumir 3.
+//! Allows users to create their own libraries in Kumir 3.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -16,45 +16,45 @@ use crate::types::{
     library::{LibFunctionDef, LibParamDef, LibraryDef},
 };
 
-/// Загрузчик пользовательских библиотек из .kum файлов.
+/// Loader for user libraries from .kum files.
 pub struct UserLibraryLoader {
-    /// Кэш загруженных библиотек
+    /// Cache of loaded libraries.
     cache: HashMap<PathBuf, LibraryDef>,
 }
 
 impl UserLibraryLoader {
-    /// Создаёт новый загрузчик.
+    /// Creates a new loader.
     pub fn new() -> Self {
         Self {
             cache: HashMap::new(),
         }
     }
 
-    /// Загружает библиотеку из .kum файла.
+    /// Loads a library from a .kum file.
     pub fn load_from_file(&mut self, path: &Path) -> Result<LibraryDef, String> {
-        // Проверяем кэш
+        // Check cache.
         if let Some(lib) = self.cache.get(path) {
             return Ok(lib.clone());
         }
 
-        // Читаем файл
+        // Read file.
         let source = std::fs::read_to_string(path)
             .map_err(|e| format!("Не удалось прочитать файл '{}': {}", path.display(), e))?;
 
-        // Парсим
+        // Parse.
         let program =
             parse(&source).map_err(|e| format!("Ошибка парсинга '{}': {:?}", path.display(), e))?;
 
-        // Конвертируем в библиотеку
+        // Convert to library.
         let lib = self.program_to_library(program, path, None)?;
 
-        // Кэшируем
+        // Cache.
         self.cache.insert(path.to_path_buf(), lib.clone());
 
         Ok(lib)
     }
 
-    /// Загружает библиотеку из директории с kumir.toml.
+    /// Loads a library from a directory with kumir.toml.
     pub fn load_from_directory(&mut self, dir: &Path) -> Result<LibraryDef, String> {
         let config_path = dir.join("kumir.toml");
 
@@ -62,34 +62,34 @@ impl UserLibraryLoader {
             return Err(format!("Файл kumir.toml не найден в '{}'", dir.display()));
         }
 
-        // Загружаем конфигурацию
+        // Load config.
         let config = KumirConfig::load(&config_path)
             .map_err(|e| format!("Ошибка загрузки kumir.toml: {:?}", e))?;
 
-        // Определяем главный файл библиотеки
+        // Determine main library file.
         let main_file = dir.join(&config.build.main_file);
 
         if !main_file.exists() {
             return Err(format!("Главный файл '{}' не найден", main_file.display()));
         }
 
-        // Читаем и парсим главный файл
+        // Read and parse main file.
         let source = std::fs::read_to_string(&main_file)
             .map_err(|e| format!("Не удалось прочитать файл '{}': {}", main_file.display(), e))?;
 
         let program = parse(&source)
             .map_err(|e| format!("Ошибка парсинга '{}': {:?}", main_file.display(), e))?;
 
-        // Конвертируем в библиотеку с метаданными из конфига
+        // Convert to library with config metadata.
         let lib = self.program_to_library(program, &main_file, Some(&config))?;
 
-        // Кэшируем
+        // Cache.
         self.cache.insert(dir.to_path_buf(), lib.clone());
 
         Ok(lib)
     }
 
-    /// Конвертирует программу в определение библиотеки.
+    /// Converts a program to a library definition.
     fn program_to_library(
         &self,
         program: Program,
@@ -107,13 +107,13 @@ impl UserLibraryLoader {
 
         let mut functions = Vec::new();
 
-        // Конвертируем все алгоритмы в функции библиотеки
+        // Convert all algorithms to library functions.
         for alg in &program.algorithms {
             let func = self.algorithm_to_function(alg)?;
             functions.push(func);
         }
 
-        // Создаём определение библиотеки
+        // Create library definition.
         let version = if let Some(cfg) = config {
             crate::types::library::LibVersion::from_version(&cfg.metadata.version)
         } else {
@@ -164,11 +164,11 @@ impl UserLibraryLoader {
         })
     }
 
-    /// Конвертирует алгоритм в функцию библиотеки.
+    /// Converts an algorithm to a library function.
     fn algorithm_to_function(&self, alg: &Algorithm) -> Result<LibFunctionDef, String> {
         let mut params = Vec::new();
 
-        // Конвертируем параметры
+        // Convert parameters.
         for param in &alg.params {
             let type_kind = param
                 .type_kind
@@ -190,7 +190,7 @@ impl UserLibraryLoader {
             description: alg.doc.as_ref().map(|s| Arc::from(s.as_ref())),
             params,
             returns: alg.return_type.clone(),
-            handler: None, // Пользовательские функции не имеют нативного обработчика
+            handler: None, // User-defined functions have no native handler.
             is_procedure: alg.return_type.is_none(),
             is_async: false,
             is_pure: false,
@@ -200,7 +200,7 @@ impl UserLibraryLoader {
         })
     }
 
-    /// Очищает кэш.
+    /// Clears the cache.
     pub fn clear_cache(&mut self) {
         self.cache.clear();
     }

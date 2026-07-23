@@ -14,10 +14,10 @@ impl fmt::Display for Value {
             Value::Number(n) => write!(f, "{}", n),
             Value::String(s) => write!(f, "{}", s),
             Value::Boolean(b) => write!(f, "{}", if *b { "да" } else { "нет" }),
-            // Символ печатается сам по себе, без кавычек — как и строка выше.
-            // Кавычки — запись символа в исходном тексте, а не его значение:
-            // с ними `вывод 'а'` показывал бы `'а'`, а `'а' как лит` давало бы
-            // строку из трёх символов.
+            // Character is printed as-is, without quotes — like string above.
+            // Quotes are the character literal representation in source, not its value:
+            // with them `вывод 'а'` would show `'а'`, but `'а' как лит` would be
+            // a string of three characters.
             Value::Char(c) => write!(f, "{}", c),
             Value::Array(a) => {
                 write!(f, "[")?;

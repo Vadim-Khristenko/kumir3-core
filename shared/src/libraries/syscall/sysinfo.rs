@@ -1,4 +1,4 @@
-//! Функции получения информации о системе
+//! System information functions.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

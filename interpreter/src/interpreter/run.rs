@@ -1,3 +1,5 @@
+//! Program execution, interactive mode, and algorithm calls.
+
 use super::Interpreter;
 use super::error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
 use super::evaluator::ExprEvaluator;
@@ -6,13 +8,12 @@ use shared::parser::{parse, parse_expression};
 use shared::types::{Program, Value};
 
 impl Interpreter {
-    // =========================================================================
-    //                    ВЫПОЛНЕНИЕ ПРОГРАММ
-    // =========================================================================
+    // =============================================================================
+    //                         PROGRAM EXECUTION
+    // =============================================================================
 
-    /// Выполняет исходный код программы.
+    /// Runs the source code of a program.
     pub fn run(&mut self, source: &str) -> RuntimeResult<Value> {
-        // Парсим программу
         let program = parse(source).map_err(|e| {
             RuntimeError::new(format!("Ошибка разбора: {}", e), RuntimeErrorKind::Other)
         })?;
@@ -20,19 +21,17 @@ impl Interpreter {
         self.run_program(&program)
     }
 
-    /// Выполняет фрагмент так, как этого ждут в интерактивном режиме.
+    /// Runs a code fragment in interactive mode.
     ///
-    /// Отличие от [`Self::run`] одно, но важное: набранные подряд команды
-    /// работают с общим состоянием. Обычный запуск оборачивает свободные
-    /// инструкции в главный алгоритм, а его кадр после выполнения снимается —
-    /// вместе со всеми объявленными переменными. В консоли это означало, что
-    /// `цел счётчик := 5`, набранное строкой выше, следующей строке уже не
-    /// видно.
+    /// Key difference from [`Self::run`]: consecutive commands share the same state.
+    /// Normal execution wraps free statements in the main algorithm, and its stack
+    /// frame is popped after execution — along with all declared variables. In the
+    /// REPL, this meant `цел счётчик := 5` typed one line would not be visible the
+    /// next line.
     ///
-    /// Поэтому свободные инструкции выполняются прямо в глобальной области, а
-    /// объявления алгоритмов и классов — как обычно, они и так глобальны.
-    /// Программа с собственной точкой входа (`алг главный`) запускается
-    /// целиком: раз человек её написал, он ждёт именно запуска.
+    /// Here, free statements execute directly in global scope; algorithm and class
+    /// declarations work as usual (they are global anyway). A program with its own
+    /// entry point (`алг главный`) runs fully: the user wrote it expecting full execution.
     pub fn run_interactive(&mut self, source: &str) -> RuntimeResult<Value> {
         let program = parse(source).map_err(|e| {
             RuntimeError::new(format!("Ошибка разбора: {}", e), RuntimeErrorKind::Other)
@@ -45,8 +44,8 @@ impl Interpreter {
             Executor::execute(stmt, &mut self.env)?;
         }
 
-        // Свободные инструкции разбор собирает в анонимный алгоритм.
-        // Выполняем их телом, без кадра, — тогда объявленное остаётся.
+        // Free statements are collected by the parser into an anonymous algorithm.
+        // Execute them directly without a frame — so declarations persist.
         if program.auto_wrapped
             && let Some(main) = &program.main
         {
@@ -59,33 +58,29 @@ impl Interpreter {
             return Ok(Value::Null);
         }
 
-        // Есть точка входа — человек написал программу и ждёт её запуска.
+        // Has entry point — user wrote a program and expects it to run.
         if let Some(main) = &program.main {
             return self.call_algorithm(&main.name, &[]);
         }
 
-        // Объявления без точки входа — только определения. Запускать здесь
-        // нечего: обычный запуск в этом случае зовёт первый попавшийся
-        // алгоритм, и объявление `алг цел удвоить(цел x)` немедленно давало
-        // «ожидался 1 аргумент, получено 0». В консоли объявление — это
-        // объявление, а вызывает пусть человек.
+        // Declarations only. Nothing to run: normal execution would call the first
+        // algorithm it finds, making a declaration `алг цел удвоить(цел x)` fail with
+        // "expected 1 argument, got 0". In the REPL, a declaration is just that.
         Ok(Value::Null)
     }
 
-    /// Выполняет распаршенную программу.
+    /// Runs a parsed program.
     pub fn run_program(&mut self, program: &Program) -> RuntimeResult<Value> {
-        // Загружаем определения в среду
         self.load_program(program)?;
 
-        // [KITE 11] Проверки ООП: финал-переопределение, абстрактные методы.
+        // [KITE 11] OOP checks: final override, abstract methods.
         self.validate_classes()?;
 
-        // Выполняем глобальные инструкции (объявления перечислений и т.д.)
         for stmt in &program.globals {
             Executor::execute(stmt, &mut self.env)?;
         }
 
-        // Ищем главный алгоритм
+        // Look for entry point
         if let Some(main) = &program.main {
             self.call_algorithm(&main.name, &[])
         } else if self.env.has_algorithm("Главный") {
@@ -99,44 +94,39 @@ impl Interpreter {
         } else if self.env.has_algorithm("main") {
             self.call_algorithm("main", &[])
         } else if !program.algorithms.is_empty() {
-            // Ищем алгоритм без параметров
+            // Look for a parameterless algorithm
             for alg in &program.algorithms {
                 if alg.params.is_empty() {
                     return self.call_algorithm(&alg.name, &[]);
                 }
             }
-            // Если все с параметрами - вызываем первый (возможно будет ошибка)
+            // All have parameters; call the first (may fail)
             self.call_algorithm(&program.algorithms[0].name, &[])
         } else {
             Ok(Value::Null)
         }
     }
 
-    /// Загружает определения программы в среду.
+    /// Loads program definitions into the environment.
     fn load_program(&mut self, program: &Program) -> RuntimeResult<()> {
-        // Обрабатываем импорты
         for import in &program.imports {
             self.process_import(import)?;
         }
 
-        // Загружаем алгоритмы
         for alg in &program.algorithms {
             self.env.define_algorithm(alg.clone());
         }
 
-        // Загружаем перегруженные алгоритмы
         for overloaded in &program.overloaded_algorithms {
             for alg in &overloaded.overloads {
                 self.env.define_algorithm(alg.clone());
             }
         }
 
-        // Загружаем классы
         for class in &program.classes {
             self.env.define_class(class.clone());
         }
 
-        // Загружаем главный алгоритм
         if let Some(main) = &program.main {
             self.env.define_algorithm(main.clone());
         }
@@ -144,11 +134,10 @@ impl Interpreter {
         Ok(())
     }
 
-    /// Вызывает алгоритм по имени.
+    /// Calls an algorithm by name with arguments.
     pub fn call_algorithm(&mut self, name: &str, args: &[Value]) -> RuntimeResult<Value> {
         let algorithm = self.env.get_algorithm(name)?.clone();
 
-        // Проверяем количество аргументов
         if args.len() != algorithm.params.len() {
             return Err(RuntimeError::argument_count(
                 name,
@@ -157,39 +146,33 @@ impl Interpreter {
             ));
         }
 
-        // Создаём кадр вызова
         self.env.push_frame(algorithm.name.as_ref())?;
 
-        // Привязываем параметры
         for (param, value) in algorithm.params.iter().zip(args.iter()) {
             self.env.define_local(param.name.to_string(), value.clone());
         }
 
-        // Выполняем тело
         let result =
             Executor::execute_stmts(algorithm.body.as_deref().unwrap_or(&[]), &mut self.env);
 
-        // Получаем возвращаемое значение
         let return_value = self.env.get_result_value().cloned();
 
-        // Удаляем кадр
         self.env.pop_frame();
 
-        // Обрабатываем результат
         match result {
             Ok(ControlFlow::Return(value)) => Ok(value.unwrap_or(Value::Null)),
             Ok(_) => Ok(return_value.unwrap_or(Value::Null)),
-            // [KITE-0002] Сигнал оператора `?`: ранний возврат этого значения.
+            // [KITE-0002] `?` operator signal: early return of this value.
             Err(e) if e.is_propagation() => Ok(*e.propagate.expect("propagation carries a value")),
             Err(e) => Err(e),
         }
     }
 
-    // =========================================================================
-    //                    ВЫЧИСЛЕНИЕ ВЫРАЖЕНИЙ
-    // =========================================================================
+    // =============================================================================
+    //                        EXPRESSION EVALUATION
+    // =============================================================================
 
-    /// Вычисляет выражение из строки.
+    /// Evaluates an expression from source code.
     pub fn eval(&mut self, source: &str) -> RuntimeResult<Value> {
         let expr = parse_expression(source).map_err(|e| {
             RuntimeError::new(
@@ -203,20 +186,20 @@ impl Interpreter {
 }
 
 // =============================================================================
-//                           УДОБНЫЕ ФУНКЦИИ
+//                        CONVENIENCE FUNCTIONS
 // =============================================================================
 
-/// Выполняет исходный код и возвращает результат.
+/// Runs source code and returns the result.
 pub fn run(source: &str) -> RuntimeResult<Value> {
     Interpreter::new().run(source)
 }
 
-/// Вычисляет выражение и возвращает результат.
+/// Evaluates an expression and returns the result.
 pub fn eval(source: &str) -> RuntimeResult<Value> {
     Interpreter::new().eval(source)
 }
 
-/// Выполняет программу и возвращает вывод.
+/// Runs a program and returns its output.
 pub fn run_and_get_output(source: &str) -> RuntimeResult<String> {
     let mut interpreter = Interpreter::new();
     interpreter.run(source)?;

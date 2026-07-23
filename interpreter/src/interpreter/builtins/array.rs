@@ -1,3 +1,5 @@
+//! Array manipulation functions.
+
 use shared::types::{Expr, Number, Value};
 
 use super::super::environment::Environment;
@@ -12,7 +14,7 @@ impl Builtins {
     ) -> RuntimeResult<Option<Value>> {
         let vals = Self::eval_args(args, env)?;
         match name {
-            // ===== МАССИВЫ =====
+            // Array constructors and basic operations
             "таб" | "array" | "массив" => Ok(Some(Value::Array(vals))),
 
             "добавить" | "push" | "append" => {
@@ -137,8 +139,7 @@ impl Builtins {
                 }
             }
 
-            // Индекс элемента (массив) или подстроки (строка), нумерация с 1;
-            // 0 означает «не найдено» — как у `позиция`.
+            // Index of element (array) or substring (string), 1-indexed; 0 means not found.
             "индекс" | "index_of" => {
                 Self::check_args(name, &vals, 2)?;
                 match &vals[0] {
@@ -179,7 +180,6 @@ impl Builtins {
                 Ok(Some(Value::Boolean(empty)))
             }
 
-            // Функция не найдена
             _ => Ok(None),
         }
     }

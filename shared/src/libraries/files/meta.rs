@@ -1,4 +1,4 @@
-//! Метаданные файлов: существование, размер, тип, права
+//! File metadata: existence, size, type, permissions.
 
 use std::sync::Arc;
 

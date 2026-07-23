@@ -1,15 +1,13 @@
-//! Значения по умолчанию для типов — делегирует движку shared::typesys.
-
 use shared::types::TypeKind;
 
 use super::TypeOps;
 
 impl TypeOps {
-    /// Возвращает значение по умолчанию для типа.
+    /// Returns default value for a type.
     ///
-    /// Делегирует движку системы типов (shared::typesys), чтобы инициализация
-    /// переменных была единообразной в интерпретаторе и компиляторе. Типы без
-    /// естественного значения по умолчанию дают `Undefined`.
+    /// Delegates to type system engine (shared::typesys) so variable initialization
+    /// is uniform across interpreter and compiler. Types without natural default
+    /// value give `Undefined`.
     pub fn default_value(ty: &TypeKind) -> shared::types::Value {
         shared::typesys::default_engine()
             .default_value(ty)

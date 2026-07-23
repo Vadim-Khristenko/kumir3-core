@@ -1,10 +1,10 @@
-//! Интерактивный режим: состояние сессии и обработка клавиш.
+//! Interactive REPL: session state and key handling.
 //!
-//! Как это выглядит на экране — в [`super::draw`]. Разделение не косметическое:
-//! поведение консоли (что считается незакрытой конструкцией, что делает Tab,
-//! переживают ли переменные Enter) проверяется тестами, а отрисовка требует
-//! терминала и тестами не покрывается. Держать их врозь — значит иметь
-//! возможность проверить первое, не запуская второе.
+//! Display logic is in [`super::draw`]. The separation is not cosmetic: console
+//! behavior (what counts as unclosed construct, what Tab does, whether variables
+//! survive Enter) is tested here, while rendering requires a terminal and
+//! cannot be tested. Keeping them separate lets us verify behavior without running
+//! the display.
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use shared::types::Value;
@@ -15,14 +15,14 @@ use crate::interpreter::Interpreter;
 use crate::terminal::{init_terminal, restore_terminal};
 use crate::ui::OutputLine;
 
-/// Видна ли боковая колонка.
+/// Whether the side panel is visible.
 ///
-/// Переменные и алгоритмы показываются в ней одновременно, поэтому выбирать
-/// между ними не нужно — остаётся только «показать или убрать».
+/// Variables and algorithms are shown together in it, so there is no need to
+/// choose between them — we just show or hide the panel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Panel {
     Shown,
-    /// Панель убрана — весь экран под вывод.
+    /// Panel hidden — whole screen is for output.
     Hidden,
 }
 
@@ -42,19 +42,19 @@ pub(crate) struct ReplApp {
     history: Vec<String>,
     history_idx: isize,
     saved_input: String,
-    /// Сколько строк вывода прокручено вверх от конца. 0 — виден конец.
+    /// How many lines of output scrolled up from the end. 0 = at the end.
     scroll_back: usize,
     panel: Panel,
     show_help: bool,
     debug_mode: bool,
     should_quit: bool,
-    /// Накопленный текст незакрытой конструкции (`алг`, `нц`, `если`).
+    /// Accumulated text of unclosed constructs (`алг`, `нц`, `если`).
     pending: String,
-    /// Сколько конструкций ещё не закрыто.
+    /// How many constructs are still open.
     depth: usize,
-    /// Сколько заголовков `алг` ждут своего `нач`.
+    /// How many `алг` headers await their `нач`.
     awaiting_body: usize,
-    /// Варианты дополнения текущего слова; пусто — перебор не идёт.
+    /// Completion options for current word; empty if cycling is not active.
     completions: Vec<String>,
     completion_idx: usize,
 }
@@ -64,9 +64,9 @@ impl ReplApp {
         let mut interpreter = Interpreter::new();
         interpreter.set_debug_mode(debug);
 
-        // Вывод остаётся пустым: пока в нём ничего нет, отрисовка показывает
-        // приветствие с примерами. Заполнять его подсказками — значит сразу
-        // засорять то, ради чего консоль и открыли.
+        // Output starts empty: while it is empty, the display shows welcome
+        // text with examples. Filling it with hints would clutter what the user
+        // opened the console to do.
         Self {
             interpreter,
             input: InputLine::default(),
@@ -87,11 +87,11 @@ impl ReplApp {
         }
     }
 
-    // -----------------------------------------------------------------------
-    //                            ВЫПОЛНЕНИЕ
-    // -----------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    //                            EXECUTION
+    // ---------------------------------------------------------------------------
 
-    /// Обрабатывает нажатие Enter.
+    /// Handles Enter key press.
     fn submit(&mut self) {
         let line = self.input.take();
         self.completions.clear();
@@ -104,7 +104,7 @@ impl ReplApp {
         self.history.push(line.clone());
         self.history_idx = -1;
 
-        // Знак на левом поле ставит отрисовка — здесь только сам текст.
+        // Gutter symbol is drawn by the display — here we just add text.
         self.output.push(OutputLine::Input(line.clone()));
 
         if self.depth == 0 && line.trim_start().starts_with([',', '.', ':']) {
@@ -112,7 +112,7 @@ impl ReplApp {
             return;
         }
 
-        // Незакрытая конструкция копится до своего `кон`/`кц`/`все`.
+        // Unclosed constructs accumulate until `кон`/`кц`/`все`.
         self.track_depth(&line);
         self.pending.push_str(&line);
         self.pending.push('\n');
@@ -125,13 +125,13 @@ impl ReplApp {
         self.run_code(&code);
     }
 
-    /// Пересчитывает число незакрытых конструкций после очередной строки.
+    /// Recounts how many constructs are still open after this line.
     ///
-    /// `алг` и `нач` считаются вместе, а не по отдельности: заголовок
-    /// алгоритма и его тело закрываются одним `кон`, поэтому `нач`, идущий за
-    /// `алг`, глубину не увеличивает. Без этого `алг цел удвоить(цел x)`
-    /// уходил на выполнение сразу — до того, как человек напишет `нач`, — и
-    /// разбор жаловался на неожиданный конец файла.
+    /// `алг` and `нач` are counted together, not separately: an algorithm
+    /// header and its body are closed by a single `кон`, so `нач` following
+    /// `алг` does not increase depth. Without this, `алг цел удвоить(цел x)`
+    /// would execute immediately — before the user types `нач` — and the parser
+    /// would complain about unexpected end of file.
     fn track_depth(&mut self, line: &str) {
         let algs = count_words(line, &["алг"]);
         let begins = count_words(line, &["нач"]);
@@ -140,7 +140,7 @@ impl ReplApp {
 
         self.depth += algs + opens;
 
-        // `нач`, закрывающий ожидание заголовка, своей глубины не добавляет.
+        // `нач` that closes header expectation does not add to depth.
         let covered = begins.min(self.awaiting_body + algs);
         self.awaiting_body = self.awaiting_body + algs - covered;
         self.depth += begins - covered;
@@ -153,13 +153,13 @@ impl ReplApp {
 
     fn run_code(&mut self, code: &str) {
         self.interpreter.clear_output();
-        // Интерактивный запуск: набранное строкой выше должно быть видно
-        // строкой ниже, поэтому свободные инструкции выполняются в общей
-        // области, а не в снимаемом кадре.
+        // Interactive execution: text typed on one line should be visible on
+        // the next line, so free statements execute in the shared scope, not
+        // in a disposable frame.
         let outcome = self.interpreter.run_interactive(code);
 
-        // Вывод показывается в обоих случаях: при ошибке он говорит, докуда
-        // дошло выполнение, и без него причину искать труднее.
+        // Output is shown in both success and error cases: on error it indicates
+        // how far execution got, making it easier to find the issue.
         let printed = self.interpreter.get_output();
         for line in printed.lines() {
             self.output.push(OutputLine::Normal(line.to_string()));
@@ -215,7 +215,7 @@ impl ReplApp {
             }
             ".загрузить" | ".load" => self.load_file(arg),
 
-            // Пасхалки: без них консоль была бы скучнее.
+            // Easter eggs: the console would be duller without them.
             ":q!" | ":q" | ":wq" | ":x" => {
                 say("Мы не в Vim, к сожалению.", OutputLine::Warning);
                 say(
@@ -265,11 +265,11 @@ impl ReplApp {
         }
     }
 
-    // -----------------------------------------------------------------------
-    //                          АВТОДОПОЛНЕНИЕ
-    // -----------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    //                          AUTOCOMPLETION
+    // ---------------------------------------------------------------------------
 
-    /// Дополняет слово под курсором; повторный Tab перебирает варианты.
+    /// Completes the word under the cursor; pressing Tab again cycles through options.
     fn complete(&mut self) {
         if !self.completions.is_empty() {
             self.completion_idx = (self.completion_idx + 1) % self.completions.len();
@@ -284,8 +284,8 @@ impl ReplApp {
         }
         let lower = prefix.to_lowercase();
 
-        // Дополняется всё, что можно назвать: слова языка, встроенные функции
-        // и то, что определил сам пользователь за сеанс.
+        // Complete everything nameable: language keywords, builtins, and
+        // user-defined names from this session.
         let env = self.interpreter.environment();
         let mut found: Vec<String> = shared::constants::keywords::all_keywords()
             .iter()
@@ -307,16 +307,16 @@ impl ReplApp {
         };
         self.completion_idx = 0;
         self.input.replace_word_at_cursor(&first);
-        // Единственный вариант перебирать незачем — список не запоминаем.
+        // No point cycling through a single option — don't store it.
         self.completions = if found.len() > 1 { found } else { Vec::new() };
     }
 
-    // -----------------------------------------------------------------------
-    //                              КЛАВИШИ
-    // -----------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    //                              KEY HANDLING
+    // ---------------------------------------------------------------------------
 
     fn handle_key(&mut self, code: KeyCode, mods: KeyModifiers) {
-        // Помощь закрывается любой клавишей: это справка, а не режим.
+        // Help closes on any key: it's a reference, not a mode.
         if self.show_help {
             self.show_help = false;
             return;
@@ -324,7 +324,7 @@ impl ReplApp {
 
         let ctrl = mods.contains(KeyModifiers::CONTROL);
 
-        // Любое действие, кроме Tab, прекращает перебор дополнений.
+        // Any action except Tab stops completion cycling.
         if code != KeyCode::Tab {
             self.completions.clear();
         }
@@ -404,21 +404,21 @@ impl ReplApp {
     }
 }
 
-/// Сколько конструкций открывает строка.
+/// How many constructs this line opens.
 fn opens_in(line: &str) -> usize {
     count_words(line, &["нач", "нц", "если", "выбор", "попытка"])
 }
 
-/// Сколько конструкций закрывает строка.
+/// How many constructs this line closes.
 fn closes_in(line: &str) -> usize {
     count_words(line, &["кон", "кц", "все", "кв"])
 }
 
-/// Считает вхождения слов как отдельных слов, а не подстрок.
+/// Counts word occurrences as whole words, not substrings.
 ///
-/// Иначе `конец := 1` закрыл бы конструкцию, а `начало := 1` — открыло: обе
-/// строки содержат ключевое слово внутри имени переменной. Комментарий
-/// отбрасывается: `| кон` тоже ничего не закрывает.
+/// Otherwise `конец := 1` would close a construct, and `начало := 1` would open
+/// one: both contain keywords inside variable names. Comments are stripped:
+/// `| кон` also closes nothing.
 fn count_words(line: &str, words: &[&str]) -> usize {
     let code = line.split('|').next().unwrap_or("");
     code.split(|c: char| !c.is_alphanumeric() && c != '_')
@@ -426,9 +426,9 @@ fn count_words(line: &str, words: &[&str]) -> usize {
         .count()
 }
 
-// ===========================================================================
-//                              ОТРИСОВКА
-// ===========================================================================
+// =============================================================================
+//                              DISPLAY
+// =============================================================================
 
 pub(crate) fn run_repl_tui(debug: bool) -> Result<(), String> {
     let mut terminal = init_terminal()?;
@@ -453,17 +453,17 @@ pub(crate) fn run_repl_tui(debug: bool) -> Result<(), String> {
         }
     })();
 
-    // Терминал возвращается в исходное состояние даже при ошибке отрисовки:
-    // иначе управление вернётся в консоль без эха и без курсора.
+    // Restore terminal state even on render error: otherwise control returns
+    // to console without echo and without cursor.
     restore_terminal()?;
     result
 }
 
-// ===========================================================================
-//                      ДОСТУП ДЛЯ ОТРИСОВКИ
-// ===========================================================================
-// Отрисовка живёт в отдельном модуле и состояние только читает, поэтому поля
-// остаются закрытыми, а наружу выставлены именно те величины, которые рисуются.
+// =============================================================================
+//                      DISPLAY ACCESS
+// =============================================================================
+// The display lives in a separate module and only reads state, so fields are
+// private. We expose only the values that the display actually draws.
 
 impl ReplApp {
     pub(crate) fn panel(&self) -> Panel {
@@ -512,7 +512,7 @@ mod tests {
         assert_eq!(opens_in("нач"), 1);
         assert_eq!(opens_in("нц для i от 1 до 3"), 1);
         assert_eq!(closes_in("кон"), 1);
-        // «начало» и «конец» — обычные имена, а не ключевые слова.
+        // "начало" and "конец" are ordinary names, not keywords.
         assert_eq!(opens_in("начало := 1"), 0);
         assert_eq!(closes_in("конец := 1"), 0);
     }
@@ -530,20 +530,20 @@ mod tests {
             app.input.set(line);
             app.submit();
         }
-        assert_eq!(app.depth, 1, "открыт `нач` — ждём `кон`");
+        assert_eq!(app.depth, 1, "нач opened — waiting for кон");
         assert!(!app.pending.is_empty());
 
         app.input.set("кон");
         app.submit();
         assert_eq!(app.depth, 0);
-        assert!(app.pending.is_empty(), "накопленное ушло на выполнение");
+        assert!(app.pending.is_empty(), "accumulated text went to execution");
     }
 
-    /// Переменные должны переживать нажатие Enter.
+    /// Variables survive pressing Enter.
     ///
-    /// Обычный запуск оборачивает свободные инструкции в алгоритм и снимает
-    /// его кадр, поэтому набранное строкой выше следующей строке было не
-    /// видно, а панель состояния оставалась пустой.
+    /// Normal execution wraps free statements in an algorithm and pops its frame,
+    /// so text typed on one line would not be visible on the next, and the state
+    /// panel would remain empty.
     #[test]
     fn peremennye_zhivut_mezhdu_strokami() {
         let mut app = ReplApp::new(false);
@@ -553,7 +553,7 @@ mod tests {
         let state = app.interpreter.environment().globals_snapshot();
         assert!(
             state.iter().any(|(name, _, _)| name == "счётчик"),
-            "переменная должна попасть в состояние, а получили {state:?}"
+            "variable should be in state, got {state:?}"
         );
 
         app.input.set("вывод счётчик * 2");
@@ -562,20 +562,20 @@ mod tests {
             app.output
                 .iter()
                 .any(|l| matches!(l, OutputLine::Normal(s) if s.trim() == "10")),
-            "следующая строка должна видеть переменную"
+            "next line should see the variable"
         );
     }
 
-    /// Заголовок алгоритма ждёт своего `нач`, а не уходит на выполнение сразу.
+    /// Algorithm header waits for its `нач`, does not execute immediately.
     #[test]
     fn zagolovok_algoritma_zhdet_tela() {
         let mut app = ReplApp::new(false);
         app.input.set("алг цел удвоить(цел x)");
         app.submit();
-        assert_eq!(app.depth, 1, "после заголовка ждём `нач`");
+        assert_eq!(app.depth, 1, "after header waiting for нач");
         assert!(
             !app.output.iter().any(|l| matches!(l, OutputLine::Error(_))),
-            "заголовок сам по себе ошибкой не является"
+            "header alone is not an error"
         );
 
         for line in ["нач", "  знач := x * 2", "кон"] {
@@ -587,7 +587,7 @@ mod tests {
         let algorithms = app.interpreter.environment().algorithm_names();
         assert!(
             algorithms.iter().any(|n| n == "удвоить"),
-            "алгоритм должен определиться, а получили {algorithms:?}"
+            "algorithm should be defined, got {algorithms:?}"
         );
 
         app.input.set("вывод удвоить(21)");
@@ -596,16 +596,16 @@ mod tests {
             app.output
                 .iter()
                 .any(|l| matches!(l, OutputLine::Normal(s) if s.trim() == "42")),
-            "определённый алгоритм должен вызываться"
+            "defined algorithm should be callable"
         );
     }
 
-    /// Объявление алгоритма — это объявление, а не запуск.
+    /// Declaring an algorithm is a declaration, not a call.
     ///
-    /// Обычный запуск, не найдя точки входа, зовёт первый попавшийся
-    /// алгоритм: объявив `алг цел удвоить(цел x)`, человек тут же получал
-    /// «ожидался 1 аргумент, получено 0» — и получал снова после очистки
-    /// экрана, потому что очистка состояние не трогает.
+    /// Normal execution, finding no entry point, calls the first algorithm:
+    /// declaring `алг цел удвоить(цел x)` used to immediately give "expected 1
+    /// argument, got 0" — and again after clearing the screen, because clearing
+    /// does not reset state.
     #[test]
     fn obyavlenie_algoritma_ne_vyzyvaet_ego() {
         let mut app = ReplApp::new(false);
@@ -622,12 +622,12 @@ mod tests {
             .collect();
         assert!(
             errors.is_empty(),
-            "объявление не должно давать ошибок, а получили {}",
+            "declaration should not give errors, got {}",
             errors.len()
         );
     }
 
-    /// Очистка убирает вывод, но не объявленное.
+    /// Clear removes output, but not declared items.
     #[test]
     fn ochistka_ne_trogaet_sostoyanie_a_sbros_trogaet() {
         let mut app = ReplApp::new(false);
@@ -642,18 +642,18 @@ mod tests {
                 .globals_snapshot()
                 .iter()
                 .any(|(name, _, _)| name == "счётчик"),
-            "очистка экрана не должна забывать переменные"
+            "clearing screen should not forget variables"
         );
 
         app.input.set(".сброс");
         app.submit();
         assert!(
             app.interpreter.environment().globals_snapshot().is_empty(),
-            "сброс должен забыть всё"
+            "reset should forget everything"
         );
     }
 
-    /// `нач` без заголовка открывает конструкцию сам.
+    /// `нач` without a header opens a construct by itself.
     #[test]
     fn goloe_nach_otkryvaet_konstrukciyu() {
         let mut app = ReplApp::new(false);
@@ -674,10 +674,10 @@ mod tests {
 
         app.handle_key(KeyCode::Char('c'), KeyModifiers::CONTROL);
         assert_eq!(app.depth, 0);
-        assert!(app.pending.is_empty(), "накопленный текст должен исчезнуть");
+        assert!(app.pending.is_empty(), "accumulated text should disappear");
     }
 
-    /// Набор кириллицы в интерактивном режиме раньше ронял интерпретатор.
+    /// Typing Cyrillic in interactive mode used to crash the interpreter.
     #[test]
     fn nabor_kirillicy_dohodit_do_stroki_vvoda() {
         let mut app = ReplApp::new(false);
@@ -694,9 +694,9 @@ mod tests {
         app.submit();
         assert!(
             app.output.iter().any(|l| matches!(l, OutputLine::Error(_))),
-            "ошибка должна быть видна"
+            "error should be visible"
         );
-        assert!(!app.should_quit, "сессия продолжается");
+        assert!(!app.should_quit, "session continues");
     }
 
     #[test]
@@ -724,7 +724,7 @@ mod tests {
         assert!(app.show_help);
         app.handle_key(KeyCode::Char('я'), KeyModifiers::NONE);
         assert!(!app.show_help);
-        assert!(app.input.is_empty(), "клавиша закрытия не печатается");
+        assert!(app.input.is_empty(), "closing key should not be printed");
     }
 
     #[test]

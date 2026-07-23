@@ -1,15 +1,15 @@
-//! Библиотека времени для КуМир 3
+//! Time library for Kumir 3.
 //!
-//! Предоставляет функции для работы со временем:
-//! - Получение текущего времени (мс, сек, мкс, нс)
-//! - Паузы выполнения программы
-//! - Таймеры для измерения интервалов
-//! - Преобразование и форматирование дат
-//! - Работа с компонентами даты-времени
+//! Provides functions for time operations:
+//! - Getting current time (ms, sec, µs, ns)
+//! - Blocking pauses/sleep
+//! - Timers for measuring intervals
+//! - Date conversion and formatting
+//! - Decomposing date-time into components
 //!
-//! Без внешних зависимостей, только std.
+//! No external dependencies, uses only std.
 //!
-//! ## Пример использования
+//! ## Example usage
 //! ```kumir
 //! использовать время
 //!
@@ -30,14 +30,14 @@ use std::sync::Arc;
 use crate::types::library::LibVersion;
 use crate::types::library::LibraryDef;
 
-// Реэкспорт внутренних модулей
+// Re-export internal modules.
 pub use constants::*;
 pub use datetime::*;
 pub use format::*;
 pub use sleep::*;
 pub use timer::*;
 
-/// Создаёт определение библиотеки времени
+/// Creates the time library definition.
 pub fn create_time_library() -> LibraryDef {
     let mut lib = LibraryDef::new("time", "Время");
     lib.aliases = vec![Arc::from("time"), Arc::from("время")];
@@ -48,36 +48,36 @@ pub fn create_time_library() -> LibraryDef {
     lib.version = LibVersion::new(2, 0, 0);
     lib.stable = true;
 
-    // Регистрируем все функции
+    // Register all functions.
     lib.functions = vec![
-        // === Текущее время ===
+        // === Current time ===
         now_ms_fn(),
         now_sec_fn(),
         now_us_fn(),
         now_ns_fn(),
-        // === Паузы ===
+        // === Sleep/pause ===
         sleep_fn(),
         sleep_ms_fn(),
         sleep_min_fn(),
         sleep_us_fn(),
-        // === Таймеры ===
+        // === Timers ===
         timer_start_fn(),
         timer_elapsed_ms_fn(),
         timer_elapsed_sec_fn(),
         timer_precise_fn(),
-        // === Форматирование ===
+        // === Formatting ===
         iso_utc_fn(),
         iso_local_fn(),
         date_ru_fn(),
         time_str_fn(),
-        // === Конвертация ===
+        // === Conversion ===
         from_timestamp_fn(),
         to_timestamp_fn(),
         split_timestamp_fn(),
         split_iso_fn(),
         make_timestamp_fn(),
         make_date_fn(),
-        // === Компоненты даты ===
+        // === Date components ===
         current_year_fn(),
         current_month_fn(),
         current_day_fn(),
@@ -85,7 +85,7 @@ pub fn create_time_library() -> LibraryDef {
         current_minute_fn(),
         current_second_fn(),
         current_weekday_fn(),
-        // === Вычисления ===
+        // === Calculations ===
         is_leap_year_fn(),
         days_in_month_fn(),
         days_in_year_fn(),
@@ -93,14 +93,14 @@ pub fn create_time_library() -> LibraryDef {
         diff_days_fn(),
         add_seconds_fn(),
         add_days_fn(),
-        // === Словари ===
+        // === Dicts ===
         weekdays_fn(),
         weekdays_short_fn(),
         months_fn(),
         months_short_fn(),
     ];
 
-    // Регистрируем константы
+    // Register constants.
     lib.constants = vec![
         seconds_per_minute_const(),
         seconds_per_hour_const(),

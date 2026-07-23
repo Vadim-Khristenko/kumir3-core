@@ -1,13 +1,15 @@
 // Copyright (c) 2024-2026 Vadim Khristenko <just@vai-prog.ru>
 // Licensed under MIT OR Apache-2.0
 
+//! Low-level character navigation and source buffer operations.
+
 use super::Lexer;
 use crate::constants::is_whitespace;
 
 impl<'a> Lexer<'a> {
-    // =========================================================================
-    //         CHARACTER NAVIGATION
-    // =========================================================================
+    // =============================================================================
+    //         SECTION: CHARACTER NAVIGATION
+    // =============================================================================
 
     /// Checks if at end of file.
     #[inline]
@@ -34,7 +36,7 @@ impl<'a> Lexer<'a> {
         chars.next()
     }
 
-    /// Advances by one character and returns it.
+    /// Advances by one character and updates position tracking.
     pub(super) fn advance(&mut self) -> Option<char> {
         let c = self.peek()?;
         self.pos += c.len_utf8();
@@ -61,7 +63,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Skips whitespace (except newlines).
+    /// Skips whitespace (excludes newlines, which are significant).
     pub(super) fn skip_whitespace(&mut self) {
         self.advance_while(is_whitespace);
     }

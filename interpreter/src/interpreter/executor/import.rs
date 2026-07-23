@@ -1,4 +1,4 @@
-//! Импорт библиотек и модулей.
+//! Library and module import execution.
 
 use super::super::environment::Environment;
 use super::super::error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
@@ -7,43 +7,43 @@ use super::Executor;
 use std::sync::Arc;
 
 impl Executor {
-    // =========================================================================
-    //                    ИМПОРТ БИБЛИОТЕК И МОДУЛЕЙ
-    // =========================================================================
+    // =============================================================================
+    //                    LIBRARY AND MODULE IMPORTS
+    // =============================================================================
 
-    /// Выполняет импорт библиотеки или файла.
+    /// Executes a library or file import.
     ///
-    /// Поддерживает:
-    /// - Библиотеки: `использовать время`, `использовать время@^2.0`
-    /// - Файлы: `использовать "./модуль.kum"`, `использовать ../utils`
-    /// - Алиасы: `использовать время как т`
-    /// - Выборочный импорт: `использовать время { now_ms, sleep }`
+    /// Supports:
+    /// - Libraries: `использовать время`, `использовать время@^2.0`
+    /// - Files: `использовать "./модуль.kum"`, `использовать ../utils`
+    /// - Aliases: `использовать время как т`
+    /// - Selective import: `использовать время { now_ms, sleep }`
     pub(crate) fn execute_import(
         path: &str,
         alias: Option<&str>,
         items: Option<&[String]>,
         env: &mut Environment,
     ) -> RuntimeResult<ControlFlow> {
-        // Проверяем, является ли это файлом или библиотекой
+        // Determine if this is a file or library path.
         let is_file = FileImporter::is_kum_file(path);
 
         if is_file {
-            // Импорт .kum файла
+            // Import .kum file
             Self::execute_file_import(path, alias, items, env)
         } else {
-            // Импорт библиотеки
+            // Import library
             Self::execute_library_import(path, alias, items, env)
         }
     }
 
-    /// Импортирует библиотеку.
+    /// Imports a library.
     fn execute_library_import(
         path: &str,
         alias: Option<&str>,
         items: Option<&[String]>,
         env: &mut Environment,
     ) -> RuntimeResult<ControlFlow> {
-        // Парсим имя библиотеки и версию (например, "время@^2.0")
+        // Parse library name and version (e.g., "время@^2.0").
         let (lib_name, version_spec) = if let Some(at_pos) = path.find('@') {
             let name = &path[..at_pos];
             let version = &path[at_pos + 1..];
@@ -52,7 +52,7 @@ impl Executor {
             (path, None)
         };
 
-        // Получаем менеджер библиотек
+        // Get the library manager.
         let lib_manager = env.library_manager().ok_or_else(|| {
             RuntimeError::new(
                 "Менеджер библиотек не инициализирован",
@@ -60,7 +60,7 @@ impl Executor {
             )
         })?;
 
-        // Импортируем библиотеку
+        // Import the library.
         if let Some(version) = version_spec {
             lib_manager
                 .write()
@@ -70,7 +70,7 @@ impl Executor {
             lib_manager.write().unwrap().import(lib_name, alias)?;
         }
 
-        // Если указан выборочный импорт - проверяем доступность функций
+        // If selective import is specified, verify availability.
         if let Some(item_names) = items {
             let manager = lib_manager.read().unwrap();
             for item in item_names {

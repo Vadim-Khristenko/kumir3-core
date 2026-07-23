@@ -1,47 +1,47 @@
 // ============================================================================
-//                    ПРОМЕЖУТОЧНОЕ ПРЕДСТАВЛЕНИЕ (IR)
+//                    INTERMEDIATE REPRESENTATION (IR)
 // ============================================================================
 //
-// IR - Intermediate Representation - промежуточное представление кода
-// между AST и финальным кодом (машинным или байт-кодом).
+// IR (Intermediate Representation) is an abstract code representation
+// between the AST and final code (machine or byte code).
 //
-// Это основа для компилятора КуМир 3.
+// Foundation of the Kumir 3 compiler.
 //
-// Архитектура:
-//   AST (parser) → IR (этот модуль) → Backend (codegen)
+// Architecture:
+//   AST (parser) → IR (this module) → Backend (codegen)
 //
-// Бэкенды:
-//   - LLVM IR → нативный код (Win/Linux/macOS)
-//   - Cranelift → нативный код (альтернатива)
-//   - WASM → WebAssembly для браузера
-//   - Интерпретатор → прямое выполнение IR
+// Backends:
+//   - LLVM IR → native code (Win/Linux/macOS)
+//   - Cranelift → native code (alternative)
+//   - WASM → WebAssembly for browser
+//   - Interpreter → direct IR execution
 //
 // ============================================================================
 
 use std::collections::HashMap;
 
-/// Типы данных в IR
+/// IR data types.
 #[derive(Debug, Clone, PartialEq)]
 pub enum IrType {
-    /// Целое число (i64)
+    /// Integer (i64)
     Int,
-    /// Вещественное число (f64)
+    /// Floating-point (f64)
     Float,
-    /// Логический тип
+    /// Boolean type
     Bool,
-    /// Символ (Unicode)
+    /// Character (Unicode)
     Char,
-    /// Строка
+    /// String
     String,
-    /// Массив с типом элементов
+    /// Array with element type
     Array(Box<IrType>),
-    /// Структура (запись)
+    /// Structure (record)
     Struct(String),
-    /// Указатель на тип
+    /// Pointer to type
     Ptr(Box<IrType>),
-    /// Функция (аргументы, возврат)
+    /// Function (parameters, return)
     Function(Vec<IrType>, Box<IrType>),
-    /// Пустой тип (void)
+    /// Unit type (void)
     Void,
     /// Неизвестный тип (для вывода типов)
     Unknown,

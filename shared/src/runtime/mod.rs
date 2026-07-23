@@ -1,15 +1,11 @@
-// ============================================================================
-//                    RUNTIME ПРОСЛОЙКА
-// ============================================================================
-//
-// Этот модуль предоставляет общую инфраструктуру для:
-// - Асинхронного выполнения кода (tokio)
-// - Системы коллбэков между компилятором и интерпретатором
-// - Event-driven архитектуры с подписками
-// - Каналов коммуникации между компонентами
-// - Управления ресурсами и хэндлами
-//
-// ============================================================================
+//! Async runtime layer for Kumir 3.
+//!
+//! Provides infrastructure for:
+//! - Async code execution (tokio)
+//! - Callback system (compiler ↔ interpreter)
+//! - Event-driven architecture with subscriptions
+//! - Inter-component communication channels
+//! - Resource and handle management
 
 pub mod callback;
 pub mod channel;
@@ -17,7 +13,6 @@ pub mod events;
 pub mod executor;
 pub mod handle;
 
-// Реэкспорты для удобного доступа
 pub use callback::*;
 pub use channel::*;
 pub use events::*;
@@ -27,32 +22,28 @@ pub use handle::*;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-// ============================================================================
-//                    ГЛОБАЛЬНЫЙ RUNTIME
-// ============================================================================
+// =============================================================================
+//         SECTION: GLOBAL RUNTIME
+// =============================================================================
 
-/// Глобальный runtime для асинхронных операций.
+/// [STABLE] Global async runtime for Kumir 3.
 ///
-/// Предоставляет единую точку доступа к:
-/// - Tokio runtime для async задач
-/// - Системе событий и подписок
-/// - Реестру коллбэков
-/// - Каналам коммуникации
+/// Provides unified access to:
+/// - Tokio runtime for async tasks
+/// - Event bus with subscriptions
+/// - Callback registry
+/// - Task executor
+/// - Resource handle manager
 pub struct KumirRuntime {
-    /// Tokio runtime handle
     tokio_handle: Option<tokio::runtime::Handle>,
-    /// Менеджер коллбэков
     callbacks: Arc<RwLock<CallbackRegistry>>,
-    /// Event bus для событий
     event_bus: Arc<EventBus>,
-    /// Исполнитель задач
     executor: Arc<TaskExecutor>,
-    /// Менеджер хэндлов ресурсов
     handles: Arc<RwLock<HandleManager>>,
 }
 
 impl KumirRuntime {
-    /// Создаёт новый runtime.
+    /// Creates a new runtime with no async executor.
     pub fn new() -> Self {
         Self {
             tokio_handle: None,
@@ -63,7 +54,7 @@ impl KumirRuntime {
         }
     }
 
-    /// Создаёт runtime с существующим tokio handle.
+    /// Creates a runtime backed by an existing tokio handle.
     pub fn with_tokio(handle: tokio::runtime::Handle) -> Self {
         Self {
             tokio_handle: Some(handle),
@@ -74,7 +65,7 @@ impl KumirRuntime {
         }
     }
 
-    /// Инициализирует собственный tokio runtime.
+    /// Initializes a dedicated tokio multi-threaded runtime.
     pub fn init_tokio(&mut self) -> Result<(), RuntimeError> {
         if self.tokio_handle.is_some() {
             return Ok(());
@@ -93,10 +84,8 @@ impl KumirRuntime {
 
         self.tokio_handle = Some(rt.handle().clone());
 
-        // Держим runtime в фоне
         std::thread::spawn(move || {
             rt.block_on(async {
-                // Runtime работает пока не будет остановлен
                 tokio::signal::ctrl_c().await.ok();
             });
         });
@@ -104,37 +93,37 @@ impl KumirRuntime {
         Ok(())
     }
 
-    /// Получает tokio handle (если инициализирован).
+    /// Returns the tokio handle, if initialized.
     pub fn tokio_handle(&self) -> Option<&tokio::runtime::Handle> {
         self.tokio_handle.as_ref()
     }
 
-    /// Регистр коллбэков.
+    /// Returns a reference to the callback registry.
     pub fn callbacks(&self) -> Arc<RwLock<CallbackRegistry>> {
         Arc::clone(&self.callbacks)
     }
 
-    /// Event bus.
+    /// Returns a reference to the event bus.
     pub fn event_bus(&self) -> Arc<EventBus> {
         Arc::clone(&self.event_bus)
     }
 
-    /// Исполнитель задач.
+    /// Returns a reference to the task executor.
     pub fn executor(&self) -> Arc<TaskExecutor> {
         Arc::clone(&self.executor)
     }
 
-    /// Менеджер хэндлов.
+    /// Returns a reference to the handle manager.
     pub fn handles(&self) -> Arc<RwLock<HandleManager>> {
         Arc::clone(&self.handles)
     }
 
-    /// Выполняет async задачу блокирующе.
+    /// Blocks on an async future using the tokio runtime.
     pub fn block_on<F: std::future::Future>(&self, future: F) -> Option<F::Output> {
         self.tokio_handle.as_ref().map(|h| h.block_on(future))
     }
 
-    /// Спавнит async задачу.
+    /// Spawns an async task on the tokio runtime.
     pub fn spawn<F>(&self, future: F) -> Option<tokio::task::JoinHandle<F::Output>>
     where
         F: std::future::Future + Send + 'static,

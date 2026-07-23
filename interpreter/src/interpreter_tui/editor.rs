@@ -1,12 +1,12 @@
-//! Редактируемая строка ввода.
+//! Input line editor with character-based cursor tracking.
 //!
-//! Вынесена отдельно ради одной вещи: позиция курсора считается **в символах**,
-//! а не в байтах. Прежняя реализация хранила её как байтовый индекс, но двигала
-//! на единицу за символ — на русской букве (два байта в UTF-8) вставка попадала
-//! в середину символа, и интерпретатор падал. Для языка, на котором пишут
-//! по-русски, это означало, что набрать `цел` в интерактивном режиме нельзя.
+//! Separated out for one critical reason: cursor position is counted **in characters**,
+//! not bytes. The previous byte-index version crashed on the second Cyrillic letter
+//! (two UTF-8 bytes), inserting into the middle of a character and making the
+//! interpreter panic. For a language used with Russian text, this meant you could
+//! not even type `цел` in the REPL.
 
-/// Строка ввода с курсором.
+/// Editable input line with cursor.
 #[derive(Default)]
 pub(crate) struct InputLine {
     chars: Vec<char>,
@@ -14,12 +14,12 @@ pub(crate) struct InputLine {
 }
 
 impl InputLine {
-    /// Текст строки.
+    /// Returns the line text.
     pub(crate) fn text(&self) -> String {
         self.chars.iter().collect()
     }
 
-    /// Положение курсора в символах — столько ячеек отступа при отрисовке.
+    /// Returns cursor position in characters (affects indentation when drawing).
     pub(crate) fn cursor(&self) -> usize {
         self.cursor
     }
@@ -28,13 +28,13 @@ impl InputLine {
         self.chars.is_empty()
     }
 
-    /// Забирает текст, оставляя строку пустой.
+    /// Extracts the text, leaving the line empty.
     pub(crate) fn take(&mut self) -> String {
         self.cursor = 0;
         std::mem::take(&mut self.chars).into_iter().collect()
     }
 
-    /// Заменяет содержимое, ставя курсор в конец (история, автодополнение).
+    /// Replaces content and moves cursor to end (for history, autocomplete).
     pub(crate) fn set(&mut self, text: &str) {
         self.chars = text.chars().collect();
         self.cursor = self.chars.len();
@@ -56,7 +56,7 @@ impl InputLine {
         }
     }
 
-    /// Удаляет символ слева от курсора.
+    /// Deletes the character to the left of the cursor.
     pub(crate) fn backspace(&mut self) {
         if self.cursor > 0 {
             self.cursor -= 1;
@@ -64,27 +64,27 @@ impl InputLine {
         }
     }
 
-    /// Удаляет символ под курсором.
+    /// Deletes the character under the cursor.
     pub(crate) fn delete(&mut self) {
         if self.cursor < self.chars.len() {
             self.chars.remove(self.cursor);
         }
     }
 
-    /// Удаляет слово слева от курсора (Ctrl+W).
+    /// Deletes the word to the left of the cursor (Ctrl+W).
     pub(crate) fn delete_word_left(&mut self) {
         let target = self.word_start();
         self.chars.drain(target..self.cursor);
         self.cursor = target;
     }
 
-    /// Удаляет всё слева от курсора (Ctrl+U).
+    /// Deletes everything to the left of the cursor (Ctrl+U).
     pub(crate) fn delete_to_start(&mut self) {
         self.chars.drain(..self.cursor);
         self.cursor = 0;
     }
 
-    /// Удаляет всё справа от курсора (Ctrl+K).
+    /// Deletes everything to the right of the cursor (Ctrl+K).
     pub(crate) fn delete_to_end(&mut self) {
         self.chars.truncate(self.cursor);
     }
@@ -122,12 +122,12 @@ impl InputLine {
         self.cursor = self.chars.len();
     }
 
-    /// Слово, в котором стоит курсор, — основа для автодополнения.
+    /// Returns the word under the cursor (basis for autocomplete).
     pub(crate) fn word_at_cursor(&self) -> String {
         self.chars[self.word_start()..self.cursor].iter().collect()
     }
 
-    /// Заменяет слово под курсором целиком.
+    /// Replaces the word under the cursor entirely.
     pub(crate) fn replace_word_at_cursor(&mut self, replacement: &str) {
         let start = self.word_start();
         self.chars.drain(start..self.cursor);
@@ -135,8 +135,7 @@ impl InputLine {
         self.insert_str(replacement);
     }
 
-    /// Начало слова слева от курсора: сначала пропускаются разделители,
-    /// затем — сами буквы.
+    /// Finds the start of the word to the left of cursor: skip non-word chars, then word chars.
     fn word_start(&self) -> usize {
         let mut i = self.cursor;
         while i > 0 && !is_word(self.chars[i - 1]) {
@@ -163,8 +162,8 @@ mod tests {
         line
     }
 
-    /// Ради этого модуль и появился: раньше на второй русской букве
-    /// интерпретатор падал, потому что позиция курсора считалась в байтах.
+    /// This module exists for this test: before, on the second Cyrillic letter,
+    /// the interpreter crashed because cursor position was counted in bytes.
     #[test]
     fn nabor_kirillicy_ne_lomaetsya() {
         let mut line = InputLine::default();
@@ -198,9 +197,9 @@ mod tests {
     fn dvizhenie_po_slovam() {
         let mut line = with("вывод длина(строка)");
         line.word_left();
-        assert_eq!(line.cursor(), 12, "курсор встал в начало слова «строка»");
+        assert_eq!(line.cursor(), 12, "cursor at start of word 'строка'");
         line.word_left();
-        assert_eq!(line.cursor(), 6, "и дальше — в начало слова «длина»");
+        assert_eq!(line.cursor(), 6, "and then at start of word 'длина'");
         line.word_right();
         assert_eq!(line.cursor(), 11);
     }
