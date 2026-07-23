@@ -1,6 +1,6 @@
 [package]
 name = "shared"
-version = "0.2.0-alpha.2"
+version = "0.2.0-alpha.3"
 edition = "2024"
 authors = ["Vadim Khristenko <just@vai-prog.ru>"]
 license-file = "LICENSE"
