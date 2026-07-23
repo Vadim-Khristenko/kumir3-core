@@ -16,6 +16,7 @@ mod interpreter;
 
 mod ast;
 mod check;
+mod draw;
 mod editor;
 mod file_runner;
 mod info;

@@ -1,52 +1,36 @@
-//! Интерактивный режим.
+//! Интерактивный режим: состояние сессии и обработка клавиш.
 //!
-//! Устройство экрана: заголовок, рабочая область, строка ввода, строка клавиш.
-//! Рабочая область делится на вывод и боковую панель — она показывает
-//! переменные и алгоритмы, определённые за сеанс. Панель и есть главное
-//! отличие от обычной консоли: состояние программы видно всё время, а не
-//! только в тот момент, когда его напечатали.
+//! Как это выглядит на экране — в [`super::draw`]. Разделение не косметическое:
+//! поведение консоли (что считается незакрытой конструкцией, что делает Tab,
+//! переживают ли переменные Enter) проверяется тестами, а отрисовка требует
+//! терминала и тестами не покрывается. Держать их врозь — значит иметь
+//! возможность проверить первое, не запуская второе.
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
-use ratatui::prelude::*;
-use ratatui::widgets::{
-    Block, Borders, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation,
-    ScrollbarState, Wrap,
-};
 use shared::types::Value;
 use std::time::Duration;
 
 use crate::editor::InputLine;
 use crate::interpreter::Interpreter;
-use crate::syntax;
 use crate::terminal::{init_terminal, restore_terminal};
-use crate::theme;
 use crate::ui::OutputLine;
 
-/// Что показывает боковая панель.
+/// Видна ли боковая колонка.
+///
+/// Переменные и алгоритмы показываются в ней одновременно, поэтому выбирать
+/// между ними не нужно — остаётся только «показать или убрать».
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Panel {
-    /// Переменные и их значения.
-    State,
-    /// Определённые алгоритмы.
-    Algorithms,
-    /// Панель скрыта — весь экран под вывод.
+pub(crate) enum Panel {
+    Shown,
+    /// Панель убрана — весь экран под вывод.
     Hidden,
 }
 
 impl Panel {
-    fn next(self) -> Self {
+    fn toggled(self) -> Self {
         match self {
-            Self::State => Self::Algorithms,
-            Self::Algorithms => Self::Hidden,
-            Self::Hidden => Self::State,
-        }
-    }
-
-    fn title(self) -> &'static str {
-        match self {
-            Self::State => " Состояние ",
-            Self::Algorithms => " Алгоритмы ",
-            Self::Hidden => "",
+            Self::Shown => Self::Hidden,
+            Self::Hidden => Self::Shown,
         }
     }
 }
@@ -80,7 +64,10 @@ impl ReplApp {
         let mut interpreter = Interpreter::new();
         interpreter.set_debug_mode(debug);
 
-        let mut app = Self {
+        // Вывод остаётся пустым: пока в нём ничего нет, отрисовка показывает
+        // приветствие с примерами. Заполнять его подсказками — значит сразу
+        // засорять то, ради чего консоль и открыли.
+        Self {
             interpreter,
             input: InputLine::default(),
             output: Vec::new(),
@@ -88,7 +75,7 @@ impl ReplApp {
             history_idx: -1,
             saved_input: String::new(),
             scroll_back: 0,
-            panel: Panel::State,
+            panel: Panel::Shown,
             show_help: false,
             debug_mode: debug,
             should_quit: false,
@@ -97,13 +84,7 @@ impl ReplApp {
             awaiting_body: 0,
             completions: Vec::new(),
             completion_idx: 0,
-        };
-
-        app.output.push(OutputLine::System(
-            "Введите программу на Кумире. F1 — помощь, Tab — дополнить имя.".to_string(),
-        ));
-        app.output.push(OutputLine::System(String::new()));
-        app
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -123,13 +104,8 @@ impl ReplApp {
         self.history.push(line.clone());
         self.history_idx = -1;
 
-        let prompt = if self.depth == 0 {
-            "кумир> "
-        } else {
-            "  ...  "
-        };
-        self.output
-            .push(OutputLine::Input(format!("{prompt}{line}")));
+        // Знак на левом поле ставит отрисовка — здесь только сам текст.
+        self.output.push(OutputLine::Input(line.clone()));
 
         if self.depth == 0 && line.trim_start().starts_with([',', '.', ':']) {
             self.run_command(line.trim());
@@ -186,17 +162,16 @@ impl ReplApp {
         // дошло выполнение, и без него причину искать труднее.
         let printed = self.interpreter.get_output();
         for line in printed.lines() {
-            self.output.push(OutputLine::Normal(format!("  {line}")));
+            self.output.push(OutputLine::Normal(line.to_string()));
         }
 
         match outcome {
             Ok(value) => {
                 if !matches!(value, Value::Null) {
-                    self.output
-                        .push(OutputLine::Success(format!("  ⇒ {value}")));
+                    self.output.push(OutputLine::Success(value.to_string()));
                 }
             }
-            Err(err) => self.output.push(OutputLine::Error(format!("  ✗ {err}"))),
+            Err(err) => self.output.push(OutputLine::Error(err.to_string())),
         }
     }
 
@@ -207,7 +182,7 @@ impl ReplApp {
         };
 
         let mut say = |line: &str, kind: fn(String) -> OutputLine| {
-            self.output.push(kind(format!("  {line}")));
+            self.output.push(kind(line.to_string()));
         };
 
         match name {
@@ -217,8 +192,9 @@ impl ReplApp {
                 self.output.clear();
                 self.scroll_back = 0;
             }
-            ".переменные" | ".vars" => self.panel = Panel::State,
-            ".алгоритмы" | ".algs" => self.panel = Panel::Algorithms,
+            ".переменные" | ".vars" | ".алгоритмы" | ".algs" | ".панель" => {
+                self.panel = Panel::Shown
+            }
             ".отладка" | ".debug" => {
                 self.debug_mode = !self.debug_mode;
                 self.interpreter.set_debug_mode(self.debug_mode);
@@ -273,19 +249,19 @@ impl ReplApp {
     fn load_file(&mut self, path: &str) {
         if path.is_empty() {
             self.output.push(OutputLine::Error(
-                "  ✗ Укажите файл: .загрузить путь/к/программе.kum".to_string(),
+                "Укажите файл: .загрузить путь/к/программе.kum".to_string(),
             ));
             return;
         }
         match std::fs::read_to_string(path) {
             Ok(source) => {
                 self.output
-                    .push(OutputLine::Success(format!("  Загружен {path}")));
+                    .push(OutputLine::Success(format!("Загружен {path}")));
                 self.run_code(&source);
             }
             Err(err) => self
                 .output
-                .push(OutputLine::Error(format!("  ✗ {path}: {err}"))),
+                .push(OutputLine::Error(format!("{path}: {err}"))),
         }
     }
 
@@ -361,7 +337,7 @@ impl ReplApp {
                     self.awaiting_body = 0;
                     self.pending.clear();
                     self.output
-                        .push(OutputLine::Warning("  Ввод отменён".to_string()));
+                        .push(OutputLine::Warning("Ввод отменён".to_string()));
                 }
                 self.input.clear();
             }
@@ -376,7 +352,7 @@ impl ReplApp {
             (KeyCode::Right, true) => self.input.word_right(),
 
             (KeyCode::F(1), _) => self.show_help = true,
-            (KeyCode::F(2), _) => self.panel = self.panel.next(),
+            (KeyCode::F(2), _) => self.panel = self.panel.toggled(),
             (KeyCode::Esc, _) => self.input.clear(),
             (KeyCode::Tab, _) => self.complete(),
             (KeyCode::Enter, _) => self.submit(),
@@ -461,7 +437,7 @@ pub(crate) fn run_repl_tui(debug: bool) -> Result<(), String> {
     let result = (|| -> Result<(), String> {
         loop {
             terminal
-                .draw(|frame| draw(frame, &app))
+                .draw(|frame| crate::draw::draw(frame, &app))
                 .map_err(|e| e.to_string())?;
 
             if event::poll(Duration::from_millis(50)).map_err(|e| e.to_string())?
@@ -483,256 +459,47 @@ pub(crate) fn run_repl_tui(debug: bool) -> Result<(), String> {
     result
 }
 
-fn draw(frame: &mut Frame, app: &ReplApp) {
-    let rows = Layout::vertical([
-        Constraint::Length(1), // заголовок
-        Constraint::Min(3),    // вывод и панель
-        Constraint::Length(3), // ввод
-        Constraint::Length(1), // клавиши
-    ])
-    .split(frame.area());
+// ===========================================================================
+//                      ДОСТУП ДЛЯ ОТРИСОВКИ
+// ===========================================================================
+// Отрисовка живёт в отдельном модуле и состояние только читает, поэтому поля
+// остаются закрытыми, а наружу выставлены именно те величины, которые рисуются.
 
-    draw_header(frame, rows[0], app);
-
-    let body = if app.panel == Panel::Hidden {
-        Layout::horizontal([Constraint::Percentage(100)]).split(rows[1])
-    } else {
-        Layout::horizontal([Constraint::Min(30), Constraint::Length(34)]).split(rows[1])
-    };
-
-    draw_output(frame, body[0], app);
-    if app.panel != Panel::Hidden {
-        draw_panel(frame, body[1], app);
+impl ReplApp {
+    pub(crate) fn panel(&self) -> Panel {
+        self.panel
     }
 
-    draw_input(frame, rows[2], app);
-    draw_keys(frame, rows[3], app);
-
-    if app.show_help {
-        draw_help(frame);
+    pub(crate) fn depth(&self) -> usize {
+        self.depth
     }
-}
 
-fn draw_header(frame: &mut Frame, area: Rect, app: &ReplApp) {
-    let mut spans = vec![
-        Span::styled(
-            " Кумир 3 ",
-            Style::default().fg(Color::Black).bg(theme::ACCENT),
-        ),
-        Span::styled("  интерактивный режим", Style::default().fg(theme::MUTED)),
-    ];
-    if app.debug_mode {
-        spans.push(Span::styled(
-            "  ·  отладка",
-            Style::default().fg(theme::WARN),
-        ));
+    pub(crate) fn debug(&self) -> bool {
+        self.debug_mode
     }
-    if app.depth > 0 {
-        spans.push(Span::styled(
-            format!("  ·  не закрыто конструкций: {}", app.depth),
-            Style::default().fg(theme::WARN),
-        ));
+
+    pub(crate) fn help_visible(&self) -> bool {
+        self.show_help
     }
-    frame.render_widget(Line::from(spans), area);
-}
 
-fn draw_output(frame: &mut Frame, area: Rect, app: &ReplApp) {
-    let block = Block::default()
-        .title(Span::styled(" Вывод ", theme::title(true)))
-        .borders(Borders::ALL)
-        .border_style(theme::border(true));
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    let visible = inner.height as usize;
-    let total = app.output.len();
-    // Показывается хвост: прокрутка отсчитывается от конца, поэтому новые
-    // строки видны сразу и «догонять» их не нужно.
-    let end = total.saturating_sub(app.scroll_back);
-    let start = end.saturating_sub(visible);
-
-    let items: Vec<ListItem> = app.output[start..end]
-        .iter()
-        .map(|line| ListItem::new(line.to_styled_line()))
-        .collect();
-    frame.render_widget(List::new(items), inner);
-
-    if total > visible {
-        let mut state = ScrollbarState::new(total).position(start);
-        frame.render_stateful_widget(
-            Scrollbar::new(ScrollbarOrientation::VerticalRight),
-            area.inner(Margin {
-                horizontal: 0,
-                vertical: 1,
-            }),
-            &mut state,
-        );
+    pub(crate) fn scroll_back(&self) -> usize {
+        self.scroll_back
     }
-}
 
-fn draw_panel(frame: &mut Frame, area: Rect, app: &ReplApp) {
-    let block = Block::default()
-        .title(Span::styled(app.panel.title(), theme::title(false)))
-        .borders(Borders::ALL)
-        .border_style(theme::border(false));
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    let env = app.interpreter.environment();
-    let empty = |text: &str| {
-        vec![Line::from(Span::styled(
-            format!(" {text}"),
-            Style::default().fg(theme::MUTED),
-        ))]
-    };
-
-    let lines: Vec<Line> = match app.panel {
-        Panel::State => {
-            let items = env.globals_snapshot();
-            if items.is_empty() {
-                empty("пока ничего не определено")
-            } else {
-                items
-                    .iter()
-                    .map(|(name, value, is_const)| {
-                        let name_color = if *is_const { theme::TYPE } else { Color::White };
-                        Line::from(vec![
-                            Span::styled(format!("{name} "), Style::default().fg(name_color)),
-                            Span::styled(short_value(value), Style::default().fg(theme::OK)),
-                        ])
-                    })
-                    .collect()
-            }
-        }
-        Panel::Algorithms => {
-            let names = env.algorithm_names();
-            if names.is_empty() {
-                empty("алгоритмы не определены")
-            } else {
-                names
-                    .iter()
-                    .map(|n| {
-                        Line::from(Span::styled(n.clone(), Style::default().fg(theme::BUILTIN)))
-                    })
-                    .collect()
-            }
-        }
-        Panel::Hidden => Vec::new(),
-    };
-
-    frame.render_widget(Paragraph::new(lines), inner);
-}
-
-/// Короткая запись значения для панели: длинное обрезается.
-fn short_value(value: &Value) -> String {
-    let text = value.to_string();
-    if text.chars().count() > 18 {
-        let head: String = text.chars().take(17).collect();
-        format!("= {head}…")
-    } else {
-        format!("= {text}")
+    pub(crate) fn output(&self) -> &[OutputLine] {
+        &self.output
     }
-}
 
-fn draw_input(frame: &mut Frame, area: Rect, app: &ReplApp) {
-    let continued = app.depth > 0;
-    let prompt = if continued { "  ...  " } else { "кумир> " };
-    let color = if continued { theme::WARN } else { theme::OK };
-
-    let block = Block::default()
-        .title(Span::styled(" Ввод ", Style::default().fg(color)))
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(color));
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
-
-    let mut spans = vec![Span::styled(prompt, Style::default().fg(theme::MUTED))];
-    spans.extend(syntax::highlight(&app.input.text()));
-    frame.render_widget(Paragraph::new(Line::from(spans)), inner);
-
-    frame.set_cursor_position((
-        inner.x + prompt.chars().count() as u16 + app.input.cursor() as u16,
-        inner.y,
-    ));
-}
-
-fn draw_keys(frame: &mut Frame, area: Rect, app: &ReplApp) {
-    let panel_label = match app.panel {
-        Panel::State => "алгоритмы",
-        Panel::Algorithms => "скрыть",
-        Panel::Hidden => "состояние",
-    };
-    let keys: [(&str, &str); 6] = [
-        ("F1", "помощь"),
-        ("F2", panel_label),
-        ("Tab", "дополнить"),
-        ("^L", "очистить"),
-        ("^C", "прервать"),
-        ("^D", "выход"),
-    ];
-
-    let mut spans = Vec::new();
-    for (key, label) in keys {
-        spans.push(Span::styled(format!(" {key} "), theme::key_hint()));
-        spans.push(Span::styled(format!("{label}  "), theme::key_label()));
+    pub(crate) fn input_text(&self) -> String {
+        self.input.text()
     }
-    frame.render_widget(Line::from(spans), area);
-}
 
-fn draw_help(frame: &mut Frame) {
-    let area = centered(66, 22, frame.area());
-    frame.render_widget(Clear, area);
+    pub(crate) fn input_cursor(&self) -> usize {
+        self.input.cursor()
+    }
 
-    let block = Block::default()
-        .title(Span::styled(" Помощь ", theme::title(true)))
-        .borders(Borders::ALL)
-        .border_style(theme::border(true));
-
-    let section = |t: &str| Line::from(Span::styled(t.to_string(), theme::title(true)));
-    let row = |k: &str, v: &str| {
-        Line::from(vec![
-            Span::styled(format!("  {k:<15}"), theme::key_hint()),
-            Span::raw(v.to_string()),
-        ])
-    };
-
-    let text = vec![
-        section(" Клавиши"),
-        row("F1", "эта справка (закрыть — любая клавиша)"),
-        row("F2", "переключить боковую панель"),
-        row("Tab", "дополнить имя; ещё раз — следующий вариант"),
-        row("↑ ↓", "история ввода"),
-        row("Ctrl+← →", "перемещение по словам"),
-        row("Ctrl+W U K", "удалить слово / до начала / до конца"),
-        row("PgUp PgDn", "прокрутка вывода"),
-        row("Ctrl+C", "прервать незакрытую конструкцию"),
-        row("Ctrl+D", "выход"),
-        Line::raw(""),
-        section(" Команды"),
-        row(".переменные", "показать состояние"),
-        row(".алгоритмы", "показать алгоритмы"),
-        row(".загрузить ф", "выполнить файл .kum"),
-        row(".отладка", "включить или выключить отладку"),
-        row(".очистить", "очистить вывод"),
-        row(".сброс", "забыть всё определённое"),
-        row(".выход", "выход"),
-    ];
-
-    frame.render_widget(
-        Paragraph::new(text).block(block).wrap(Wrap { trim: false }),
-        area,
-    );
-}
-
-/// Прямоугольник заданного размера по центру экрана.
-fn centered(width: u16, height: u16, area: Rect) -> Rect {
-    let width = width.min(area.width);
-    let height = height.min(area.height);
-    Rect {
-        x: area.x + (area.width - width) / 2,
-        y: area.y + (area.height - height) / 2,
-        width,
-        height,
+    pub(crate) fn interpreter_env(&self) -> &crate::interpreter::Environment {
+        self.interpreter.environment()
     }
 }
 
@@ -833,6 +600,59 @@ mod tests {
         );
     }
 
+    /// Объявление алгоритма — это объявление, а не запуск.
+    ///
+    /// Обычный запуск, не найдя точки входа, зовёт первый попавшийся
+    /// алгоритм: объявив `алг цел удвоить(цел x)`, человек тут же получал
+    /// «ожидался 1 аргумент, получено 0» — и получал снова после очистки
+    /// экрана, потому что очистка состояние не трогает.
+    #[test]
+    fn obyavlenie_algoritma_ne_vyzyvaet_ego() {
+        let mut app = ReplApp::new(false);
+        for line in ["алг цел удвоить(цел x)", "нач", "  знач := x * 2", "кон"]
+        {
+            app.input.set(line);
+            app.submit();
+        }
+
+        let errors: Vec<&OutputLine> = app
+            .output
+            .iter()
+            .filter(|l| matches!(l, OutputLine::Error(_)))
+            .collect();
+        assert!(
+            errors.is_empty(),
+            "объявление не должно давать ошибок, а получили {}",
+            errors.len()
+        );
+    }
+
+    /// Очистка убирает вывод, но не объявленное.
+    #[test]
+    fn ochistka_ne_trogaet_sostoyanie_a_sbros_trogaet() {
+        let mut app = ReplApp::new(false);
+        app.input.set("цел счётчик := 5");
+        app.submit();
+
+        app.input.set(".очистить");
+        app.submit();
+        assert!(
+            app.interpreter
+                .environment()
+                .globals_snapshot()
+                .iter()
+                .any(|(name, _, _)| name == "счётчик"),
+            "очистка экрана не должна забывать переменные"
+        );
+
+        app.input.set(".сброс");
+        app.submit();
+        assert!(
+            app.interpreter.environment().globals_snapshot().is_empty(),
+            "сброс должен забыть всё"
+        );
+    }
+
     /// `нач` без заголовка открывает конструкцию сам.
     #[test]
     fn goloe_nach_otkryvaet_konstrukciyu() {
@@ -888,15 +708,13 @@ mod tests {
     }
 
     #[test]
-    fn panel_perebiraetsya_po_krugu() {
+    fn panel_ubiraetsya_i_vozvrashchaetsya() {
         let mut app = ReplApp::new(false);
-        assert_eq!(app.panel, Panel::State);
-        app.handle_key(KeyCode::F(2), KeyModifiers::NONE);
-        assert_eq!(app.panel, Panel::Algorithms);
+        assert_eq!(app.panel, Panel::Shown);
         app.handle_key(KeyCode::F(2), KeyModifiers::NONE);
         assert_eq!(app.panel, Panel::Hidden);
         app.handle_key(KeyCode::F(2), KeyModifiers::NONE);
-        assert_eq!(app.panel, Panel::State);
+        assert_eq!(app.panel, Panel::Shown);
     }
 
     #[test]
