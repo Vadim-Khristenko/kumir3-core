@@ -4,13 +4,15 @@
 //! Предоставляет:
 //! - TCP сокеты (клиент/сервер)
 //! - UDP сокеты
-//! - HTTP-запросы (минимальный, без внешних зависимостей)
+//! - HTTP и HTTPS-запросы с переходом по перенаправлениям
 //! - Утилиты: URL-кодирование, Base64, DNS, JSON
 //!
-//! Без внешних зависимостей, только std.
+//! Шифрование даёт rustls с корневыми сертификатами webpki-roots; всё
+//! остальное — на std.
 
 mod http;
 mod tcp;
+mod transport;
 mod udp;
 mod utils;
 
@@ -55,6 +57,8 @@ pub fn create_net_library() -> LibraryDef {
         http_get_fn(),
         http_post_fn(),
         http_head_fn(),
+        http_fetch_fn(),
+        http_download_fn(),
         http_request_fn(),
         // === DNS ===
         dns_lookup_fn(),
