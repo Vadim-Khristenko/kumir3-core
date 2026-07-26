@@ -801,7 +801,7 @@ dependencies = [
 
 [[package]]
 name = "kumir3-compiler"
-version = "0.2.0-alpha.3"
+version = "0.2.0-alpha.4"
 dependencies = [
  "clap",
  "shared",
@@ -809,7 +809,7 @@ dependencies = [
 
 [[package]]
 name = "kumir3-interpreter"
-version = "0.2.0-alpha.3"
+version = "0.2.0-alpha.4"
 dependencies = [
  "clap",
  "colored",
@@ -1659,7 +1659,7 @@ dependencies = [
 
 [[package]]
 name = "shared"
-version = "0.2.0-alpha.3"
+version = "0.2.0-alpha.4"
 dependencies = [
  "clap",
  "colored",
