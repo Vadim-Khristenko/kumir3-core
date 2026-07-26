@@ -7,17 +7,6 @@ use shared::typesys::{TypeOp, default_engine};
 use super::TypeOps;
 use crate::interpreter::error::{RuntimeError, RuntimeErrorKind, RuntimeResult};
 
-/// Numeric value in form suitable for lossless comparison.
-enum Numeric {
-    /// Integer representable in `i128` — all language integer types except `u128`
-    /// with value exceeding `i128::MAX`.
-    Int(i128),
-    /// `u128` exceeds `i128::MAX`: signed type cannot hold it.
-    Big(u128),
-    /// Float; `float32` and `float64` embed in `float128` exactly.
-    Real(F128),
-}
-
 impl TypeOps {
     /// Checks value truthiness.
     pub fn is_truthy(value: &Value) -> bool {
@@ -73,80 +62,16 @@ impl TypeOps {
     }
 
     /// Computation kernel: order of two values already approved by engine.
+    ///
+    /// Numeric order lives in [`Number::order`] so that the comparison
+    /// operators, equality, sorting and hashing cannot drift apart.
     fn order(a: &Value, b: &Value) -> Option<Ordering> {
         match (a, b) {
-            (Value::Number(na), Value::Number(nb)) => Some(Self::order_numbers(na, nb)),
+            (Value::Number(na), Value::Number(nb)) => Some(na.order(nb)),
             (Value::String(sa), Value::String(sb)) => Some(sa.cmp(sb)),
             (Value::Char(ca), Value::Char(cb)) => Some(ca.cmp(cb)),
             _ => None,
         }
-    }
-
-    /// Order of two numbers without intermediate f64 rounding.
-    ///
-    /// `NaN` preserves prior behavior: incomparable pair treated as equal
-    /// (`partial_cmp` → `None` → [`Ordering::Equal`]).
-    fn order_numbers(a: &Number, b: &Number) -> Ordering {
-        match (Self::classify(a), Self::classify(b)) {
-            (Numeric::Int(x), Numeric::Int(y)) => x.cmp(&y),
-            (Numeric::Big(x), Numeric::Big(y)) => x.cmp(&y),
-            // `Big` by definition exceeds `i128::MAX`, hence any `Int`.
-            (Numeric::Int(_), Numeric::Big(_)) => Ordering::Less,
-            (Numeric::Big(_), Numeric::Int(_)) => Ordering::Greater,
-            (x, y) => Self::widen(x)
-                .partial_cmp(&Self::widen(y))
-                .unwrap_or(Ordering::Equal),
-        }
-    }
-
-    /// Decomposes number to precise form for comparison.
-    fn classify(n: &Number) -> Numeric {
-        match n {
-            Number::I8(v) => Numeric::Int(*v as i128),
-            Number::I16(v) => Numeric::Int(*v as i128),
-            Number::I32(v) => Numeric::Int(*v as i128),
-            Number::I64(v) => Numeric::Int(*v as i128),
-            Number::I128(v) => Numeric::Int(*v),
-            Number::U8(v) => Numeric::Int(*v as i128),
-            Number::U16(v) => Numeric::Int(*v as i128),
-            Number::U32(v) => Numeric::Int(*v as i128),
-            Number::U64(v) => Numeric::Int(*v as i128),
-            Number::U128(v) => match i128::try_from(*v) {
-                Ok(i) => Numeric::Int(i),
-                Err(_) => Numeric::Big(*v),
-            },
-            Number::F32(v) => Numeric::Real(F128::from(*v)),
-            Number::F64(v) => Numeric::Real(F128::from(*v)),
-            Number::F128(v) => Numeric::Real(*v),
-        }
-    }
-
-    /// Coerces any form to widest representation—`float128`.
-    ///
-    /// Integers up to 113 significant bits convert exactly; only `int128`/`u128`
-    /// beyond this limit round (but then 60 bits more precise than prior `f64` coercion).
-    fn widen(n: Numeric) -> F128 {
-        match n {
-            Numeric::Real(f) => f,
-            Numeric::Int(i) => Self::int_to_real(i.unsigned_abs(), i < 0),
-            Numeric::Big(u) => Self::int_to_real(u, false),
-        }
-    }
-
-    /// Constructs `float128` from sign and integer magnitude, decomposing the magnitude
-    /// into two 64-bit halves (both convert to `float128` exactly).
-    fn int_to_real(magnitude: u128, negative: bool) -> F128 {
-        /// 2^64—exactly representable in both `f64` and `float128`.
-        const TWO_POW_64: f64 = 18_446_744_073_709_551_616.0;
-
-        let low = F128::from(magnitude as u64);
-        let high = (magnitude >> 64) as u64;
-        let value = if high == 0 {
-            low
-        } else {
-            F128::from(high) * F128::from(TWO_POW_64) + low
-        };
-        if negative { -value } else { value }
     }
 
     /// Converts value to index.

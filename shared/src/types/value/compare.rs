@@ -17,7 +17,10 @@ use super::Value;
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Value::Number(a), Value::Number(b)) => a == b,
+            // By value, not by stored representation: `1` and `1.0` denote the
+            // same number, and a program comparing a `цел` with a `вещ` has no
+            // way of knowing which variant either happens to sit in.
+            (Value::Number(a), Value::Number(b)) => a.equals(b),
             (Value::String(a), Value::String(b)) => a == b,
             (Value::Boolean(a), Value::Boolean(b)) => a == b,
             (Value::Char(a), Value::Char(b)) => a == b,
@@ -180,6 +183,14 @@ impl Ord for Value {
         if d != Ordering::Equal {
             return d;
         }
+
+        // Numbers are ordered by value. Falling through to the printed text —
+        // as every other kind still does — compared numbers as strings, which
+        // is what made sorting put 100 before 9.
+        if let (Value::Number(a), Value::Number(b)) = (self, other) {
+            return a.order(b);
+        }
+
         self.to_string().cmp(&other.to_string())
     }
 }
@@ -187,6 +198,11 @@ impl Ord for Value {
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
         std::mem::discriminant(self).hash(state);
-        self.to_string().hash(state);
+        // Equal values must hash equally, so numbers hash a canonical key
+        // rather than their printed form: `1` and `1.0` are one key.
+        match self {
+            Value::Number(n) => n.hash_key().hash(state),
+            other => other.to_string().hash(state),
+        }
     }
 }
