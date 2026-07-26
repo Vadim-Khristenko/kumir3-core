@@ -24,7 +24,8 @@ import { basename, join, relative, sep } from "node:path";
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const CORPUS = join(ROOT, "examples", "corpus");
 const BINARY = join(ROOT, "target", "debug", "interpreter-cli.exe");
-const DEFAULT_TIMEOUT_MS = 5000;
+/** Значение по умолчанию директивы `| ТАЙМАУТ:` — см. KITE 18 § 3.3. */
+const DEFAULT_TIMEOUT_MS = 15_000;
 
 const argv = Bun.argv.slice(2);
 const BRIEF = argv.includes("--кратко") || argv.includes("--brief");
