@@ -313,7 +313,7 @@ impl Parser {
                 self.advance();
                 Ok(s)
             }
-            _ => Err(ParseError::unexpected("import path", self.peek(), self.span()).into()),
+            _ => Err(ParseError::unexpected("путь к модулю", self.peek(), self.span()).into()),
         }
     }
 

@@ -19,7 +19,7 @@ impl Parser {
         self.expect(&Token::Input, "ввод")?;
         let mut vars = Vec::new();
         loop {
-            vars.push(self.expect_ident("variable")?);
+            vars.push(self.expect_ident("имя переменной")?);
             if !self.match_token(&Token::Comma) {
                 break;
             }
@@ -49,7 +49,7 @@ impl Parser {
 
     /// Parses `yield expr` or `yield* expr` (delegation).
     pub(super) fn parse_yield(&mut self) -> ParseResult<Stmt> {
-        self.expect(&Token::Yield, "yield")?;
+        self.expect(&Token::Yield, "выдать")?;
 
         let delegate = self.match_token(&Token::Star);
         let value = self.parse_expr()?;
@@ -82,9 +82,9 @@ impl Parser {
     /// Parses `перемещение x в y`.
     pub(super) fn parse_move_stmt(&mut self) -> ParseResult<Stmt> {
         self.advance(); // consume `move`
-        let from = self.expect_ident("source variable")?;
+        let from = self.expect_ident("имя исходной переменной")?;
         self.expect_keyword("в")?;
-        let to = self.expect_ident("target variable")?;
+        let to = self.expect_ident("имя целевой переменной")?;
         self.expect_eol()?;
         Ok(Stmt::Move { from, to })
     }
@@ -93,9 +93,9 @@ impl Parser {
     pub(super) fn parse_borrow_stmt(&mut self) -> ParseResult<Stmt> {
         self.advance(); // consume `borrow`
         let mutable = self.match_token(&Token::Mut);
-        let source = self.expect_ident("source variable")?;
+        let source = self.expect_ident("имя исходной переменной")?;
         self.expect_keyword("как")?;
-        let target = self.expect_ident("target variable")?;
+        let target = self.expect_ident("имя целевой переменной")?;
         self.expect_eol()?;
         Ok(Stmt::Borrow {
             source,
@@ -107,9 +107,9 @@ impl Parser {
     /// Parses `клонировать x в y`.
     pub(super) fn parse_clone_stmt(&mut self) -> ParseResult<Stmt> {
         self.advance(); // consume `clone`
-        let source = self.expect_ident("source variable")?;
+        let source = self.expect_ident("имя исходной переменной")?;
         self.expect_keyword("в")?;
-        let target = self.expect_ident("target variable")?;
+        let target = self.expect_ident("имя целевой переменной")?;
         self.expect_eol()?;
         Ok(Stmt::Clone { source, target })
     }
@@ -123,7 +123,7 @@ impl Parser {
         self.advance(); // consume `export`
         let mut names = Vec::new();
         loop {
-            names.push(self.expect_ident("export name")?);
+            names.push(self.expect_ident("имя экспортируемого")?);
             if !self.match_token(&Token::Comma) {
                 break;
             }

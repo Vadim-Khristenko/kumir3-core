@@ -38,7 +38,7 @@ impl<'a> Lexer<'a> {
                 None => {
                     return Err(LexerError::with_span(
                         LexerErrorKind::UnterminatedString,
-                        "Unterminated string literal",
+                        "Незакрытая строка",
                         Span::new(start, self.position),
                     ));
                 }
@@ -60,7 +60,8 @@ impl<'a> Lexer<'a> {
                 Some('\n') if !is_multiline => {
                     return Err(LexerError::with_span(
                         LexerErrorKind::UnterminatedString,
-                        "Unterminated string literal (use triple quotes for multiline)",
+                        "Незакрытая строка: перевод строки внутри кавычек \
+                         допускается только в тройных кавычках",
                         Span::new(start, self.position),
                     ));
                 }
@@ -107,7 +108,7 @@ impl<'a> Lexer<'a> {
                 None => {
                     return Err(LexerError::with_span(
                         LexerErrorKind::UnterminatedString,
-                        "Unterminated raw string literal",
+                        "Незакрытая «сырая» строка",
                         Span::new(start, self.position),
                     ));
                 }
@@ -175,7 +176,7 @@ impl<'a> Lexer<'a> {
                 None | Some('\n') => {
                     return Err(LexerError::with_span(
                         LexerErrorKind::UnterminatedString,
-                        "Unterminated interpolated string",
+                        "Незакрытая строка со вставками",
                         Span::new(start, self.position),
                     ));
                 }
@@ -293,14 +294,14 @@ impl<'a> Lexer<'a> {
             None | Some('\n') => {
                 return Err(LexerError::new(
                     LexerErrorKind::UnterminatedChar,
-                    "Unterminated character literal",
+                    "Незакрытый символьный литерал",
                     start,
                 ));
             }
             Some('\'') => {
                 return Err(LexerError::new(
                     LexerErrorKind::EmptyCharLiteral,
-                    "Empty character literal",
+                    "Пустой символьный литерал",
                     start,
                 ));
             }
@@ -319,13 +320,13 @@ impl<'a> Lexer<'a> {
             if self.peek().is_some() && self.peek() != Some('\n') {
                 return Err(LexerError::new(
                     LexerErrorKind::MultiCharLiteral,
-                    "Character literal may only contain one character",
+                    "Символьный литерал содержит больше одного символа",
                     start,
                 ));
             }
             return Err(LexerError::new(
                 LexerErrorKind::UnterminatedChar,
-                "Unterminated character literal",
+                "Незакрытый символьный литерал",
                 start,
             ));
         }
@@ -386,13 +387,13 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 Err(LexerError::new(
                     LexerErrorKind::InvalidEscape,
-                    format!("Invalid escape sequence: \\{}", c),
+                    format!("Неизвестная запись после обратной косой черты: \\{}", c),
                     pos,
                 ))
             }
             None => Err(LexerError::new(
                 LexerErrorKind::InvalidEscape,
-                "Escape sequence at end of input",
+                "Обратная косая черта в конце текста программы",
                 pos,
             )),
         }
@@ -412,7 +413,10 @@ impl<'a> Lexer<'a> {
                 _ => {
                     return Err(LexerError::new(
                         LexerErrorKind::InvalidEscape,
-                        format!("Invalid hex escape (expected {} hex digits)", digits),
+                        format!(
+                            "В записи кода символа ожидалось {} шестнадцатеричных цифр",
+                            digits
+                        ),
                         pos,
                     ));
                 }
@@ -422,7 +426,7 @@ impl<'a> Lexer<'a> {
         char::from_u32(value).ok_or_else(|| {
             LexerError::new(
                 LexerErrorKind::InvalidUnicodeEscape,
-                format!("Invalid Unicode code point: U+{:04X}", value),
+                format!("Такого символа Юникода не существует: U+{:04X}", value),
                 pos,
             )
         })
@@ -465,7 +469,7 @@ impl<'a> Lexer<'a> {
                 _ => {
                     return Err(LexerError::new(
                         LexerErrorKind::InvalidUnicodeEscape,
-                        "Invalid character in unicode escape",
+                        "Недопустимый знак в записи кода символа",
                         pos,
                     ));
                 }
@@ -475,7 +479,7 @@ impl<'a> Lexer<'a> {
         if digit_count == 0 {
             return Err(LexerError::new(
                 LexerErrorKind::InvalidUnicodeEscape,
-                "Empty unicode escape",
+                "Пустая запись кода символа",
                 pos,
             ));
         }
@@ -483,7 +487,7 @@ impl<'a> Lexer<'a> {
         char::from_u32(value).ok_or_else(|| {
             LexerError::new(
                 LexerErrorKind::InvalidUnicodeEscape,
-                format!("Invalid Unicode code point: U+{:04X}", value),
+                format!("Такого символа Юникода не существует: U+{:04X}", value),
                 pos,
             )
         })

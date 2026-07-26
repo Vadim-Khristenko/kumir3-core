@@ -48,14 +48,14 @@ impl Parser {
             .into());
         };
 
-        let name: Arc<str> = Arc::from(self.expect_ident("class name")?.as_str());
+        let name: Arc<str> = Arc::from(self.expect_ident("имя класса")?.as_str());
 
         // ── Generic type parameters: <T, U: Trait> ──────────────────
         let type_params = self.try_parse_type_params();
 
         // ── Inheritance: расширяет Parent ────────────────────────────
         let parent: Option<Arc<str>> = if self.match_token(&Token::Extends) {
-            Some(Arc::from(self.expect_ident("parent class")?.as_str()))
+            Some(Arc::from(self.expect_ident("имя класса-предка")?.as_str()))
         } else {
             None
         };
@@ -70,7 +70,7 @@ impl Parser {
         if self.match_token(&Token::Implements) {
             loop {
                 interfaces.push(Arc::from(
-                    self.expect_ident("interface/trait name")?.as_str(),
+                    self.expect_ident("имя интерфейса или типажа")?.as_str(),
                 ));
                 if !self.match_token(&Token::Comma) {
                     break;

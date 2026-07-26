@@ -44,7 +44,9 @@ impl Parser {
             self.expect(&Token::End, "кон")?;
             code
         } else {
-            return Err(ParseError::unexpected("rust block", self.peek(), self.span()).into());
+            return Err(
+                ParseError::unexpected("блок вставки на Rust", self.peek(), self.span()).into(),
+            );
         };
 
         let captured_vars = extract_captured_vars(&code);

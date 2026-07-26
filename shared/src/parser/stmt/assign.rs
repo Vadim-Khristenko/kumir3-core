@@ -93,7 +93,7 @@ impl Parser {
     /// This is a limited version of `parse_postfix_expr` that doesn't
     /// enter full expression parsing — only structural access.
     fn parse_lhs_expr(&mut self) -> ParseResult<Expr> {
-        let name = self.expect_ident("identifier")?;
+        let name = self.expect_ident("имя")?;
         let mut expr: Expr = Expr::Variable(name);
 
         loop {
@@ -101,7 +101,7 @@ impl Parser {
                 // Field: obj.field
                 Token::Dot => {
                     self.advance();
-                    let field = self.expect_ident("field name")?;
+                    let field = self.expect_ident("имя поля")?;
                     expr = Expr::FieldAccess(Box::new(expr), field);
                 }
                 // Index: arr[i]
@@ -125,7 +125,7 @@ impl Parser {
                 // Module: Mod::member
                 Token::DoubleColon => {
                     self.advance();
-                    let member = self.expect_ident("member")?;
+                    let member = self.expect_ident("имя члена")?;
                     expr = match expr {
                         Expr::Variable(mod_name) => Expr::ModuleAccess(mod_name, member),
                         Expr::ModuleAccess(m, s) => {
@@ -176,7 +176,7 @@ impl Parser {
         self.advance(); // consume this/self
 
         self.expect(&Token::Dot, ".")?;
-        let field = self.expect_ident("field name")?;
+        let field = self.expect_ident("имя поля")?;
 
         // Method call: self.method(args)
         if self.match_token(&Token::LParen) {

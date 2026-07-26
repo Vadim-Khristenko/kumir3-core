@@ -197,10 +197,19 @@ impl ParseError {
     // =========================================================================
 
     /// "Unexpected token" error.
+    ///
+    /// Двоеточие в шаблоне не украшение: ожидаемое приходит сюда готовой
+    /// подстрокой любого рода — «инструкция», «имя параметра», «конец
+    /// диапазона», — и согласовать её с «ожидалось» нельзя. После двоеточия
+    /// подстрока читается как подпись и остаётся грамотной при любом роде.
     pub fn unexpected(expected: &str, found: &Token, span: Span) -> Self {
         Self::new(
             ParseErrorKind::UnexpectedToken,
-            format!("Ожидалось {}, найдено {:?}", expected, found),
+            format!(
+                "Ожидалось: {}. Найдено: {}",
+                expected,
+                describe_token(found)
+            ),
             span,
         )
     }
@@ -430,5 +439,47 @@ pub type ParseResult<T> = Result<T, Box<ParseError>>;
 impl From<LexerError> for Box<ParseError> {
     fn from(err: LexerError) -> Self {
         Box::new(ParseError::from(err))
+    }
+}
+
+// =============================================================================
+//         SECTION: НАЗВАНИЕ ТОКЕНА ДЛЯ СООБЩЕНИЙ
+// =============================================================================
+
+/// Описывает токен так, как его написал автор программы.
+///
+/// Сообщения раньше печатали отладочное имя варианта: «найдено Class»,
+/// «найдено At», «найдено IntLiteral(3)». Ученик такого в своей программе не
+/// писал и сопоставить это с текстом не может, а половина сообщения при этом
+/// оказывалась по-английски.
+///
+/// Ключевые слова и знаки берутся из тех же таблиц, по которым их разбирает
+/// лексер, поэтому написание не может разойтись с языком.
+pub fn describe_token(token: &Token) -> String {
+    if let Some(word) = crate::constants::keywords::keyword_for(token) {
+        return format!("«{word}»");
+    }
+    if let Some(symbol) = crate::constants::operators::operator_for(token) {
+        return format!("«{symbol}»");
+    }
+    match token {
+        Token::Ident(name)
+        | Token::VarIdent(name)
+        | Token::FuncIdent(name)
+        | Token::TypeIdent(name)
+        | Token::ClassIdent(name)
+        | Token::NamespaceIdent(name) => format!("имя «{name}»"),
+        Token::IntLiteral(value) => format!("число {value}"),
+        Token::FloatLiteral(value) => format!("число {value}"),
+        Token::StringLiteral(text) | Token::RawStringLiteral(text) => {
+            format!("строка «{text}»")
+        }
+        Token::CharLiteral(c) => format!("символ «{c}»"),
+        Token::Newline => "конец строки".to_string(),
+        Token::EOF => "конец файла".to_string(),
+        // Служебные токены без написания в языке: имя варианта здесь — меньшее
+        // зло, чем пустое место, и такое сообщение сигналит, что описание
+        // стоит дописать.
+        other => format!("{other:?}"),
     }
 }

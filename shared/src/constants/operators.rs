@@ -19,6 +19,16 @@ pub fn operator_token(s: &str) -> Option<Token> {
     OPERATOR_INDEX.get(s).cloned()
 }
 
+/// Reverse lookup: how this operator is written in a program.
+///
+/// Mirrors [`crate::constants::keywords::keyword_for`]; together they let a
+/// diagnostic name a token the way the author typed it instead of by the Rust
+/// variant name.
+#[inline]
+pub fn operator_for(token: &Token) -> Option<&'static str> {
+    operator_canonical(token)
+}
+
 /// Checks if a character can start an operator.
 #[inline]
 pub fn is_operator_char(c: char) -> bool {

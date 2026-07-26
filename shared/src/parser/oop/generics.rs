@@ -28,7 +28,7 @@ impl Parser {
                 break;
             }
 
-            let name: Arc<str> = match self.expect_ident("type parameter") {
+            let name: Arc<str> = match self.expect_ident("имя параметра типа") {
                 Ok(n) => Arc::from(n.as_str()),
                 Err(_) => break,
             };
@@ -36,7 +36,7 @@ impl Parser {
             // Constraints: T: Trait1 + Trait2
             let constraints = if self.match_token(&Token::Colon) {
                 let mut c = Vec::new();
-                while let Ok(n) = self.expect_ident("constraint") {
+                while let Ok(n) = self.expect_ident("ограничение типа") {
                     let cname = Arc::from(n.as_str());
                     c.push(TypeConstraint::Implements(cname));
                     if !self.match_token(&Token::Plus) {

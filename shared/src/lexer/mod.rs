@@ -505,7 +505,7 @@ impl<'a> Lexer<'a> {
         self.advance();
         Err(LexerError::new(
             LexerErrorKind::UnexpectedChar,
-            format!("Unexpected character: '{}'", c),
+            format!("Недопустимый знак в тексте программы: '{}'", c),
             start,
         ))
     }

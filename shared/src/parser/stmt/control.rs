@@ -103,7 +103,7 @@ impl Parser {
     /// - Counter loop:  `для i от a до b [шаг c]`
     /// - ForEach loop:  `для x в collection`
     fn parse_loop_for_body(&mut self) -> ParseResult<Stmt> {
-        let variable = self.expect_ident("loop variable")?;
+        let variable = self.expect_ident("имя переменной цикла")?;
 
         // ForEach: для x в коллекция
         if self.check_keyword("в") {

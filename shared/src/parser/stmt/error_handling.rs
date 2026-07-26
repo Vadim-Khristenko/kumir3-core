@@ -31,7 +31,7 @@ impl Parser {
 
         // Optional catch variable and type
         let catch_var = if self.is_ident() {
-            Some(self.expect_ident("catch variable")?)
+            Some(self.expect_ident("имя переменной перехвата")?)
         } else {
             None
         };

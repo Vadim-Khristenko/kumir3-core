@@ -195,7 +195,7 @@ impl Parser {
         let mut return_type = self.try_parse_type();
 
         // ── Name ────────────────────────────────────────────────────
-        let name: Arc<str> = Arc::from(self.expect_ident("method name")?.as_str());
+        let name: Arc<str> = Arc::from(self.expect_ident("имя метода")?.as_str());
 
         // ── Type parameters ─────────────────────────────────────────
         let type_params = self.try_parse_type_params();
@@ -328,7 +328,7 @@ impl Parser {
         self.expect(&Token::Alg, "алг")?;
 
         let mut return_type = self.try_parse_type();
-        let name: Arc<str> = Arc::from(self.expect_ident("method name")?.as_str());
+        let name: Arc<str> = Arc::from(self.expect_ident("имя метода")?.as_str());
         let type_params = self.try_parse_type_params();
 
         let params = if self.match_token(&Token::LParen) {
@@ -383,7 +383,7 @@ impl Parser {
 
         loop {
             let field_m = self.mark();
-            let name: Arc<str> = Arc::from(self.expect_ident("field name")?.as_str());
+            let name: Arc<str> = Arc::from(self.expect_ident("имя поля")?.as_str());
 
             let default = if self.match_token(&Token::Assign) {
                 Some(self.parse_expr()?)
@@ -480,7 +480,7 @@ impl Parser {
 
         // ── Modern syntax: name : Type ──────────────────────────────
         if self.is_ident() && matches!(self.peek_n(1), Token::Colon) {
-            let name = Arc::from(self.expect_ident("parameter name")?.as_str());
+            let name = Arc::from(self.expect_ident("имя параметра")?.as_str());
             self.expect(&Token::Colon, ":")?;
             let type_kind = Some(self.parse_type()?);
 
@@ -503,7 +503,7 @@ impl Parser {
 
         // ── Classic syntax: Type name ───────────────────────────────
         let type_kind = Some(self.parse_type()?);
-        let name = Arc::from(self.expect_ident("parameter name")?.as_str());
+        let name = Arc::from(self.expect_ident("имя параметра")?.as_str());
 
         let default = if self.match_token(&Token::Assign) {
             Some(self.parse_expr()?)

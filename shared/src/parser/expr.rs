@@ -235,7 +235,7 @@ impl Parser {
 
         // Try `new Ident(args)` — class instantiation
         if self.is_ident() {
-            let name = self.expect_ident("class name")?;
+            let name = self.expect_ident("имя класса")?;
 
             if self.match_token(&Token::LParen) {
                 let args = self.parse_args()?;
@@ -361,7 +361,7 @@ impl Parser {
                 // ── Module / enum access: Mod::member ───────────────
                 Token::DoubleColon => {
                     self.advance();
-                    let member = self.expect_ident("member name")?;
+                    let member = self.expect_ident("имя члена")?;
 
                     expr = match expr {
                         Expr::Variable(module) => Expr::ModuleAccess(module, member),
@@ -381,14 +381,14 @@ impl Parser {
                 // ── Field access: obj.field ─────────────────────────
                 Token::Dot => {
                     self.advance();
-                    let field = self.expect_ident("field name")?;
+                    let field = self.expect_ident("имя поля")?;
                     expr = Expr::FieldAccess(Box::new(expr), field);
                 }
 
                 // ── Safe field / method access: obj?.field / obj?.method(args)
                 Token::QuestionDot => {
                     self.advance();
-                    let member = self.expect_ident("field or method name")?;
+                    let member = self.expect_ident("имя поля или метода")?;
                     if self.check(&Token::LParen) {
                         self.advance();
                         let args = self.parse_args()?;
@@ -536,7 +536,7 @@ impl Parser {
             | Token::TypeIdent(_)
             | Token::ClassIdent(_)
             | Token::NamespaceIdent(_) => {
-                let name = self.expect_ident("identifier")?;
+                let name = self.expect_ident("имя")?;
                 Ok(Expr::Variable(name))
             }
 
@@ -677,7 +677,7 @@ impl Parser {
                 // Simple identifier parameters
                 if !self.check(&Token::RParen) {
                     loop {
-                        params.push(self.expect_ident("parameter")?);
+                        params.push(self.expect_ident("имя параметра")?);
                         if !self.match_token(&Token::Comma) {
                             break;
                         }
@@ -687,7 +687,7 @@ impl Parser {
             self.expect(&Token::RParen, ")")?;
         } else if self.is_ident() {
             // Single-param shorthand: лямбда x -> expr
-            params.push(self.expect_ident("parameter")?);
+            params.push(self.expect_ident("имя параметра")?);
         }
 
         // Optional return type annotation
@@ -717,7 +717,7 @@ impl Parser {
         if !self.check(&Token::RParen) {
             loop {
                 let tk = self.parse_type()?;
-                let name = self.expect_ident("parameter name")?;
+                let name = self.expect_ident("имя параметра")?;
                 types.push(tk);
                 names.push(name);
                 if !self.match_token(&Token::Comma) {

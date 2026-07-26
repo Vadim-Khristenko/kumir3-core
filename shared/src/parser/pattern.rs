@@ -246,7 +246,7 @@ impl Parser {
             // ── Mutable binding: mut x ──────────────────────────────
             Token::Mut => {
                 self.advance();
-                let name = self.expect_ident("variable name after 'mut'")?;
+                let name = self.expect_ident("имя переменной после «изм»")?;
                 Ok(Pattern::MutableVariable(name))
             }
 
@@ -281,7 +281,7 @@ impl Parser {
     /// - `name @ pattern`                         — binding with nested pattern
     /// - `name`                                   — plain variable binding
     fn parse_ident_pattern(&mut self) -> ParseResult<Pattern> {
-        let name = self.expect_ident("pattern identifier")?;
+        let name = self.expect_ident("имя в образце")?;
 
         match self.peek() {
             // ── Option/Result shorthand: Some(p), Ok(p), Err(p) ─────
@@ -350,7 +350,7 @@ impl Parser {
     /// Shape::Rect(w, h)              → EnumVariant { bindings: [Var("w"), Var("h")] }
     /// ```
     fn parse_enum_variant_pattern(&mut self, enum_name: String) -> ParseResult<Pattern> {
-        let variant = self.expect_ident("enum variant name")?;
+        let variant = self.expect_ident("имя варианта перечисления")?;
 
         let bindings = if self.match_token(&Token::LParen) {
             let pats = self.comma_sep(&Token::RParen, |p| p.parse_pattern())?;
@@ -391,7 +391,7 @@ impl Parser {
                 break;
             }
 
-            let field_name = self.expect_ident("field name")?;
+            let field_name = self.expect_ident("имя поля")?;
 
             // field: pattern  or  just  field  (shorthand)
             let pattern = if self.match_token(&Token::Colon) {
@@ -500,7 +500,7 @@ impl Parser {
                 self.advance();
                 // Optional rest binding name
                 if self.is_ident() {
-                    rest = Some(self.expect_ident("rest variable")?);
+                    rest = Some(self.expect_ident("имя переменной для остатка")?);
                 } else {
                     rest = Some(String::new()); // anonymous rest
                 }
@@ -585,7 +585,7 @@ impl Parser {
             | Token::TypeIdent(_)
             | Token::ClassIdent(_)
             | Token::NamespaceIdent(_) => {
-                let name = self.expect_ident("range step")?;
+                let name = self.expect_ident("шаг диапазона")?;
                 Ok(Some(Expr::Variable(name)))
             }
             _ => Ok(None),
@@ -625,7 +625,7 @@ impl Parser {
             | Token::TypeIdent(_)
             | Token::ClassIdent(_)
             | Token::NamespaceIdent(_) => {
-                let name = self.expect_ident("range end")?;
+                let name = self.expect_ident("конец диапазона")?;
                 Ok(Some(Expr::Variable(name)))
             }
             _ => Ok(None),

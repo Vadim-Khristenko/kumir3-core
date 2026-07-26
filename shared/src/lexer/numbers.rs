@@ -47,7 +47,7 @@ impl<'a> Lexer<'a> {
             if self.pos == exp_start {
                 return Err(LexerError::new(
                     LexerErrorKind::InvalidNumber,
-                    "Expected exponent digits",
+                    "После признака степени ожидались цифры",
                     start,
                 ));
             }
@@ -61,7 +61,7 @@ impl<'a> Lexer<'a> {
                 Err(_) => {
                     return Err(LexerError::new(
                         LexerErrorKind::InvalidNumber,
-                        format!("Invalid float literal: {}", num_str),
+                        format!("Неверная запись вещественного числа: {}", num_str),
                         start,
                     ));
                 }
@@ -72,7 +72,7 @@ impl<'a> Lexer<'a> {
                 Err(_) => {
                     return Err(LexerError::new(
                         LexerErrorKind::InvalidNumber,
-                        format!("Invalid integer literal: {}", num_str),
+                        format!("Неверная запись целого числа: {}", num_str),
                         start,
                     ));
                 }
@@ -99,7 +99,7 @@ impl<'a> Lexer<'a> {
         if self.pos == hex_start {
             return Err(LexerError::new(
                 LexerErrorKind::InvalidNumber,
-                "Expected hex digits after 0x",
+                "После 0x ожидались шестнадцатеричные цифры",
                 start,
             ));
         }
@@ -112,7 +112,7 @@ impl<'a> Lexer<'a> {
             ))),
             Err(_) => Err(LexerError::new(
                 LexerErrorKind::InvalidNumber,
-                format!("Invalid hex literal: 0x{}", hex_str),
+                format!("Неверная шестнадцатеричная запись числа: 0x{}", hex_str),
                 start,
             )),
         }
@@ -132,7 +132,7 @@ impl<'a> Lexer<'a> {
         if self.pos == bin_start {
             return Err(LexerError::new(
                 LexerErrorKind::InvalidNumber,
-                "Expected binary digits after 0b",
+                "После 0b ожидались двоичные цифры",
                 start,
             ));
         }
@@ -145,7 +145,7 @@ impl<'a> Lexer<'a> {
             ))),
             Err(_) => Err(LexerError::new(
                 LexerErrorKind::InvalidNumber,
-                format!("Invalid binary literal: 0b{}", bin_str),
+                format!("Неверная двоичная запись числа: 0b{}", bin_str),
                 start,
             )),
         }
@@ -165,7 +165,7 @@ impl<'a> Lexer<'a> {
         if self.pos == oct_start {
             return Err(LexerError::new(
                 LexerErrorKind::InvalidNumber,
-                "Expected octal digits after 0o",
+                "После 0o ожидались восьмеричные цифры",
                 start,
             ));
         }
@@ -178,7 +178,7 @@ impl<'a> Lexer<'a> {
             ))),
             Err(_) => Err(LexerError::new(
                 LexerErrorKind::InvalidNumber,
-                format!("Invalid octal literal: 0o{}", oct_str),
+                format!("Неверная восьмеричная запись числа: 0o{}", oct_str),
                 start,
             )),
         }

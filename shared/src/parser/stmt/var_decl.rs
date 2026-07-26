@@ -24,10 +24,10 @@ impl Parser {
         let type_kind = self.parse_type()?;
 
         let mut names = Vec::new();
-        names.push(self.expect_ident("variable name")?);
+        names.push(self.expect_ident("имя переменной")?);
 
         while self.match_token(&Token::Comma) {
-            names.push(self.expect_ident("variable name")?);
+            names.push(self.expect_ident("имя переменной")?);
         }
 
         // Initialisation (only for single variable)
@@ -49,7 +49,7 @@ impl Parser {
     /// Parses an auto-declaration: `авто x := expr`.
     pub(super) fn parse_auto_decl(&mut self) -> ParseResult<Stmt> {
         self.expect(&Token::AutoType, "авто")?;
-        let name = self.expect_ident("variable name")?;
+        let name = self.expect_ident("имя переменной")?;
         self.expect(&Token::Assign, ":=")?;
         let init = self.parse_expr()?;
         self.expect_eol()?;
@@ -64,7 +64,7 @@ impl Parser {
     pub(super) fn parse_const_decl(&mut self) -> ParseResult<Stmt> {
         self.expect(&Token::Const, "конст")?;
         let type_kind = self.parse_type()?;
-        let name = self.expect_ident("constant name")?;
+        let name = self.expect_ident("имя константы")?;
         self.expect(&Token::Assign, ":=")?;
         let init = self.parse_expr()?;
         self.expect_eol()?;

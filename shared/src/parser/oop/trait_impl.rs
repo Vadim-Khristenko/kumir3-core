@@ -29,13 +29,15 @@ impl Parser {
         let m = self.mark();
         self.expect(&Token::Interface, "интерфейс")?;
 
-        let name: Arc<str> = Arc::from(self.expect_ident("interface name")?.as_str());
+        let name: Arc<str> = Arc::from(self.expect_ident("имя интерфейса")?.as_str());
         let type_params = self.try_parse_type_params();
 
         let extends: Vec<Arc<str>> = if self.match_token(&Token::Extends) {
             let mut bases = Vec::new();
             loop {
-                bases.push(Arc::from(self.expect_ident("parent interface")?.as_str()));
+                bases.push(Arc::from(
+                    self.expect_ident("имя интерфейса-предка")?.as_str(),
+                ));
                 if !self.match_token(&Token::Comma) {
                     break;
                 }
@@ -88,14 +90,14 @@ impl Parser {
         let m = self.mark();
         self.expect(&Token::Trait, "трейт")?;
 
-        let name: Arc<str> = Arc::from(self.expect_ident("trait name")?.as_str());
+        let name: Arc<str> = Arc::from(self.expect_ident("имя типажа")?.as_str());
         let type_params = self.try_parse_type_params();
 
         // Supertraits: трейт Foo : Bar, Baz
         let supertraits: Vec<Arc<str>> = if self.match_token(&Token::Colon) {
             let mut supers = Vec::new();
             loop {
-                supers.push(Arc::from(self.expect_ident("supertrait")?.as_str()));
+                supers.push(Arc::from(self.expect_ident("имя надтипажа")?.as_str()));
                 if !self.match_token(&Token::Comma) {
                     break;
                 }
@@ -166,12 +168,12 @@ impl Parser {
         let m = self.mark();
         self.expect(&Token::Impl, "реализация")?;
 
-        let first_name: Arc<str> = Arc::from(self.expect_ident("type or trait name")?.as_str());
+        let first_name: Arc<str> = Arc::from(self.expect_ident("имя типа или типажа")?.as_str());
         let type_params = self.try_parse_type_params();
 
         // Check for "для" (for) — trait impl
         let (trait_name, target) = if self.match_keyword("для") {
-            let target: Arc<str> = Arc::from(self.expect_ident("target type")?.as_str());
+            let target: Arc<str> = Arc::from(self.expect_ident("имя целевого типа")?.as_str());
             (Some(first_name), target)
         } else {
             (None, first_name)

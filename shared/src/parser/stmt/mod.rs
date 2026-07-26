@@ -210,7 +210,7 @@ impl Parser {
             // ── Delete: удалить x ───────────────────────────────────
             Token::Delete => {
                 self.advance();
-                let name = self.expect_ident("variable name")?;
+                let name = self.expect_ident("имя переменной")?;
                 self.expect_eol()?;
                 Ok(Stmt::PointerDelete { name })
             }
@@ -264,7 +264,7 @@ impl Parser {
             | Token::ClassIdent(_)
             | Token::NamespaceIdent(_) => self.parse_assignment_or_call(),
 
-            _ => Err(ParseError::unexpected("statement", self.peek(), self.span()).into()),
+            _ => Err(ParseError::unexpected("инструкция", self.peek(), self.span()).into()),
         }
     }
 

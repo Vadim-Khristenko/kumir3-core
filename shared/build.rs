@@ -554,6 +554,28 @@ fn write_operators(out_dir: &str) {
         set.build()
     )
     .unwrap();
+
+    // Обратный поиск: как знак записывается в программе. Нужен сообщениям об
+    // ошибках — «найдено «@»» вместо отладочного имени варианта «At».
+    // Первое написание в таблице считается основным: у знака, как и у ключевого
+    // слова, бывают равнозначные записи.
+    writeln!(
+        w,
+        "fn operator_canonical(t: &Token) -> Option<&'static str> {{"
+    )
+    .unwrap();
+    writeln!(w, "    match t {{").unwrap();
+    let mut seen: Vec<&str> = Vec::new();
+    for (sym, variant) in OPERATORS {
+        if seen.contains(variant) {
+            continue;
+        }
+        seen.push(variant);
+        writeln!(w, "        Token::{variant} => Some(\"{sym}\"),").unwrap();
+    }
+    writeln!(w, "        _ => None,").unwrap();
+    writeln!(w, "    }}").unwrap();
+    writeln!(w, "}}").unwrap();
 }
 
 fn write_keywords(out_dir: &str) {
