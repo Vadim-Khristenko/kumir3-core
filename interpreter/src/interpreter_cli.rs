@@ -10,7 +10,36 @@ mod interpreter;
 pub use cli::{Cli, Commands};
 use interpreter::Interpreter;
 
+/// Stack reserved for the thread that runs the program.
+///
+/// The evaluator recurses through the expression tree, so a single КуМир call
+/// costs tens of kilobytes of native stack. On the default 1 MiB main-thread
+/// stack that ran out at about twenty nested calls — long before the
+/// interpreter's own depth guard ([`Environment::set_max_call_depth`], 1000
+/// frames) could report anything, and the process died without flushing the
+/// output it had already produced.
+///
+/// Recursion is a third-lesson topic in КуМир, so the limit a student meets must
+/// be the guard with its Russian message, not a stack overflow. The reservation
+/// is virtual address space: pages are committed only as they are touched.
+const STACK_SIZE: usize = 512 * 1024 * 1024;
+
 fn main() {
+    let worker = std::thread::Builder::new()
+        .name("исполнение".to_string())
+        .stack_size(STACK_SIZE)
+        .spawn(run)
+        .expect("поток исполнения создаётся");
+
+    // A panic inside the program thread has already printed its own report;
+    // exiting non-zero keeps that visible to the caller instead of pretending
+    // the run succeeded.
+    if worker.join().is_err() {
+        std::process::exit(101);
+    }
+}
+
+fn run() {
     let cli = Cli::parse();
 
     let file = cli.file();

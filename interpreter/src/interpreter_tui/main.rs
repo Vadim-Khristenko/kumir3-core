@@ -32,7 +32,27 @@ use cli::{Cli, Commands};
 //                              MAIN
 // =============================================================================
 
+/// Stack reserved for the thread that runs programs.
+///
+/// Same reason as in `interpreter_cli`: a КуМир call costs tens of kilobytes of
+/// native stack, so on the default main-thread stack recursion died at about
+/// twenty frames. Here it matters even more — a stack overflow takes the whole
+/// console down with it, terminal state and all.
+const STACK_SIZE: usize = 512 * 1024 * 1024;
+
 fn main() {
+    let worker = std::thread::Builder::new()
+        .name("исполнение".to_string())
+        .stack_size(STACK_SIZE)
+        .spawn(run)
+        .expect("поток исполнения создаётся");
+
+    if worker.join().is_err() {
+        std::process::exit(101);
+    }
+}
+
+fn run() {
     let cli = Cli::parse();
 
     let result = match cli.command {
