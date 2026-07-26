@@ -158,6 +158,19 @@ impl Environment {
         }
     }
 
+    /// Определяет локальную константу — значение, которое нельзя изменить.
+    ///
+    /// Отличается от [`Self::define_local`] только тем, в какую половину области
+    /// видимости попадает имя: [`Scope`] держит константы отдельно, и
+    /// [`Self::set_variable`] отказывает при попытке присвоить им.
+    pub fn define_local_const(&mut self, name: String, value: Value) {
+        if let Some(frame) = self.call_stack.last_mut() {
+            frame.define_const(name, value);
+        } else {
+            self.globals.define_const(name, value);
+        }
+    }
+
     /// Получает значение переменной.
     ///
     /// [KITE 4] Лексический поиск: только текущий кадр (его стек областей) и

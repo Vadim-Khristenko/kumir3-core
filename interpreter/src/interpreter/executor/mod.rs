@@ -119,8 +119,8 @@ impl Executor {
                 type_kind,
                 names,
                 init,
-                ..
-            } => Self::execute_var_decl(type_kind, names, init.as_ref(), env),
+                modifiers,
+            } => Self::execute_var_decl(type_kind, names, init.as_ref(), modifiers, env),
 
             // Modules and imports
             Stmt::Import { path, alias, items } => {

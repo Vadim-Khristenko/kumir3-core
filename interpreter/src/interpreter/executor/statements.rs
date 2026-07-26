@@ -4,7 +4,7 @@ use super::super::environment::Environment;
 use super::super::error::{ControlFlow, RuntimeError, RuntimeErrorKind, RuntimeResult};
 use super::super::evaluator::ExprEvaluator;
 use super::Executor;
-use shared::types::{Algorithm, EnumVariant, Expr, Stmt, TypeKind, Value};
+use shared::types::{Algorithm, EnumVariant, Expr, Stmt, TypeKind, Value, VarModifiers};
 use std::sync::Arc;
 
 impl Executor {
@@ -72,6 +72,7 @@ impl Executor {
         type_spec: &TypeKind,
         names: &[String],
         init: Option<&Expr>,
+        modifiers: &VarModifiers,
         env: &mut Environment,
     ) -> RuntimeResult<ControlFlow> {
         let initial_value = if let Some(expr) = init {
@@ -80,14 +81,24 @@ impl Executor {
             ExprEvaluator::default_value_for_type(type_spec)
         };
 
+        // `конст` доходит до сюда признаком в модификаторах, и раньше он здесь
+        // и терялся: объявление всегда заводило обычную переменную, поэтому
+        // константу можно было молча переприсвоить. Отказ на присваивание в
+        // `Environment::set_variable` был написан, но проверять ему было нечего.
+        let define = if modifiers.constant {
+            Environment::define_local_const
+        } else {
+            Environment::define_local
+        };
+
         // If init is present and only one variable, use it.
         if init.is_some() && names.len() == 1 {
-            env.define_local(names[0].clone(), initial_value);
+            define(env, names[0].clone(), initial_value);
         } else {
             // For multiple variables, use the default value for the type.
             let default = ExprEvaluator::default_value_for_type(type_spec);
             for name in names {
-                env.define_local(name.clone(), default.clone());
+                define(env, name.clone(), default.clone());
             }
         }
 

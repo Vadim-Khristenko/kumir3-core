@@ -71,6 +71,14 @@ impl CallFrame {
             .define(name, value);
     }
 
+    /// Defines a constant in the innermost (current) scope.
+    pub(crate) fn define_const(&mut self, name: String, value: Value) {
+        self.scopes
+            .last_mut()
+            .expect("frame has at least one scope")
+            .define_const(name, value);
+    }
+
     /// Looks up a value from inner to outer scopes.
     pub(crate) fn get(&self, name: &str) -> Option<&Value> {
         self.scopes.iter().rev().find_map(|s| s.get(name))
