@@ -89,7 +89,10 @@ impl Builtins {
                     Value::Char(c) => Ok(Some(Value::Number(Number::I64(
                         StringOperations::code_unicode(*c),
                     )))),
-                    Value::String(s) if s.len() == 1 => {
+                    // Символов, а не байтов: в UTF-8 «а» занимает два байта, и
+                    // проверка по длине в байтах отвергала любую букву русского
+                    // алфавита, принимая при этом «+».
+                    Value::String(s) if s.chars().count() == 1 => {
                         let c = s.chars().next().unwrap();
                         Ok(Some(Value::Number(Number::I64(
                             StringOperations::code_unicode(c),
