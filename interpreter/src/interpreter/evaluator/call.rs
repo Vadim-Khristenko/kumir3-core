@@ -1,6 +1,6 @@
 use super::ExprEvaluator;
 
-use shared::types::{Algorithm, Expr, LambdaValue, Value};
+use shared::types::{Algorithm, Expr, LambdaValue, ParamMode, Value};
 
 use super::super::builtins::Builtins;
 use super::super::environment::Environment;
@@ -134,9 +134,34 @@ impl ExprEvaluator {
         // [KITE 4] Arguments are evaluated in the CALLER frame, before creating the callee
         // frame (with lexical scoping, callee does not see caller's locals).
         let mut bound: Vec<(String, Value)> = Vec::with_capacity(algorithm.params.len());
+        // Parameters whose final value belongs to the caller: `рез` and `аргрез`.
+        let mut outgoing: Vec<(String, &str)> = Vec::new();
         for (i, param) in algorithm.params.iter().enumerate() {
+            if writes_back(&param.mode) && i < args.len() {
+                let Expr::Variable(target) = &args[i] else {
+                    return Err(RuntimeError::new(
+                        format!(
+                            "Параметру '{}' алгоритма '{}' можно передать только переменную: \
+                             он объявлен как {} и возвращает значение вызывающему",
+                            param.name,
+                            algorithm.name,
+                            mode_name(&param.mode)
+                        ),
+                        RuntimeErrorKind::TypeMismatch,
+                    ));
+                };
+                outgoing.push((param.name.to_string(), target.as_ref()));
+            }
+
             let value = if i < args.len() {
-                Self::evaluate(&args[i], env)?
+                // A `рез` parameter carries nothing in, and its argument may well
+                // be a variable that has not been given a value yet — so a failure
+                // to read it is not an error, it is the normal case.
+                match Self::evaluate(&args[i], env) {
+                    Ok(value) => value,
+                    Err(_) if matches!(param.mode, ParamMode::Out) => Value::Null,
+                    Err(e) => return Err(e),
+                }
             } else if let Some(default) = &param.default {
                 Self::evaluate(default, env)?
             } else {
@@ -164,17 +189,50 @@ impl ExprEvaluator {
         // Get return value.
         let return_value = env.get_result_value().cloned();
 
+        // Read the outgoing parameters while the callee frame is still alive;
+        // they can only be assigned once it is gone and the caller's variables
+        // are visible again.
+        let written: Vec<(&str, Value)> = outgoing
+            .iter()
+            .filter_map(|(param, target)| {
+                env.get_variable(param).ok().map(|v| (*target, v.clone()))
+            })
+            .collect();
+
         // Pop frame.
         env.pop_frame();
 
         // Handle result.
         match result {
-            Ok(super::super::error::ControlFlow::Return(value)) => Ok(value.unwrap_or(Value::Null)),
-            Ok(_) => Ok(return_value.unwrap_or(Value::Null)),
+            Ok(super::super::error::ControlFlow::Return(value)) => {
+                Self::write_back(written, env)?;
+                Ok(value.unwrap_or(Value::Null))
+            }
+            Ok(_) => {
+                Self::write_back(written, env)?;
+                Ok(return_value.unwrap_or(Value::Null))
+            }
             // [KITE-0002] `?` operator signal: early return of this value.
-            Err(e) if e.is_propagation() => Ok(*e.propagate.expect("propagation carries a value")),
+            Err(e) if e.is_propagation() => {
+                Self::write_back(written, env)?;
+                Ok(*e.propagate.expect("propagation carries a value"))
+            }
+            // The call failed, so nothing is written back: the caller's variables
+            // keep the values they had before the attempt.
             Err(e) => Err(e),
         }
+    }
+
+    /// Assigns `рез` and `аргрез` results into the caller's variables.
+    fn write_back(written: Vec<(&str, Value)>, env: &mut Environment) -> RuntimeResult<()> {
+        for (target, value) in written {
+            // The variable may not exist in the caller yet: `рез` is exactly how
+            // an algorithm hands out a value the caller has not computed itself.
+            if env.set_variable(target, value.clone()).is_err() {
+                env.define_local(target.to_string(), value);
+            }
+        }
+        Ok(())
     }
 
     /// Calls a user algorithm with already-evaluated arguments.
@@ -289,5 +347,34 @@ impl ExprEvaluator {
             Err(e) if e.is_propagation() => Ok(*e.propagate.expect("propagation carries a value")),
             other => other,
         }
+    }
+}
+
+// =============================================================================
+//         SECTION: PARAMETER MODES
+// =============================================================================
+
+/// Does this mode hand the parameter's final value back to the caller?
+///
+/// `рез` and `аргрез` are the whole point of КуМир's parameter modes: an
+/// algorithm that swaps two values has nowhere else to put its result. `Out` and
+/// `InOut` are their direct spelling; `BorrowMut` is the modern form of the same
+/// intent.
+fn writes_back(mode: &ParamMode) -> bool {
+    matches!(
+        mode,
+        ParamMode::Out | ParamMode::InOut | ParamMode::BorrowMut
+    )
+}
+
+/// Mode name as it is written in a program — for diagnostics.
+fn mode_name(mode: &ParamMode) -> &'static str {
+    match mode {
+        ParamMode::Out => "рез",
+        ParamMode::InOut => "аргрез",
+        ParamMode::BorrowMut => "изм",
+        ParamMode::In => "арг",
+        ParamMode::Borrow => "ссылка",
+        ParamMode::Move => "перемещение",
     }
 }
