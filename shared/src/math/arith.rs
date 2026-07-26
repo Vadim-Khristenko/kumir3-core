@@ -274,11 +274,23 @@ impl MathOperators {
         if Self::is_zero_num(&b) {
             return Err(MathErr::DivisionByZero);
         }
+        // `wrapping_rem` вместо `%`: делитель уже проверен на ноль, и остаётся
+        // единственная пара, на которой `%` паникует, — MIN и -1. Остаток там
+        // представим и равен нулю (непредставимо только частное, см.
+        // [`num_int_div`]), а `wrapping_rem` этот ноль и возвращает. Взять
+        // `checked_rem` было бы неверно: он на той же паре отдаёт `None`,
+        // и правильный ответ превратился бы в ошибку переполнения.
         match (a, b) {
-            (I64(x), I64(y)) => Ok(I64(x % y)),
-            (I32(x), I32(y)) => Ok(I32(x % y)),
-            (U64(x), U64(y)) => Ok(U64(x % y)),
+            (I8(x), I8(y)) => Ok(I8(x.wrapping_rem(y))),
+            (I16(x), I16(y)) => Ok(I16(x.wrapping_rem(y))),
+            (I32(x), I32(y)) => Ok(I32(x.wrapping_rem(y))),
+            (I64(x), I64(y)) => Ok(I64(x.wrapping_rem(y))),
+            (I128(x), I128(y)) => Ok(I128(x.wrapping_rem(y))),
+            (U8(x), U8(y)) => Ok(U8(x % y)),
+            (U16(x), U16(y)) => Ok(U16(x % y)),
             (U32(x), U32(y)) => Ok(U32(x % y)),
+            (U64(x), U64(y)) => Ok(U64(x % y)),
+            (U128(x), U128(y)) => Ok(U128(x % y)),
             _ => Err(MathErr::TypeMismatch("остаток только для целых")),
         }
     }
@@ -300,11 +312,19 @@ impl MathOperators {
         if Self::is_zero_num(&b) {
             return Err(MathErr::DivisionByZero);
         }
+        // `checked_div` — по той же причине, что и в [`num_mod`]: частное
+        // MIN / -1 не представимо в знаковом типе, и без проверки это паника.
         match (a, b) {
-            (I64(x), I64(y)) => Ok(I64(x / y)),
-            (I32(x), I32(y)) => Ok(I32(x / y)),
-            (U64(x), U64(y)) => Ok(U64(x / y)),
+            (I8(x), I8(y)) => x.checked_div(y).map(I8).ok_or(MathErr::Overflow),
+            (I16(x), I16(y)) => x.checked_div(y).map(I16).ok_or(MathErr::Overflow),
+            (I32(x), I32(y)) => x.checked_div(y).map(I32).ok_or(MathErr::Overflow),
+            (I64(x), I64(y)) => x.checked_div(y).map(I64).ok_or(MathErr::Overflow),
+            (I128(x), I128(y)) => x.checked_div(y).map(I128).ok_or(MathErr::Overflow),
+            (U8(x), U8(y)) => Ok(U8(x / y)),
+            (U16(x), U16(y)) => Ok(U16(x / y)),
             (U32(x), U32(y)) => Ok(U32(x / y)),
+            (U64(x), U64(y)) => Ok(U64(x / y)),
+            (U128(x), U128(y)) => Ok(U128(x / y)),
             _ => Err(MathErr::TypeMismatch(
                 "целочисленное деление только для целых",
             )),

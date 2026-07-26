@@ -439,3 +439,47 @@ fn abs_basic() {
     let r = MathOperators::abs(Value::from(5)).unwrap();
     assert_eq!(r, Value::from(5));
 }
+
+// =============================================================================
+//         SECTION: DIVISION AT THE EDGE OF THE SIGNED RANGE
+// =============================================================================
+
+/// A signed range is asymmetric: there is one more negative value than positive,
+/// so `-MIN` has no representable pair. That makes `MIN див -1` the only pair of
+/// integers with a nonzero divisor on which division is undefined — and it used
+/// to abort the process with a Rust panic instead of reporting an error.
+#[test]
+fn dividing_the_minimum_by_minus_one_reports_overflow() {
+    let r = MathOperators::int_div(Value::from(i64::MIN), Value::from(-1i64), false);
+    assert!(matches!(r, Err(MathErr::Overflow)), "получено: {r:?}");
+}
+
+/// The remainder of the same pair *is* representable — it is zero — so reporting
+/// overflow here would turn a correct answer into an error.
+#[test]
+fn the_remainder_of_the_minimum_by_minus_one_is_zero() {
+    let r = MathOperators::modulus(Value::from(i64::MIN), Value::from(-1i64), false).unwrap();
+    assert_eq!(r, Value::from(0i64));
+}
+
+#[test]
+fn division_by_zero_is_reported_before_any_range_check() {
+    assert!(matches!(
+        MathOperators::int_div(Value::from(1i64), Value::from(0i64), false),
+        Err(MathErr::DivisionByZero)
+    ));
+    assert!(matches!(
+        MathOperators::modulus(Value::from(1i64), Value::from(0i64), false),
+        Err(MathErr::DivisionByZero)
+    ));
+}
+
+/// Truncation toward zero, with the remainder taking the sign of the dividend —
+/// the two rules the corpus teaches for `див` and `мод`.
+#[test]
+fn negative_operands_truncate_toward_zero() {
+    let q = MathOperators::int_div(Value::from(7i64), Value::from(-2i64), false).unwrap();
+    let r = MathOperators::modulus(Value::from(7i64), Value::from(-2i64), false).unwrap();
+    assert_eq!(q, Value::from(-3i64));
+    assert_eq!(r, Value::from(1i64));
+}
