@@ -264,6 +264,10 @@ fn builtin_error_constructor() {
 fn builtin_io_aliases() {
     let out = run_and_get_output("вывод_строки(\"привет\")").unwrap();
     assert!(out.contains("привет"), "got {out:?}");
-    let out = run_and_get_output("новая_строка()").unwrap();
-    assert!(out.contains('\n'), "got {out:?}");
+    // `нс()` — значение, а не действие: перевод строки встаёт ровно туда, где
+    // его поставили среди аргументов. Прежде функция печатала пустую строку
+    // сама и возвращала `Пусто`, из-за чего внутри `вывод` выдавала лишнюю
+    // строку до самого вывода и подмешивала в текст слово «пусто».
+    let out = run_and_get_output("вывод \"а\", новая_строка(), \"б\"").unwrap();
+    assert!(out.contains("а\nб"), "got {out:?}");
 }
